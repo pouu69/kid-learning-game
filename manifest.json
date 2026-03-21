@@ -1,0 +1,11 @@
+{
+    "name": "타마고지 - TAMAGOJI",
+    "short_name": "TAMAGOJI",
+    "description": "모바일 웹 다마고치 게임",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#f0e6d2",
+    "theme_color": "#f0e6d2",
+    "orientation": "portrait",
+    "icons": []
+}
