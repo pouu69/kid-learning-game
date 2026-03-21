@@ -23,6 +23,7 @@ function playBeep(freq, duration, vol) {
         gain.connect(ctx.destination);
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + (duration || 0.1));
+        osc.onended = function() { osc.disconnect(); gain.disconnect(); };
     } catch(e) {}
 }
 

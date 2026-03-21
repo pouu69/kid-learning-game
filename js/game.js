@@ -137,11 +137,17 @@ function updateUI() {
     if (typeof updatePetOverlays === 'function') updatePetOverlays();
 }
 
+var _heartCache = {};
 function updateHeart(id, value) {
-    var el = document.getElementById(id);
-    if (!el) return;
+    if (!_heartCache[id]) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        _heartCache[id] = { el: el, icon: el.querySelector('.heart-icon') };
+    }
+    var cached = _heartCache[id];
+    var el = cached.el;
+    var icon = cached.icon;
     el.classList.remove('full', 'half', 'low');
-    var icon = el.querySelector('.heart-icon');
     // Show as filled blocks: 5 levels
     var level = Math.ceil(value / 20); // 0~5
     var filled = '';
@@ -260,11 +266,14 @@ function triggerRandomEvent() {
 
 // Day/night cycle - pet viewport background changes
 var _petAreaEl = null;
+var _lastTodHour = -1;
 function updateTimeOfDay() {
     if (!_petAreaEl) _petAreaEl = document.querySelector('.pet-area');
     if (!_petAreaEl) return;
     var petArea = _petAreaEl;
     var hour = new Date().getHours();
+    if (hour === _lastTodHour) return;
+    _lastTodHour = hour;
     var bgColor, canvasBg;
     // 6-18: day, 18-21: sunset, 21-6: night
     if (hour >= 6 && hour < 18) {

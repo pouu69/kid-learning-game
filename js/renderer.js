@@ -147,9 +147,9 @@ function updateWander() {
     var jumpChance = avg >= 60 ? 0.25 : avg >= 30 ? 0.1 : 0.02;
 
     wander.timer++;
-    var interval = avg >= 60 ? (30 + Math.random() * 60) : (80 + Math.random() * 160);
-    if (wander.timer >= interval) {
+    if (wander.timer >= wander.interval) {
         wander.timer = 0;
+        wander.interval = avg >= 60 ? (30 + Math.random() * 60) : (80 + Math.random() * 160);
         var range = avg >= 60 ? R._px * 10 : R._px * 4;
         wander.targetX = (Math.random() - 0.5) * range;
         wander.targetY = (Math.random() - 0.5) * range * 0.4;
@@ -173,12 +173,13 @@ function updateWander() {
 }
 
 // ===== DRAW PET =====
+var STAGE_NAMES = ['egg', 'baby', 'child', 'teen', 'adult'];
+
 function drawPet() {
     if (!R || !R.ready || !R._petGfx) return;
 
     R.frame++;
-    var names = ['egg', 'baby', 'child', 'teen', 'adult'];
-    var sprite = SPRITES[names[st.stage]];
+    var sprite = SPRITES[STAGE_NAMES[st.stage]];
     var px = R._px;
 
     updateWander();
@@ -312,7 +313,6 @@ function petCleanAnim() {
 function petHappyJump() {
     if (!R || !R.petContainer) return;
     var count = 0;
-    var baseY = R.petContainer.y;
     var ticker = function(dt) {
         count += dt.deltaTime * 16.67;
         var p = count / 400;
