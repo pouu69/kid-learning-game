@@ -209,6 +209,14 @@ function tick() {
     var avg = (st.hunger + st.happiness + st.energy + st.clean) / 4;
     if (avg > 70) addExp(dt * 0.15);
 
+    // Low stat warnings (roughly every 30 seconds when low)
+    if (!st.sleeping && Math.random() < 0.033) {
+        if (st.hunger < 15) notify('배고파...');
+        else if (st.energy < 15) notify('피곤해...');
+        else if (st.clean < 15) notify('더러워...');
+        else if (st.happiness < 15) notify('심심해...');
+    }
+
     // Random events (roughly every 60 seconds)
     if (!st.sleeping && Math.random() < 0.016) {
         triggerRandomEvent();
@@ -216,7 +224,11 @@ function tick() {
 
     updateUI();
     updateTimeOfDay();
-    save();
+
+    // Save every 10 ticks instead of every tick
+    if (!tick._count) tick._count = 0;
+    tick._count++;
+    if (tick._count % 10 === 0) save();
 }
 
 var RANDOM_EVENTS = [
