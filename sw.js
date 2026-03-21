@@ -1,4 +1,4 @@
-var CACHE_NAME = 'tamagoji-v1';
+var CACHE_NAME = 'tamagoji-v2';
 var urlsToCache = [
     '/',
     '/index.html',
@@ -17,6 +17,19 @@ self.addEventListener('install', function(e) {
             return cache.addAll(urlsToCache);
         })
     );
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', function(e) {
+    e.waitUntil(
+        caches.keys().then(function(names) {
+            return Promise.all(
+                names.filter(function(n) { return n !== CACHE_NAME; })
+                    .map(function(n) { return caches.delete(n); })
+            );
+        })
+    );
+    self.clients.claim();
 });
 
 self.addEventListener('fetch', function(e) {
