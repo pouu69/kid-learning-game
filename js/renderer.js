@@ -114,6 +114,20 @@ function buildPetScene() {
     }
     ground.fill({ color: 0x5a6b42 });
     petContainer.addChild(ground);
+
+    // Small grass tufts along the ground
+    var grass = new PIXI.Graphics();
+    var grassPositions = [-10, -7, -3, 2, 6, 9];
+    for (var gi = 0; gi < grassPositions.length; gi++) {
+        var gx = grassPositions[gi] * R._px;
+        var gy = groundY - 1;
+        // Each tuft is 2-3 small vertical lines
+        grass.rect(gx, gy - R._px * 0.8, 1, R._px * 0.8);
+        grass.rect(gx + 2, gy - R._px * 1.2, 1, R._px * 1.2);
+        grass.rect(gx + 4, gy - R._px * 0.6, 1, R._px * 0.6);
+    }
+    grass.fill({ color: 0x6a7a52 });
+    petContainer.addChild(grass);
 }
 
 // ===== PET WANDERING STATE =====
