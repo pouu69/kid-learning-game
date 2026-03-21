@@ -142,7 +142,7 @@ function updateWander() {
     }
 
     // Mood affects behavior
-    var avg = (st.hunger + st.happiness + st.energy + st.clean) / 4;
+    var avg = statAvg();
     var speed = avg >= 60 ? 0.06 : avg >= 30 ? 0.03 : 0.015;
     var jumpChance = avg >= 60 ? 0.25 : avg >= 30 ? 0.1 : 0.02;
 
@@ -206,7 +206,7 @@ function drawPet() {
     R._petGfx.fill('#3a4a2a');
 
     // Sad tears
-    var avg = (st.hunger + st.happiness + st.energy + st.clean) / 4;
+    var avg = statAvg();
     if (avg < 25 && !st.sleeping && st.stage > 0) {
         var tearSize = Math.max(2, px * 0.4);
         R._petGfx.rect(offsetX + 6 * px + 2, offsetY + 7 * px + bounce + px, tearSize, px);

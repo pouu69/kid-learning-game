@@ -1,3 +1,19 @@
+// ===== CONSTANTS =====
+var MS_PER_HOUR = 3600000;
+var MS_PER_DAY = 86400000;
+
+// Helper: average of all 4 stats
+function statAvg() {
+    return (st.hunger + st.happiness + st.energy + st.clean) / 4;
+}
+
+// Helper: format age from birthTime
+function formatAge(birthTime) {
+    var ms = Date.now() - (birthTime || Date.now());
+    var days = Math.floor(ms / MS_PER_DAY);
+    return days > 0 ? days + '일' : Math.floor(ms / MS_PER_HOUR) + '시간';
+}
+
 // ===== GAME CONFIG & STATE =====
 var STAGES = [
     { name: '알', exp: 50 },
@@ -57,11 +73,7 @@ function showScreen(name) {
 }
 
 function showDeath() {
-    var ageMs = Date.now() - (st.birthTime || Date.now());
-    var ageHours = Math.floor(ageMs / (1000 * 60 * 60));
-    var ageDays = Math.floor(ageHours / 24);
-    var ageStr = ageDays > 0 ? ageDays + '일' : ageHours + '시간';
-    DOM.deathMsg.textContent = st.name + '(이)가 떠나버렸어요...\n' + ageStr + ' 동안 함께했어요.\n다음엔 더 잘 돌봐주세요!';
+    DOM.deathMsg.textContent = st.name + '(이)가 떠나버렸어요...\n' + formatAge(st.birthTime) + ' 동안 함께했어요.\n다음엔 더 잘 돌봐주세요!';
     showScreen('death');
     if (typeof sfxBad === 'function') sfxBad();
 }
@@ -70,13 +82,8 @@ function showDeath() {
 function updateUI() {
     if (!DOM.petName) return;
 
-    // Pet name with age
-    var ageMs = Date.now() - (st.birthTime || Date.now());
-    var ageDays = Math.floor(ageMs / (1000 * 60 * 60 * 24));
-    var ageHours = Math.floor(ageMs / (1000 * 60 * 60));
-    var ageText = ageDays > 0 ? ageDays + '일' : ageHours + '시간';
     DOM.petName.textContent = st.name;
-    DOM.petStage.textContent = STAGES[st.stage].name + ' ' + ageText;
+    DOM.petStage.textContent = STAGES[st.stage].name + ' ' + formatAge(st.birthTime);
 
     // Stat bars
     var stats = [
@@ -109,7 +116,7 @@ function updateUI() {
     }
 
     // Mood
-    var avg = (st.hunger + st.happiness + st.energy + st.clean) / 4;
+    var avg = statAvg();
     if (st.sleeping) DOM.moodText.textContent = 'z z z . . .';
     else if (avg >= 80) DOM.moodText.textContent = '~ 기분 좋다 ~';
     else if (avg >= 60) DOM.moodText.textContent = '괜찮아~';
@@ -206,7 +213,7 @@ function tick() {
         return;
     }
 
-    var avg = (st.hunger + st.happiness + st.energy + st.clean) / 4;
+    var avg = statAvg();
     if (avg > 70) addExp(dt * 0.15);
 
     // Low stat warnings (roughly every 30 seconds when low)
@@ -252,9 +259,11 @@ function triggerRandomEvent() {
 }
 
 // Day/night cycle - pet viewport background changes
+var _petAreaEl = null;
 function updateTimeOfDay() {
-    var petArea = document.querySelector('.pet-area');
-    if (!petArea) return;
+    if (!_petAreaEl) _petAreaEl = document.querySelector('.pet-area');
+    if (!_petAreaEl) return;
+    var petArea = _petAreaEl;
     var hour = new Date().getHours();
     var bgColor, canvasBg;
     // 6-18: day, 18-21: sunset, 21-6: night
