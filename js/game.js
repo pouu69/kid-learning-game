@@ -205,9 +205,34 @@ function tick() {
     var avg = (st.hunger + st.happiness + st.energy + st.clean) / 4;
     if (avg > 70) addExp(dt * 0.15);
 
+    // Random events (roughly every 60 seconds)
+    if (!st.sleeping && Math.random() < 0.016) {
+        triggerRandomEvent();
+    }
+
     updateUI();
     updateTimeOfDay();
     save();
+}
+
+var RANDOM_EVENTS = [
+    { msg: '뭔가 발견했다!', hunger: 0, happy: 5, energy: 0, clean: 0, exp: 3 },
+    { msg: '나비를 쫓았다~', hunger: 0, happy: 8, energy: -5, clean: 0, exp: 2 },
+    { msg: '낮잠이 오는걸...', hunger: 0, happy: 0, energy: -10, clean: 0, exp: 0 },
+    { msg: '맛있는 냄새가!', hunger: -8, happy: 3, energy: 0, clean: 0, exp: 0 },
+    { msg: '비가 왔다!', hunger: 0, happy: -3, energy: 0, clean: 5, exp: 1 },
+    { msg: '친구를 만났다!', hunger: 0, happy: 12, energy: -3, clean: 0, exp: 5 },
+];
+
+function triggerRandomEvent() {
+    var evt = RANDOM_EVENTS[Math.floor(Math.random() * RANDOM_EVENTS.length)];
+    notify(evt.msg);
+    st.hunger = Math.max(0, Math.min(100, st.hunger + (evt.hunger || 0)));
+    st.happiness = Math.max(0, Math.min(100, st.happiness + (evt.happy || 0)));
+    st.energy = Math.max(0, Math.min(100, st.energy + (evt.energy || 0)));
+    st.clean = Math.max(0, Math.min(100, st.clean + (evt.clean || 0)));
+    if (evt.exp > 0) addExp(evt.exp);
+    if (typeof petHappyJump === 'function') petHappyJump();
 }
 
 // Day/night cycle - pet viewport background changes
