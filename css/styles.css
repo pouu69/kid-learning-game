@@ -541,6 +541,7 @@ body::before {
     line-height: 2.6;
     color: var(--fg-dim);
     text-align: center;
+    white-space: pre-line;
 }
 
 /* ===== MINIGAME OVERLAY ===== */

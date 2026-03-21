@@ -16,6 +16,7 @@ var st = {
     exp: 0, stage: 0, sleeping: false, dead: false, poop: 0,
     lastUpdate: Date.now(),
     cd: { feed: 0, play: 0, sleep: 0, clean: 0 },
+    birthTime: Date.now(),
 };
 
 // ===== DOM REFERENCES =====
@@ -56,16 +57,26 @@ function showScreen(name) {
 }
 
 function showDeath() {
-    DOM.deathMsg.textContent = st.name + '(이)가 떠나버렸어요... 다음엔 더 잘 돌봐주세요!';
+    var ageMs = Date.now() - (st.birthTime || Date.now());
+    var ageHours = Math.floor(ageMs / (1000 * 60 * 60));
+    var ageDays = Math.floor(ageHours / 24);
+    var ageStr = ageDays > 0 ? ageDays + '일' : ageHours + '시간';
+    DOM.deathMsg.textContent = st.name + '(이)가 떠나버렸어요...\n' + ageStr + ' 동안 함께했어요.\n다음엔 더 잘 돌봐주세요!';
     showScreen('death');
+    if (typeof sfxBad === 'function') sfxBad();
 }
 
 // ===== UPDATE UI =====
 function updateUI() {
     if (!DOM.petName) return;
 
+    // Pet name with age
+    var ageMs = Date.now() - (st.birthTime || Date.now());
+    var ageDays = Math.floor(ageMs / (1000 * 60 * 60 * 24));
+    var ageHours = Math.floor(ageMs / (1000 * 60 * 60));
+    var ageText = ageDays > 0 ? ageDays + '일' : ageHours + '시간';
     DOM.petName.textContent = st.name;
-    DOM.petStage.textContent = STAGES[st.stage].name;
+    DOM.petStage.textContent = STAGES[st.stage].name + ' ' + ageText;
 
     // Stat bars
     var stats = [
@@ -346,11 +357,13 @@ function load() {
 
 // ===== DEATH / RESET =====
 function resetGame() {
+    if (!confirm('정말 다시 시작할까요?')) return;
     localStorage.removeItem('tamagoji');
     st = {
         name: '', hunger: 100, happiness: 100, energy: 100, clean: 100,
         exp: 0, stage: 0, sleeping: false, dead: false, poop: 0,
         lastUpdate: Date.now(), cd: { feed: 0, play: 0, sleep: 0, clean: 0 },
+        birthTime: Date.now(),
     };
     selAction = 0;
     showScreen('name');
