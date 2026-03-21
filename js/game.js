@@ -180,7 +180,11 @@ function tick() {
         st.happiness = Math.max(0, st.happiness - dt * 0.25);
         st.energy = Math.max(0, st.energy - dt * 0.2);
         st.clean = Math.max(0, st.clean - dt * 0.18);
-        st.poop += dt * 0.08;
+        // Poop rate increases when cleanliness is low
+        var prevPoop = st.poop;
+        var poopRate = st.clean < 30 ? 0.2 : 0.08;
+        st.poop += dt * poopRate;
+        if (prevPoop < 3 && st.poop >= 3) notify('씻겨줘!');
     } else {
         st.energy = Math.min(100, st.energy + dt * 1.5);
         st.hunger = Math.max(0, st.hunger - dt * 0.12);

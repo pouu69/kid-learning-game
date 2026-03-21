@@ -141,23 +141,27 @@ function updateWander() {
         return;
     }
 
+    // Mood affects behavior
+    var avg = (st.hunger + st.happiness + st.energy + st.clean) / 4;
+    var speed = avg >= 60 ? 0.06 : avg >= 30 ? 0.03 : 0.015;
+    var jumpChance = avg >= 60 ? 0.25 : avg >= 30 ? 0.1 : 0.02;
+
     wander.timer++;
-    if (wander.timer >= wander.interval) {
+    var interval = avg >= 60 ? (30 + Math.random() * 60) : (80 + Math.random() * 160);
+    if (wander.timer >= interval) {
         wander.timer = 0;
-        wander.interval = 40 + Math.random() * 100;
-        var range = R._px * 8;
+        var range = avg >= 60 ? R._px * 10 : R._px * 4;
         wander.targetX = (Math.random() - 0.5) * range;
         wander.targetY = (Math.random() - 0.5) * range * 0.4;
 
-        // Random jump (20% chance)
-        if (Math.random() < 0.2) {
+        if (Math.random() < jumpChance) {
             wander.jumpTimer = 20;
         }
     }
 
-    // Smooth movement
-    wander.x += (wander.targetX - wander.x) * 0.05;
-    wander.y += (wander.targetY - wander.y) * 0.05;
+    // Smooth movement (speed based on mood)
+    wander.x += (wander.targetX - wander.x) * speed;
+    wander.y += (wander.targetY - wander.y) * speed;
 
     // Jump animation
     if (wander.jumpTimer > 0) {
