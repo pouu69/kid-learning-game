@@ -215,13 +215,22 @@ function updateTimeOfDay() {
     var petArea = document.querySelector('.pet-area');
     if (!petArea) return;
     var hour = new Date().getHours();
-    // 6-18: day, 18-21: evening, 21-6: night
+    var bgColor, canvasBg;
+    // 6-18: day, 18-21: sunset, 21-6: night
     if (hour >= 6 && hour < 18) {
-        petArea.style.background = '#c8d8b0'; // day (default green)
+        bgColor = '#c8d8b0';
+        canvasBg = 0xc8d8b0;
     } else if (hour >= 18 && hour < 21) {
-        petArea.style.background = '#b8c0a8'; // evening (muted)
+        bgColor = '#a8b098';
+        canvasBg = 0xa8b098;
     } else {
-        petArea.style.background = '#90a078'; // night (dark green)
+        bgColor = '#6a7860';
+        canvasBg = 0x6a7860;
+    }
+    petArea.style.background = bgColor;
+    // Also update PixiJS canvas background
+    if (R && R.app && R.app.renderer) {
+        try { R.app.renderer.background.color = canvasBg; } catch(e) {}
     }
 }
 
@@ -397,6 +406,10 @@ function startGame() {
 
     notify(name + ' 탄생!');
     save();
+
+    // First-play hints
+    setTimeout(function() { notify('< > 로 메뉴를 고르고 OK!'); }, 3000);
+    setTimeout(function() { notify('배고프면 밥을 줘요~'); }, 6000);
 }
 
 function init() {
