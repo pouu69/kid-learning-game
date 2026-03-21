@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#f0e6d2">
+    <title>TAMAGOJI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Galmuri9&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+    <!-- NAME SCREEN -->
+    <div id="nameScreen" class="screen">
+        <div class="name-screen-inner">
+            <pre class="name-egg">    ****
+  **    **
+ *        *
+ *        *
+ *        *
+  **    **
+    ****</pre>
+            <div class="name-title">TAMAGOJI</div>
+            <div class="name-subtitle">알에서 깨어날 친구의<br>이름을 지어주세요</div>
+            <input type="text" id="nameInput" placeholder="이름" maxlength="6">
+            <button id="nameStartBtn" class="name-start-btn">시 작</button>
+        </div>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div id="gameScreen" class="screen" style="display:none;">
+        <!-- Header -->
+        <div class="header">
+            <span id="petName" class="header-name"></span>
+            <div class="header-right">
+                <button id="statBtn" class="header-stat-btn">상태</button>
+                <span id="petStage" class="header-stage"></span>
+            </div>
+        </div>
+
+        <!-- Pet Area (main focus - takes most of the screen) -->
+        <div class="pet-area">
+            <div id="petCanvas"></div>
+            <div id="moodText" class="mood-text"></div>
+        </div>
+
+        <!-- Status Hearts (compact stat indicator) -->
+        <div class="hearts-bar">
+            <div class="heart-item" id="heartHunger"><span class="heart-icon">H</span><span class="heart-label">밥</span></div>
+            <div class="heart-item" id="heartHappy"><span class="heart-icon">H</span><span class="heart-label">기분</span></div>
+            <div class="heart-item" id="heartEnergy"><span class="heart-icon">H</span><span class="heart-label">힘</span></div>
+            <div class="heart-item" id="heartClean"><span class="heart-icon">H</span><span class="heart-label">청결</span></div>
+        </div>
+
+        <!-- Hidden stat bars for JS compatibility -->
+        <div style="display:none;">
+            <div><div id="barHunger"></div></div>
+            <div><div id="barHappy"></div></div>
+            <div><div id="barEnergy"></div></div>
+            <div><div id="barClean"></div></div>
+            <span id="valHunger">100</span>
+            <span id="valHappy">100</span>
+            <span id="valEnergy">100</span>
+            <span id="valClean">100</span>
+            <div><div id="barExp"></div></div>
+            <span id="valExp">0/50</span>
+        </div>
+
+        <!-- Action Labels -->
+        <div class="action-section">
+            <span class="action-item selected" data-idx="0">밥주기</span>
+            <span class="action-item" data-idx="1">놀기</span>
+            <span class="action-item" data-idx="2">자기</span>
+            <span class="action-item" data-idx="3">씻기</span>
+        </div>
+
+        <!-- Stat Detail Overlay -->
+        <div id="statOverlay" class="stat-overlay" style="display:none;">
+            <div class="stat-detail-box">
+                <div class="stat-detail-title">상 태</div>
+                <div class="stat-detail-row"><span>배고픔</span><div class="stat-bar-bg"><div id="barHunger2" class="stat-bar-fill"></div></div><span id="valHunger2">100</span></div>
+                <div class="stat-detail-row"><span>기분</span><div class="stat-bar-bg"><div id="barHappy2" class="stat-bar-fill"></div></div><span id="valHappy2">100</span></div>
+                <div class="stat-detail-row"><span>에너지</span><div class="stat-bar-bg"><div id="barEnergy2" class="stat-bar-fill"></div></div><span id="valEnergy2">100</span></div>
+                <div class="stat-detail-row"><span>청결</span><div class="stat-bar-bg"><div id="barClean2" class="stat-bar-fill"></div></div><span id="valClean2">100</span></div>
+                <div class="stat-detail-row exp-row"><span>EXP</span><div class="stat-bar-bg"><div id="barExp2" class="stat-bar-fill exp-fill"></div></div><span id="valExp2">0/50</span></div>
+                <button id="closeStatBtn" class="name-start-btn" style="margin-top:12px;padding:10px 30px;min-height:40px;">닫기</button>
+            </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="button-section">
+            <button id="btnPrev" class="game-btn">&lt;</button>
+            <button id="btnOk" class="game-btn">OK</button>
+            <button id="btnNext" class="game-btn">&gt;</button>
+        </div>
+
+        <div class="bottom-pad"></div>
+    </div>
+
+    <!-- DEATH SCREEN -->
+    <div id="deathScreen" class="screen" style="display:none;">
+        <div class="death-inner">
+            <div class="death-title">GAME OVER</div>
+            <div id="deathMsg" class="death-msg"></div>
+            <button id="restartBtn" class="name-start-btn">다시하기</button>
+        </div>
+    </div>
+
+    <!-- MINIGAME OVERLAY -->
+    <div id="minigameScreen" class="screen minigame-overlay" style="display:none;"></div>
+
+    <!-- NOTIFICATION -->
+    <div id="notification" class="notification"></div>
+
+    <!-- FLOAT TEXT CONTAINER -->
+    <div id="floatContainer"></div>
+
+    <script>
+    // Fix mobile browser viewport height (address bar issue)
+    function setVH() {
+        var vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', vh + 'px');
+    }
+    setVH();
+    window.addEventListener('resize', setVH);
+    window.addEventListener('orientationchange', function() { setTimeout(setVH, 100); });
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/8.6.6/pixi.min.js"></script>
+    <script src="js/sprites.js"></script>
+    <script src="js/effects.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/minigames.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>
