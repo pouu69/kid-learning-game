@@ -26,6 +26,9 @@ var PetRenderer = {
   _wiggleTimer: 0,
   _app: null,
   _stage: 0,
+  _needBubble: null,   // PixiJS container for need thought bubble
+  _needType: null,     // current need: 'hungry'|'bored'|'sleepy'|null
+  _needFrame: 0,
 
   init: function(app, st) {
     var self = this;
@@ -421,6 +424,42 @@ var PetRenderer = {
       self._zzz.y = -60 + Math.sin(self._frame * 0.04) * 6;
       self._zzz.alpha = 0.5 + 0.5 * Math.abs(Math.sin(self._frame * 0.04));
     }
+
+    // Need bubble — strong pulse + sparkle to attract attention
+    if (self._needBubble) {
+      self._needFrame++;
+      // Big bounce up and down
+      self._needBubble.y = -85 + Math.sin(self._needFrame * 0.06) * 10;
+      // Strong scale pulse (1.0 → 1.25 → 1.0)
+      var pulse = 1.0 + 0.2 * Math.abs(Math.sin(self._needFrame * 0.08));
+      self._needBubble.scale.set(pulse);
+      // Rotate slightly back and forth
+      self._needBubble.rotation = Math.sin(self._needFrame * 0.1) * 0.08;
+      // Spawn sparkle every ~40 frames
+      if (self._needFrame % 40 === 0 && self._app) {
+        var sparkle = new PIXI.Graphics();
+        sparkle.star(0, 0, 5, 6, 3).fill({ color: 0xf0d060 });
+        sparkle.x = self.container.x + self._needBubble.x + (Math.random() - 0.5) * 40;
+        sparkle.y = self.container.y + self._needBubble.y + (Math.random() - 0.5) * 30;
+        sparkle.alpha = 1;
+        sparkle._life = 30;
+        self._app.stage.addChild(sparkle);
+        (function(s) {
+          var t = function() {
+            s.y -= 0.8;
+            s.alpha -= 0.033;
+            s.rotation += 0.1;
+            s._life--;
+            if (s._life <= 0) {
+              self._app.stage.removeChild(s);
+              self._app.ticker.remove(t);
+              s.destroy();
+            }
+          };
+          self._app.ticker.add(t);
+        })(sparkle);
+      }
+    }
   },
 
   wiggle: function() {
@@ -479,5 +518,98 @@ var PetRenderer = {
       }
     }
     if (typeof playSound === 'function') playSound('click');
+  },
+
+  // Show/hide need thought bubble above pet (PixiJS drawn)
+  showNeed: function(needType) {
+    var self = this;
+    if (self._needType === needType) return;
+    self._needType = needType;
+    self._needFrame = 0;
+
+    // Remove old bubble
+    if (self._needBubble && self.container) {
+      self.container.removeChild(self._needBubble);
+      self._needBubble.destroy({ children: true });
+      self._needBubble = null;
+    }
+
+    if (!needType || !self.container) return;
+
+    var bubble = new PIXI.Container();
+    bubble.y = -80;
+    bubble.x = 30;
+
+    // Thought bubble background (cloud shape)
+    var bg = new PIXI.Graphics();
+    bg.circle(0, 0, 28).fill({ color: 0xffffff, alpha: 0.95 });
+    // Small circles for thought trail
+    bg.circle(-12, 22, 6).fill({ color: 0xffffff, alpha: 0.9 });
+    bg.circle(-6, 30, 4).fill({ color: 0xffffff, alpha: 0.85 });
+    bubble.addChild(bg);
+
+    // Draw icon based on need type
+    var icon = new PIXI.Graphics();
+    if (needType === 'hungry') {
+      // Rice bowl: bowl shape + steam lines
+      icon.roundRect(-14, 2, 28, 14, 4).fill({ color: 0xf4b870 });
+      icon.ellipse(0, 2, 16, 5).fill({ color: 0xf4b870 });
+      // Rice inside
+      icon.ellipse(0, -1, 12, 6).fill({ color: 0xffffff });
+      // Steam lines
+      icon.moveTo(-6, -10).quadraticCurveTo(-6, -16, -3, -16).stroke({ color: 0xcccccc, width: 1.5, alpha: 0.6 });
+      icon.moveTo(0, -12).quadraticCurveTo(0, -18, 3, -18).stroke({ color: 0xcccccc, width: 1.5, alpha: 0.6 });
+      icon.moveTo(6, -10).quadraticCurveTo(6, -16, 9, -16).stroke({ color: 0xcccccc, width: 1.5, alpha: 0.6 });
+    } else if (needType === 'sleepy') {
+      // Zzz text
+      var zzz = new PIXI.Text({ text: 'Z', style: { fontSize: 20, fill: 0xc8a0d8, fontWeight: 'bold' } });
+      zzz.anchor.set(0.5);
+      zzz.x = -6; zzz.y = -4;
+      bubble.addChild(zzz);
+      var zz2 = new PIXI.Text({ text: 'z', style: { fontSize: 14, fill: 0xc8a0d8, fontWeight: 'bold' } });
+      zz2.anchor.set(0.5);
+      zz2.x = 8; zz2.y = -12;
+      bubble.addChild(zz2);
+    } else if (needType === 'bored') {
+      // Play ball
+      icon.circle(0, -2, 12).fill({ color: 0xa8d8b0 });
+      icon.circle(0, -2, 12).stroke({ color: 0x88b890, width: 1.5 });
+      // Star on ball
+      icon.star(0, -2, 5, 4, 3).fill({ color: 0xf0d060 });
+    }
+    bubble.addChild(icon);
+
+    // Make interactive — tap to pop bubble and enter learning
+    bubble.eventMode = 'static';
+    bubble.cursor = 'pointer';
+    bubble.hitArea = new PIXI.Circle(0, 0, 40);
+    bubble.on('pointerdown', function() {
+      // Pop effect: scale up then disappear
+      if (typeof playSound === 'function') playSound('click');
+      // Burst particles from bubble
+      if (self._app && self.container) {
+        var bx = self.container.x + bubble.x;
+        var by = self.container.y + bubble.y;
+        if (typeof showStarParticles === 'function') {
+          showStarParticles(bx, by, 8);
+        }
+      }
+      // Quick scale-up then hide
+      bubble.scale.set(1.5);
+      bubble.alpha = 0.5;
+      setTimeout(function() {
+        self.hideNeed();
+        if (typeof handleActionClick === 'function') {
+          handleActionClick();
+        }
+      }, 200);
+    });
+
+    self._needBubble = bubble;
+    self.container.addChild(bubble);
+  },
+
+  hideNeed: function() {
+    this.showNeed(null);
   },
 };

@@ -132,32 +132,16 @@ function updateHome(st) {
     }
   }
 
-  // Show floating need icon instead of text button
-  var needIcon = document.getElementById('needIcon');
-  var needIconInner = document.getElementById('needIconInner');
+  // Show PixiJS need bubble on pet (not DOM)
   var petHint = document.querySelector('.pet-hint');
-  if (needIcon && needIconInner) {
+  if (typeof PetRenderer !== 'undefined' && PetRenderer.showNeed) {
     var btn = Pet.getActionButton(st);
-    if (btn && btn.action !== 'hatch') {
-      // Show visual icon based on pet's need
-      var iconMap = {
-        'feed': '<svg width="40" height="40" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="#f4b870"/><path d="M16 20c0-4 3-8 8-8s8 4 8 8v8c0 2-2 4-4 4h-8c-2 0-4-2-4-4z" fill="white"/><circle cx="20" cy="24" r="2" fill="#3a3028"/><circle cx="28" cy="24" r="2" fill="#3a3028"/></svg>',
-        'play': '<svg width="40" height="40" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="#a8d8b0"/><path d="M18 14l16 10-16 10z" fill="white"/></svg>',
-        'sleep': '<svg width="40" height="40" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="#c8a0d8"/><text x="24" y="30" text-anchor="middle" fill="white" font-size="18" font-weight="bold">Z</text></svg>',
-        'wake': '<svg width="40" height="40" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="#88c8e8"/><circle cx="24" cy="24" r="8" fill="#f0d060"/><line x1="24" y1="8" x2="24" y2="14" stroke="#f0d060" stroke-width="2"/><line x1="24" y1="34" x2="24" y2="40" stroke="#f0d060" stroke-width="2"/><line x1="8" y1="24" x2="14" y2="24" stroke="#f0d060" stroke-width="2"/><line x1="34" y1="24" x2="40" y2="24" stroke="#f0d060" stroke-width="2"/></svg>'
-      };
-      needIconInner.innerHTML = iconMap[btn.action] || '';
-      needIcon.dataset.action = btn.action;
-      needIcon.classList.remove('hidden');
-      if (petHint) petHint.classList.add('hidden');
-    } else if (btn && btn.action === 'hatch') {
-      // Egg: show tap icon
-      needIconInner.innerHTML = '<svg width="40" height="40" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="#e8c8a0"/><path d="M24 12c-6 0-10 6-10 14s4 10 10 10 10-2 10-10-4-14-10-14z" fill="#f8e8d0" stroke="#c8b898" stroke-width="1.5"/><path d="M18 24l6-4 6 4" fill="none" stroke="#c8b898" stroke-width="1.5"/></svg>';
-      needIcon.dataset.action = btn.action;
-      needIcon.classList.remove('hidden');
+    if (btn) {
+      var needMap = { 'feed': 'hungry', 'play': 'bored', 'sleep': 'sleepy', 'wake': 'sleepy', 'hatch': null };
+      PetRenderer.showNeed(needMap[btn.action] || null);
       if (petHint) petHint.classList.add('hidden');
     } else {
-      needIcon.classList.add('hidden');
+      PetRenderer.hideNeed();
       if (petHint) petHint.classList.remove('hidden');
     }
   }
