@@ -6,9 +6,10 @@ var Pet = {
 
   updateRequest: function(st) {
     if (st.sleeping) { this.request = null; return; }
-    if (st.hunger < 30) this.request = 'hungry';
+    // Most urgent need wins — sleepy > hungry > bored
+    if (st.sleepy > 80) this.request = 'sleepy';
+    else if (st.hunger < 30) this.request = 'hungry';
     else if (st.mood < 40) this.request = 'bored';
-    else if (st.sleepy > 80) this.request = 'sleepy';
     else this.request = null;
   },
 
@@ -63,7 +64,8 @@ var Pet = {
     var newStage = st.stage;
     if (wordCount >= 15) newStage = 5;
     else if (wordCount >= 10) newStage = 4;
-    else if (vowCount >= 6) newStage = 3;
+    else if (wordCount >= 5) newStage = Math.max(newStage, 3);
+    else if (vowCount >= 6) newStage = Math.max(newStage, 3);
     else if (consCount >= 9) newStage = 2;
     if (newStage > st.stage) return { stage: newStage, name: EVOLUTION[newStage].name };
     return null;

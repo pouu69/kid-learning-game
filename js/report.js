@@ -7,7 +7,7 @@ function renderReport(st) {
   content.innerHTML = '';
 
   var r = st.reports;
-  var known = st.learning.knownLetters;
+  var known = (st.learning.knownConsonants || []).concat(st.learning.knownVowels || []);
   var completed = st.learning.completedWords;
 
   // 요약 카드
