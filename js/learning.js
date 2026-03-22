@@ -1,93 +1,178 @@
 // js/learning.js
-// 4단계 학습 사이클 엔진
-// Globals: CURRICULUM, saveState (storage.js), showScreen, onLearningComplete (game.js)
-// Depends on: MeetActivity, DiscoverActivity, PlayActivity, ReuniteActivity
+// 3단계 학습 엔진: 자음 → 모음 → 낱말
+// Globals: CURRICULUM, saveState (storage.js), updateHome, playSound, speakText (game.js)
+// Depends on: LetterActivity, PuzzleActivity, PetRenderer, World
 
 var Learning = {
-  currentActivity: null,
+  popupEl: null,
+  overlayEl: null,
 
-  startLearning: function(st) {
-    if (!st.learning.currentWord) {
-      st.learning.currentWord = {
-        word: CURRICULUM[0].word,
-        phase: 1,
-        startedAt: Date.now()
-      };
-    }
-    var wordData = null;
-    for (var i = 0; i < CURRICULUM.length; i++) {
-      if (CURRICULUM[i].word === st.learning.currentWord.word) {
-        wordData = CURRICULUM[i];
-        break;
+  // Get current learning target based on state
+  getCurrentTarget: function(st) {
+    if (st.learning.stage === 1) {
+      // Consonants
+      var idx = st.learning.consonantIndex;
+      if (idx < CURRICULUM.consonants.length) {
+        return { type: 'consonant', data: CURRICULUM.consonants[idx], index: idx };
       }
-    }
-    if (!wordData) return;
-
-    var phase = st.learning.currentWord.phase;
-    if (phase === 1) MeetActivity.start(st, wordData);
-    else if (phase === 2) DiscoverActivity.start(st, wordData);
-    else if (phase === 3) PlayActivity.start(st, wordData);
-    else if (phase === 4) ReuniteActivity.start(st, wordData);
-  },
-
-  onPhaseComplete: function(st) {
-    var cw = st.learning.currentWord;
-    if (cw.phase < 4) {
-      cw.phase++;
+      // All consonants done → advance to stage 2
+      st.learning.stage = 2;
+      st.learning.vowelIndex = 0;
       saveState(st);
-      showScreen('home');
-    } else {
-      this.completeWord(st);
+    }
+    if (st.learning.stage === 2) {
+      var idx2 = st.learning.vowelIndex;
+      if (idx2 < CURRICULUM.vowels.length) {
+        return { type: 'vowel', data: CURRICULUM.vowels[idx2], index: idx2 };
+      }
+      // All vowels done → advance to stage 3
+      st.learning.stage = 3;
+      st.learning.wordIndex = 0;
+      saveState(st);
+    }
+    if (st.learning.stage === 3) {
+      var idx3 = st.learning.wordIndex;
+      if (idx3 < CURRICULUM.words.length) {
+        return { type: 'word', data: CURRICULUM.words[idx3], index: idx3 };
+      }
+      return null; // All done
+    }
+    return null;
+  },
+
+  // Open learning popup overlay (no screen transition)
+  openPopup: function(content) {
+    // Create overlay if not exists
+    if (!this.overlayEl) {
+      this.overlayEl = document.createElement('div');
+      this.overlayEl.className = 'learning-overlay';
+      this.overlayEl.onclick = function(e) {
+        if (e.target === Learning.overlayEl) return; // don't close on overlay click
+      };
+      document.body.appendChild(this.overlayEl);
+    }
+    if (!this.popupEl) {
+      this.popupEl = document.createElement('div');
+      this.popupEl.className = 'learning-popup';
+      this.overlayEl.appendChild(this.popupEl);
+    }
+    this.popupEl.innerHTML = '';
+    if (typeof content === 'string') {
+      this.popupEl.innerHTML = content;
+    } else if (content instanceof HTMLElement) {
+      this.popupEl.appendChild(content);
+    }
+    this.overlayEl.classList.add('active');
+  },
+
+  closePopup: function() {
+    if (this.overlayEl) {
+      this.overlayEl.classList.remove('active');
     }
   },
 
-  completeWord: function(st) {
-    var cw = st.learning.currentWord;
-    var wordData = null;
-    for (var i = 0; i < CURRICULUM.length; i++) {
-      if (CURRICULUM[i].word === cw.word) {
-        wordData = CURRICULUM[i];
-        break;
-      }
+  // Start learning for current target
+  startLearning: function(st) {
+    var target = this.getCurrentTarget(st);
+    if (!target) return;
+
+    if (target.type === 'consonant' || target.type === 'vowel') {
+      // Letter learning: show → trace → distinguish
+      LetterActivity.start(st, target);
+    } else if (target.type === 'word') {
+      // Word composition: 2D block puzzle
+      PuzzleActivity.start(st, target.data);
     }
+  },
 
-    if (wordData) {
-      for (var j = 0; j < wordData.letters.length; j++) {
-        var l = wordData.letters[j];
-        if (st.learning.knownLetters.indexOf(l) === -1) {
-          st.learning.knownLetters.push(l);
-          st.reports.letterStats[l] = {
-            firstSeen: new Date().toISOString().slice(0, 10),
-            exposures: 1,
-            lastSeen: new Date().toISOString().slice(0, 10)
-          };
-        }
+  // Called when a letter is learned
+  onLetterComplete: function(st, target) {
+    var letter = target.data.letter;
+    if (target.type === 'consonant') {
+      if (st.learning.knownConsonants.indexOf(letter) === -1) {
+        st.learning.knownConsonants.push(letter);
       }
-    }
-
-    st.learning.completedWords.push(cw.word);
-    st.learning.wordHistory.push({
-      word: cw.word,
-      completedAt: Date.now(),
-      daysSpent: Math.ceil((Date.now() - cw.startedAt) / 86400000) || 1
-    });
-
-    var nextIndex = st.learning.completedWords.length;
-    if (nextIndex < CURRICULUM.length) {
-      st.learning.currentWord = {
-        word: CURRICULUM[nextIndex].word,
-        phase: 1,
-        startedAt: Date.now()
-      };
+      st.learning.consonantIndex++;
     } else {
-      st.learning.currentWord = null;
+      if (st.learning.knownVowels.indexOf(letter) === -1) {
+        st.learning.knownVowels.push(letter);
+      }
+      st.learning.vowelIndex++;
+    }
+
+    // Check evolution
+    this._checkEvolution(st);
+
+    // Update flower in world
+    if (typeof World !== 'undefined') {
+      World.addLetterFlower(letter, true);
     }
 
     saveState(st);
-    onLearningComplete({
-      fed: wordData && (wordData.petRequest === 'hungry' || wordData.petRequest === 'thirsty'),
-      played: wordData && wordData.petRequest === 'bored',
-      newWord: cw.word
-    });
+    this.closePopup();
+
+    // Pet reaction
+    if (typeof PetRenderer !== 'undefined' && PetRenderer.celebrate) {
+      PetRenderer.celebrate();
+    }
+    playSound('correct');
+    speakText(target.data.sound);
+
+    // Stat recovery
+    st.hunger = Math.min(100, st.hunger + 15);
+    st.mood = Math.min(100, st.mood + 10);
+    saveState(st);
+    updateHome(st);
+  },
+
+  // Called when a word is completed
+  onWordComplete: function(st, wordData) {
+    if (st.learning.completedWords.indexOf(wordData.word) === -1) {
+      st.learning.completedWords.push(wordData.word);
+    }
+    st.learning.wordIndex++;
+
+    this._checkEvolution(st);
+
+    if (typeof World !== 'undefined') {
+      World.addWordFlower(wordData.word);
+    }
+
+    saveState(st);
+    this.closePopup();
+
+    if (typeof PetRenderer !== 'undefined' && PetRenderer.celebrate) {
+      PetRenderer.celebrate();
+    }
+    playSound('correct');
+    speakText(wordData.word);
+
+    st.hunger = Math.min(100, st.hunger + 20);
+    st.mood = Math.min(100, st.mood + 15);
+    saveState(st);
+    updateHome(st);
+  },
+
+  _checkEvolution: function(st) {
+    var consCount = st.learning.knownConsonants.length;
+    var vowCount = st.learning.knownVowels.length;
+    var wordCount = st.learning.completedWords.length;
+
+    var newStage = st.stage;
+    if (wordCount >= 15) newStage = 5;
+    else if (wordCount >= 10) newStage = 4;
+    else if (vowCount >= 6) newStage = 3;
+    else if (consCount >= 9) newStage = 2;
+    else if (st.stage >= 1) newStage = st.stage;
+
+    if (newStage > st.stage) {
+      st.stage = newStage;
+      playSound('evolve');
+    }
   }
 };
+
+// Global function called from game.js
+function startLearning(st) {
+  Learning.startLearning(st);
+}

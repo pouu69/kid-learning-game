@@ -1,407 +1,237 @@
-var PlayActivity = {
+// js/activities/play.js
+// PuzzleActivity — 2D syllable block puzzle (stage 3: syllable composition)
+// Globals: CURRICULUM, LETTERS, Learning, st, speakText, playSound
+
+var PuzzleActivity = {
+  _controller: null, // AbortController for drag cleanup
+
   start: function(st, wordData) {
-    var activities = wordData.activities.play;
-    if (!activities || activities.length === 0) {
-      Learning.onPhaseComplete(st);
-      return;
-    }
-
-    MeetActivity._updateDots(3);
-
-    // Pick the first available activity
-    var activity = activities[0];
-    var container = document.getElementById('learningContent');
-    container.innerHTML = '';
-
-    if (activity.type === 'puzzle') {
-      this._startPuzzle(container, activity, wordData, st);
-    } else if (activity.type === 'coloring') {
-      this._startColoring(container, activity, wordData, st);
-    } else if (activity.type === 'soundMatch') {
-      this._startSoundMatch(container, activity, wordData, st);
-    }
-  },
-
-  _startPuzzle: function(container, activity, wordData, st) {
-    var title = document.createElement('div');
-    title.className = 'play-title';
-    title.textContent = wordData.word + ' 만들기!';
-    container.appendChild(title);
-
-    var hint = document.createElement('p');
-    hint.className = 'meet-hint';
-    hint.textContent = '글자 조각을 끌어서 맞춰봐!';
-    container.appendChild(hint);
-
-    var pieces = activity.pieces;
-    var known = st.learning.knownLetters;
-    var unlearned = wordData.unlearnedLetters || [];
-
-    // Target area
-    var targetArea = document.createElement('div');
-    targetArea.className = 'puzzle-target-area';
-    var slots = [];
-    for (var i = 0; i < pieces.length; i++) {
-      var slot = document.createElement('div');
-      slot.className = 'puzzle-slot';
-      slot.dataset.index = i;
-      slot.dataset.letter = pieces[i];
-
-      // Pre-place unlearned letters
-      if (unlearned.indexOf(pieces[i]) !== -1) {
-        slot.textContent = pieces[i];
-        slot.classList.add('puzzle-slot-filled');
-        slot.classList.add('puzzle-slot-unlearned');
-      }
-
-      slots.push(slot);
-      targetArea.appendChild(slot);
-    }
-    container.appendChild(targetArea);
-
-    // Draggable pieces (shuffled)
-    var pieceArea = document.createElement('div');
-    pieceArea.className = 'puzzle-piece-area';
-
-    var draggablePieces = [];
-    for (var j = 0; j < pieces.length; j++) {
-      if (unlearned.indexOf(pieces[j]) !== -1) continue; // skip pre-placed
-      draggablePieces.push({ letter: pieces[j], index: j });
-    }
-
-    // Shuffle
-    for (var k = draggablePieces.length - 1; k > 0; k--) {
-      var r = Math.floor(Math.random() * (k + 1));
-      var tmp = draggablePieces[k];
-      draggablePieces[k] = draggablePieces[r];
-      draggablePieces[r] = tmp;
-    }
-
-    var placedCount = pieces.length - draggablePieces.length; // pre-placed count
-
-    for (var m = 0; m < draggablePieces.length; m++) {
-      var piece = document.createElement('div');
-      piece.className = 'puzzle-piece';
-      piece.textContent = draggablePieces[m].letter;
-      piece.dataset.letter = draggablePieces[m].letter;
-      piece.dataset.originalIndex = draggablePieces[m].index;
-
-      // Touch drag (with cleanup via AbortController)
-      (function(pieceEl) {
-        var startX, startY, origLeft, origTop;
-        var isDragging = false;
-        var controller = new AbortController();
-
-        pieceEl.addEventListener('pointerdown', function(e) {
-          e.preventDefault();
-          isDragging = true;
-          var rect = pieceEl.getBoundingClientRect();
-          startX = e.clientX;
-          startY = e.clientY;
-          origLeft = rect.left;
-          origTop = rect.top;
-          pieceEl.style.position = 'fixed';
-          pieceEl.style.left = origLeft + 'px';
-          pieceEl.style.top = origTop + 'px';
-          pieceEl.style.zIndex = '100';
-          pieceEl.classList.add('puzzle-piece-dragging');
-        });
-
-        document.addEventListener('pointermove', function(e) {
-          if (!isDragging) return;
-          e.preventDefault();
-          var dx = e.clientX - startX;
-          var dy = e.clientY - startY;
-          pieceEl.style.left = (origLeft + dx) + 'px';
-          pieceEl.style.top = (origTop + dy) + 'px';
-        }, { signal: controller.signal });
-
-        document.addEventListener('pointerup', function(e) {
-          if (!isDragging) return;
-          isDragging = false;
-          pieceEl.classList.remove('puzzle-piece-dragging');
-
-          // Check if near any matching empty slot
-          var pieceRect = pieceEl.getBoundingClientRect();
-          var pieceCx = pieceRect.left + pieceRect.width / 2;
-          var pieceCy = pieceRect.top + pieceRect.height / 2;
-          var snapped = false;
-
-          for (var s = 0; s < slots.length; s++) {
-            if (slots[s].classList.contains('puzzle-slot-filled')) continue;
-            if (slots[s].dataset.letter !== pieceEl.dataset.letter) continue;
-
-            var slotRect = slots[s].getBoundingClientRect();
-            var slotCx = slotRect.left + slotRect.width / 2;
-            var slotCy = slotRect.top + slotRect.height / 2;
-            var dist = Math.sqrt((pieceCx - slotCx) * (pieceCx - slotCx) + (pieceCy - slotCy) * (pieceCy - slotCy));
-
-            if (dist < 60) {
-              // Snap!
-              slots[s].textContent = pieceEl.dataset.letter;
-              slots[s].classList.add('puzzle-slot-filled');
-              pieceEl.style.display = 'none';
-              playSound('correct');
-              if (LETTERS[pieceEl.dataset.letter]) {
-                speakText(LETTERS[pieceEl.dataset.letter].sound);
-              }
-              placedCount++;
-              snapped = true;
-
-              // Check completion
-              if (placedCount >= pieces.length) {
-                setTimeout(function() {
-                  speakText(wordData.word);
-                  playSound('correct');
-                  setTimeout(function() {
-                    Learning.onPhaseComplete(st);
-                  }, 1000);
-                }, 500);
-              }
-              break;
-            }
-          }
-
-          if (!snapped) {
-            // Return to original position
-            pieceEl.style.position = '';
-            pieceEl.style.left = '';
-            pieceEl.style.top = '';
-            pieceEl.style.zIndex = '';
-          } else {
-            // Clean up this piece's listeners
-            controller.abort();
-          }
-        }, { signal: controller.signal });
-      })(piece);
-
-      pieceArea.appendChild(piece);
-    }
-    container.appendChild(pieceArea);
-
-    // Speak the word
-    setTimeout(function() { speakText(wordData.word); }, 500);
-  },
-
-  _startColoring: function(container, activity, wordData, st) {
-    var letter = activity.letter;
-    var letterData = LETTERS[letter];
-    if (!letterData) {
-      Learning.onPhaseComplete(st);
-      return;
-    }
-
-    var title = document.createElement('div');
-    title.className = 'play-title';
-    title.textContent = letter + ' 색칠하기!';
-    container.appendChild(title);
-
-    var canvasWrap = document.createElement('div');
-    canvasWrap.className = 'coloring-canvas-wrap';
-    var canvas = document.createElement('canvas');
-    canvas.className = 'coloring-canvas';
-    canvas.width = 300;
-    canvas.height = 300;
-    canvasWrap.appendChild(canvas);
-    container.appendChild(canvasWrap);
-
-    var ctx = canvas.getContext('2d');
-    var scale = 3;
-
-    // Draw letter outline
-    ctx.strokeStyle = '#e0d8c8';
-    ctx.lineWidth = 20;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    for (var s = 0; s < letterData.strokes.length; s++) {
-      var stroke = letterData.strokes[s];
-      if (stroke[0] && stroke[0].circle) {
-        ctx.beginPath();
-        ctx.arc(stroke[0].cx * scale, stroke[0].cy * scale, stroke[0].r * scale, 0, Math.PI * 2);
-        ctx.stroke();
-      } else if (stroke.length >= 2) {
-        ctx.beginPath();
-        ctx.moveTo(stroke[0].x * scale, stroke[0].y * scale);
-        for (var p = 1; p < stroke.length; p++) {
-          ctx.lineTo(stroke[p].x * scale, stroke[p].y * scale);
-        }
-        ctx.stroke();
-      }
-    }
-
-    // Coloring state
-    var totalArea = 0;
-    var filledPixels = new Set();
-    var gridSize = 10;
-
-    // Calculate total area (approximate by checking guide line pixels)
-    var imageData = ctx.getImageData(0, 0, 300, 300);
-    for (var y = 0; y < 300; y += gridSize) {
-      for (var x = 0; x < 300; x += gridSize) {
-        var idx = (y * 300 + x) * 4;
-        if (imageData.data[idx + 3] > 50) totalArea++;
-      }
-    }
-    if (totalArea === 0) totalArea = 1;
-
-    var isDrawing = false;
-
-    canvas.addEventListener('pointerdown', function(e) {
-      e.preventDefault();
-      isDrawing = true;
-      paint(e);
-    });
-    canvas.addEventListener('pointermove', function(e) {
-      if (!isDrawing) return;
-      e.preventDefault();
-      paint(e);
-    });
-    canvas.addEventListener('pointerup', function() {
-      isDrawing = false;
-      checkCompletion();
-    });
-    canvas.addEventListener('pointerleave', function() {
-      if (isDrawing) {
-        isDrawing = false;
-        checkCompletion();
-      }
-    });
-
-    function paint(e) {
-      var rect = canvas.getBoundingClientRect();
-      var x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
-      var y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
-      ctx.fillStyle = '#f4b870';
-      ctx.globalAlpha = 0.6;
-      ctx.beginPath();
-      ctx.arc(x, y, 15, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1.0;
-
-      // Track filled cells
-      var gx = Math.floor(x / gridSize);
-      var gy = Math.floor(y / gridSize);
-      for (var dy = -1; dy <= 1; dy++) {
-        for (var dx = -1; dx <= 1; dx++) {
-          filledPixels.add((gy + dy) + ',' + (gx + dx));
-        }
-      }
-    }
-
-    function checkCompletion() {
-      var coverage = filledPixels.size / totalArea;
-      if (coverage >= 0.7) {
-        playSound('correct');
-        speakText(letterData.sound);
-        var msg = document.createElement('div');
-        msg.className = 'trace-success';
-        msg.textContent = '잘했어!';
-        container.appendChild(msg);
-        setTimeout(function() {
-          Learning.onPhaseComplete(st);
-        }, 1200);
-      }
-    }
-
-    setTimeout(function() { speakText(letterData.sound); }, 300);
-  },
-
-  _startSoundMatch: function(container, activity, wordData, st) {
-    var choices = activity.choices;
-    var currentIndex = 0;
-    var wrongCount = 0;
     var self = this;
+    if (this._controller) this._controller.abort();
+    this._controller = new AbortController();
 
-    function showQuestion() {
-      if (currentIndex >= choices.length) {
-        Learning.onPhaseComplete(st);
-        return;
+    var container = document.createElement('div');
+    container.className = 'puzzle-activity';
+
+    // Word sound button at top
+    var soundBtn = document.createElement('button');
+    soundBtn.className = 'sound-btn';
+    soundBtn.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 010 14.14"/></svg>';
+    soundBtn.onclick = function() { speakText(wordData.word, 0.7); };
+    container.appendChild(soundBtn);
+
+    // Syllable blocks area
+    var blocksArea = document.createElement('div');
+    blocksArea.className = 'puzzle-blocks-area';
+
+    var allSlots = [];
+    var totalSlots = 0;
+    var filledSlots = 0;
+
+    // Create a block for each syllable
+    for (var i = 0; i < wordData.syllables.length; i++) {
+      var syl = wordData.syllables[i];
+      var block = document.createElement('div');
+      block.className = 'syllable-block block-' + syl.type;
+
+      // Create slots based on type
+      var choSlot = self._createSlot('cho', syl.cho);
+      var jungSlot = self._createSlot('jung', syl.jung);
+      block.appendChild(choSlot);
+      block.appendChild(jungSlot);
+      allSlots.push(choSlot, jungSlot);
+      totalSlots += 2;
+
+      if (syl.jong) {
+        var jongSlot = self._createSlot('jong', syl.jong);
+        jongSlot.classList.add('slot-jong');
+        block.appendChild(jongSlot);
+        allSlots.push(jongSlot);
+        totalSlots++;
       }
 
-      container.innerHTML = '';
-      MeetActivity._updateDots(3);
+      blocksArea.appendChild(block);
+    }
+    container.appendChild(blocksArea);
 
-      var target = choices[currentIndex];
-      var targetData = LETTERS[target];
-      if (!targetData) {
-        currentIndex++;
-        showQuestion();
-        return;
-      }
+    // Draggable pieces area
+    var piecesArea = document.createElement('div');
+    piecesArea.className = 'puzzle-pieces-area';
 
-      var title = document.createElement('div');
-      title.className = 'play-title';
-      title.textContent = '어떤 소리일까?';
-      container.appendChild(title);
-
-      // Sound button
-      var soundBtn = document.createElement('button');
-      soundBtn.className = 'meet-sound-btn sound-match-btn';
-      soundBtn.textContent = '듣기';
-      soundBtn.onclick = function() { speakText(targetData.sound); };
-      container.appendChild(soundBtn);
-
-      // Choices (shuffle with distractors)
-      var options = [target];
-      var allLetterKeys = Object.keys(LETTERS);
-      while (options.length < 3 && options.length < allLetterKeys.length) {
-        var rand = allLetterKeys[Math.floor(Math.random() * allLetterKeys.length)];
-        if (options.indexOf(rand) === -1) options.push(rand);
-      }
-      // Shuffle
-      for (var i = options.length - 1; i > 0; i--) {
-        var r = Math.floor(Math.random() * (i + 1));
-        var tmp = options[i];
-        options[i] = options[r];
-        options[r] = tmp;
-      }
-
-      var choiceGrid = document.createElement('div');
-      choiceGrid.className = 'sound-match-grid';
-
-      for (var j = 0; j < options.length; j++) {
-        var choiceEl = document.createElement('div');
-        choiceEl.className = 'sound-choice';
-        choiceEl.textContent = options[j];
-        choiceEl.dataset.letter = options[j];
-
-        (function(el, letter) {
-          el.onclick = function() {
-            if (letter === target) {
-              el.classList.add('sound-choice-correct');
-              playSound('correct');
-              speakText(targetData.sound);
-              wrongCount = 0;
-              currentIndex++;
-              setTimeout(showQuestion, 1000);
-            } else {
-              el.classList.add('sound-choice-wrong');
-              wrongCount++;
-              if (wrongCount >= 3) {
-                // Highlight correct answer
-                var allChoices = choiceGrid.querySelectorAll('.sound-choice');
-                for (var c = 0; c < allChoices.length; c++) {
-                  if (allChoices[c].dataset.letter === target) {
-                    allChoices[c].classList.add('sound-choice-hint');
-                  }
-                }
-              }
-              setTimeout(function() {
-                el.classList.remove('sound-choice-wrong');
-                speakText(targetData.sound);
-              }, 500);
-            }
-          };
-        })(choiceEl, options[j]);
-
-        choiceGrid.appendChild(choiceEl);
-      }
-      container.appendChild(choiceGrid);
-
-      // Auto play sound
-      setTimeout(function() { speakText(targetData.sound); }, 500);
+    // Collect all needed letters
+    var allPieces = [];
+    for (var j = 0; j < wordData.syllables.length; j++) {
+      var s = wordData.syllables[j];
+      allPieces.push(s.cho);
+      allPieces.push(s.jung);
+      if (s.jong) allPieces.push(s.jong);
+    }
+    // Shuffle
+    for (var k = allPieces.length - 1; k > 0; k--) {
+      var r = Math.floor(Math.random() * (k + 1));
+      var tmp = allPieces[k]; allPieces[k] = allPieces[r]; allPieces[r] = tmp;
     }
 
-    showQuestion();
+    // Create draggable pieces
+    for (var m = 0; m < allPieces.length; m++) {
+      var piece = self._createPiece(allPieces[m], allSlots, function() {
+        filledSlots++;
+        if (filledSlots >= totalSlots) {
+          // All slots filled! Word complete
+          playSound('correct');
+          speakText(wordData.word, 0.7);
+          setTimeout(function() {
+            if (self._controller) self._controller.abort();
+            Learning.onWordComplete(st, wordData);
+          }, 1200);
+        }
+      });
+      piecesArea.appendChild(piece);
+    }
+    container.appendChild(piecesArea);
+
+    Learning.openPopup(container);
+
+    // Auto play word sound
+    setTimeout(function() { speakText(wordData.word, 0.7); }, 500);
+
+    // Finger guide demo after 1 second
+    setTimeout(function() {
+      self._showDragGuide(piecesArea, blocksArea);
+      speakText('여기에 넣어봐', 0.7);
+    }, 1500);
+
+    // Re-guide after 10 seconds of no interaction
+    var idleTimer = setTimeout(function() {
+      self._showDragGuide(piecesArea, blocksArea);
+      speakText('여기에 넣어봐', 0.7);
+    }, 10000);
+
+    container.addEventListener('pointerdown', function() {
+      clearTimeout(idleTimer);
+    }, { once: true });
+  },
+
+  _createSlot: function(role, expectedLetter) {
+    var slot = document.createElement('div');
+    slot.className = 'puzzle-slot puzzle-slot-' + role;
+    slot.dataset.role = role;
+    slot.dataset.expected = expectedLetter;
+    slot.textContent = '?';
+    return slot;
+  },
+
+  _createPiece: function(letter, allSlots, onSnap) {
+    var self = this;
+    var piece = document.createElement('div');
+    piece.className = 'puzzle-piece';
+    piece.textContent = letter;
+    piece.dataset.letter = letter;
+
+    var isDragging = false;
+    var startX, startY, origLeft, origTop;
+
+    piece.addEventListener('pointerdown', function(e) {
+      e.preventDefault();
+      isDragging = true;
+      var rect = piece.getBoundingClientRect();
+      startX = e.clientX;
+      startY = e.clientY;
+      origLeft = rect.left;
+      origTop = rect.top;
+      piece.style.position = 'fixed';
+      piece.style.left = origLeft + 'px';
+      piece.style.top = origTop + 'px';
+      piece.style.zIndex = '200';
+      piece.classList.add('piece-dragging');
+    });
+
+    var moveHandler = function(e) {
+      if (!isDragging) return;
+      e.preventDefault();
+      var dx = e.clientX - startX;
+      var dy = e.clientY - startY;
+      piece.style.left = (origLeft + dx) + 'px';
+      piece.style.top = (origTop + dy) + 'px';
+    };
+
+    var upHandler = function() {
+      if (!isDragging) return;
+      isDragging = false;
+      piece.classList.remove('piece-dragging');
+
+      var pieceRect = piece.getBoundingClientRect();
+      var pieceCx = pieceRect.left + pieceRect.width / 2;
+      var pieceCy = pieceRect.top + pieceRect.height / 2;
+      var snapped = false;
+
+      for (var s = 0; s < allSlots.length; s++) {
+        var slot = allSlots[s];
+        if (slot.classList.contains('slot-filled')) continue;
+        if (slot.dataset.expected !== piece.dataset.letter) continue;
+
+        var slotRect = slot.getBoundingClientRect();
+        var slotCx = slotRect.left + slotRect.width / 2;
+        var slotCy = slotRect.top + slotRect.height / 2;
+        var dist = Math.sqrt((pieceCx - slotCx) * (pieceCx - slotCx) + (pieceCy - slotCy) * (pieceCy - slotCy));
+
+        if (dist < 60) {
+          slot.textContent = piece.dataset.letter;
+          slot.classList.add('slot-filled');
+          piece.style.display = 'none';
+          playSound('click');
+          var letterData = LETTERS[piece.dataset.letter];
+          if (letterData) speakText(letterData.sound || piece.dataset.letter, 0.7);
+          snapped = true;
+          onSnap();
+          break;
+        }
+      }
+
+      if (!snapped) {
+        piece.style.position = '';
+        piece.style.left = '';
+        piece.style.top = '';
+        piece.style.zIndex = '';
+      }
+    };
+
+    document.addEventListener('pointermove', moveHandler, { signal: self._controller.signal });
+    document.addEventListener('pointerup', upHandler, { signal: self._controller.signal });
+
+    return piece;
+  },
+
+  _showDragGuide: function(piecesArea, blocksArea) {
+    // Create animated finger that moves from first piece to first empty slot
+    var firstPiece = piecesArea.querySelector('.puzzle-piece:not([style*="display: none"])');
+    var firstSlot = blocksArea.querySelector('.puzzle-slot:not(.slot-filled)');
+    if (!firstPiece || !firstSlot) return;
+
+    var finger = document.createElement('div');
+    finger.className = 'finger-guide-animated';
+
+    var pieceRect = firstPiece.getBoundingClientRect();
+    var slotRect = firstSlot.getBoundingClientRect();
+
+    finger.style.position = 'fixed';
+    finger.style.left = (pieceRect.left + pieceRect.width / 2 - 16) + 'px';
+    finger.style.top = (pieceRect.top + pieceRect.height / 2 - 16) + 'px';
+    finger.style.zIndex = '300';
+    finger.style.transition = 'left 1s ease, top 1s ease';
+    finger.style.pointerEvents = 'none';
+
+    document.body.appendChild(finger);
+
+    // Animate to slot
+    setTimeout(function() {
+      finger.style.left = (slotRect.left + slotRect.width / 2 - 16) + 'px';
+      finger.style.top = (slotRect.top + slotRect.height / 2 - 16) + 'px';
+    }, 200);
+
+    // Remove after animation
+    setTimeout(function() {
+      if (finger.parentNode) finger.parentNode.removeChild(finger);
+    }, 2500);
   }
 };

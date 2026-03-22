@@ -255,6 +255,63 @@ var World = {
     }
   },
 
+  addWordFlower: function(word) {
+    var self = this;
+    // Skip if already exists
+    for (var fi = 0; fi < this.letterFlowers.length; fi++) {
+      if (this.letterFlowers[fi]._letter === word) return;
+    }
+
+    var W = this.app.screen.width;
+    var H = this.app.screen.height;
+    var grassLineY = H * 0.60;
+
+    var container = new PIXI.Container();
+    container._letter = word;
+
+    // White circle background (larger for word)
+    var bg = new PIXI.Graphics();
+    bg.circle(0, 0, 28);
+    bg.fill({ color: 0xffffff, alpha: 0.9 });
+    bg.stroke({ color: 0xa8d8b0, width: 2 });
+    container.addChild(bg);
+
+    // Stem
+    var stem = new PIXI.Graphics();
+    stem.rect(-1.5, 0, 3, 18);
+    stem.fill({ color: 0x68a870 });
+    container.addChild(stem);
+
+    // Word text
+    var style = new PIXI.TextStyle({
+      fontFamily: '"Noto Sans KR", sans-serif',
+      fontSize: 13,
+      fontWeight: 'bold',
+      fill: '#3a3028',
+    });
+    var txt = new PIXI.Text({ text: word, style: style });
+    txt.anchor.set(0.5, 0.5);
+    container.addChild(txt);
+
+    // Random position in grass area
+    var px = W * 0.08 + Math.random() * W * 0.84;
+    var py = grassLineY - 30 - Math.random() * H * 0.08;
+    container.x = px;
+    container.y = py;
+    container._baseY = py;
+
+    // Tap to hear the word spoken
+    container.eventMode = 'static';
+    container.cursor = 'pointer';
+    container.on('pointerdown', function() {
+      if (typeof speakText === 'function') speakText(word);
+      container._bumpTimer = 12;
+    });
+
+    this.app.stage.addChild(container);
+    this.letterFlowers.push(container);
+  },
+
   animate: function() {
     var self = this;
     self._frame++;

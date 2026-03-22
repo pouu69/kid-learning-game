@@ -14,10 +14,13 @@ function createDefaultState() {
     sleepy: 10,
     sleeping: false,
     learning: {
-      knownLetters: [],
-      completedWords: [],
-      currentWord: null,
-      wordHistory: []
+      stage: 1,
+      consonantIndex: 0,
+      vowelIndex: 0,
+      wordIndex: 0,
+      knownConsonants: [],
+      knownVowels: [],
+      completedWords: []
     },
     daily: {
       date: new Date().toISOString().slice(0, 10),

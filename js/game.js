@@ -31,7 +31,8 @@ function initWorld() {
   var container = document.getElementById('worldCanvas');
   if (container && typeof World !== 'undefined') {
     World.init(container).then(function() {
-      World.syncLetterFlowers(st.learning.knownLetters);
+      var allKnown = st.learning.knownConsonants.concat(st.learning.knownVowels);
+      World.syncLetterFlowers(allKnown);
       if (typeof PetRenderer !== 'undefined') {
         PetRenderer.init(World.app, st);
       }
@@ -175,7 +176,6 @@ function handleAction(action) {
   }
 
   if (action === 'feed' || action === 'play') {
-    showScreen('learning');
     if (typeof Learning !== 'undefined') {
       Learning.startLearning(st);
     }
@@ -210,28 +210,15 @@ function onLearningComplete(result) {
   if (result.fed) st.hunger = Math.min(100, st.hunger + 25);
   if (result.played) st.mood = Math.min(100, st.mood + 15);
   st.daily.activitiesDone++;
-
   if (st.daily.activitiesDone >= 3 && !st.daily.bonusUnlocked) {
     st.daily.bonusUnlocked = true;
   }
-
-  var evo = Pet.checkEvolution(st);
-  if (evo) {
-    st.stage = evo.stage;
-    playSound('evolve');
-  }
-
   saveState(st);
-
-  if (result.newWord) {
-    showReward(result.newWord);
-  } else {
-    showScreen('home');
-    updateHome(st);
-    if (typeof World !== 'undefined') {
-      World.syncLetterFlowers(st.learning.knownLetters);
-    }
+  var allKnown = st.learning.knownConsonants.concat(st.learning.knownVowels);
+  if (typeof World !== 'undefined') {
+    World.syncLetterFlowers(allKnown);
   }
+  updateHome(st);
 }
 
 function showReward(word) {
@@ -263,7 +250,8 @@ function showReward(word) {
     showScreen('home');
     updateHome(st);
     if (typeof World !== 'undefined') {
-      World.syncLetterFlowers(st.learning.knownLetters);
+      var allKnown = st.learning.knownConsonants.concat(st.learning.knownVowels);
+      World.syncLetterFlowers(allKnown);
     }
   };
   content.appendChild(btn);

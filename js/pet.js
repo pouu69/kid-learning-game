@@ -57,12 +57,15 @@ var Pet = {
   },
 
   checkEvolution: function(st) {
-    var completed = st.learning.completedWords.length;
-    for (var i = EVOLUTION.length - 1; i >= 0; i--) {
-      if (completed >= EVOLUTION[i].wordsNeeded && st.stage < EVOLUTION[i].stage) {
-        return EVOLUTION[i];
-      }
-    }
+    var consCount = st.learning.knownConsonants.length;
+    var vowCount = st.learning.knownVowels.length;
+    var wordCount = st.learning.completedWords.length;
+    var newStage = st.stage;
+    if (wordCount >= 15) newStage = 5;
+    else if (wordCount >= 10) newStage = 4;
+    else if (vowCount >= 6) newStage = 3;
+    else if (consCount >= 9) newStage = 2;
+    if (newStage > st.stage) return { stage: newStage, name: EVOLUTION[newStage].name };
     return null;
   }
 };
