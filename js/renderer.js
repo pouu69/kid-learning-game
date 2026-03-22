@@ -1,326 +1,442 @@
-// ===== PIXI RENDERER - Pet canvas only =====
+// js/renderer.js
+// Pet renderer — draws the pet character on top of World's stage
 
-var R = null;
+var PetRenderer = {
+  container: null,
+  body: null,
+  leftEye: null,
+  rightEye: null,
+  leftHighlight: null,
+  rightHighlight: null,
+  mouth: null,
+  leftCheek: null,
+  rightCheek: null,
+  _zzz: null,
+  _blinkTimer: 0,
+  _blinkInterval: 0,
+  _isBlinking: false,
+  _wanderX: 0,
+  _wanderTargetX: 0,
+  _wanderTimer: 0,
+  _jumpY: 0,
+  _jumpTimer: 0,
+  _mood: 'happy',
+  _frame: 0,
+  _pettedTimer: 0,
+  _wiggleTimer: 0,
+  _app: null,
+  _stage: 0,
 
-function createRenderer() {
-    var container = document.getElementById('petCanvas');
-    var rect = container.getBoundingClientRect();
-    var canvasW = Math.floor(rect.width);
-    var canvasH = Math.floor(rect.height);
+  init: function(app, st) {
+    var self = this;
+    self._app = app;
 
-    var app = new PIXI.Application();
+    var container = new PIXI.Container();
+    self.container = container;
 
-    var initPromise = app.init({
-        width: canvasW,
-        height: canvasH,
-        backgroundColor: 0xc8d8b0,
-        resolution: window.devicePixelRatio || 1,
-        autoDensity: true,
-        antialias: false,
-    });
+    // Position: center-bottom of screen, above grass
+    var W = app.screen.width;
+    var H = app.screen.height;
+    container.x = W / 2;
+    container.y = H * 0.52;
 
-    R = {
-        app: app,
-        W: canvasW,
-        H: canvasH,
-        frame: 0,
-        petContainer: null,
-        ready: false,
-    };
+    app.stage.addChild(container);
 
-    return initPromise.then(function () {
-        container.appendChild(app.canvas);
+    self.buildPet(st ? st.stage : 0);
 
-        // Make canvas fill the container
-        app.canvas.style.width = '100%';
-        app.canvas.style.height = '100%';
-
-        buildPetScene();
-        R.ready = true;
-        return R;
-    });
-}
-
-function buildPetScene() {
-    var centerX = R.W / 2;
-    var centerY = R.H / 2;
-
-    var petContainer = new PIXI.Container();
-    petContainer.x = centerX;
-    petContainer.y = centerY;
-    R.app.stage.addChild(petContainer);
-    R.petContainer = petContainer;
-
-    var petGfx = new PIXI.Graphics();
-    petContainer.addChild(petGfx);
-    R._petGfx = petGfx;
-
-    // Tap-to-pet interaction
-    // Create invisible hit area covering the pet
-    var hitArea = new PIXI.Graphics();
-    hitArea.rect(-R.W * 0.4, -R.H * 0.4, R.W * 0.8, R.H * 0.8);
-    hitArea.fill({ color: 0xffffff, alpha: 0.001 });
-    hitArea.eventMode = 'static';
-    hitArea.cursor = 'pointer';
-    hitArea.on('pointerdown', function() {
-        if (st.sleeping) return;
-        // Pet reacts - small jump
-        wander.jumpTimer = 15;
-        // Float a heart-like symbol
-        if (typeof floatText === 'function') floatText('~');
-        if (typeof sfxClick === 'function') sfxClick();
-        // Small happiness boost
-        st.happiness = Math.min(100, st.happiness + 1);
-    });
-    petContainer.addChild(hitArea);
-
-    // Pixel scale based on canvas size
-    var maxDim = Math.min(R.W, R.H);
-    R._px = Math.max(3, Math.floor(maxDim / 32));
-
-    // Zzz text
+    // Zzz text for sleeping
     var zStyle = new PIXI.TextStyle({
-        fontFamily: '"Press Start 2P", monospace',
-        fontSize: Math.max(12, R._px * 2.2),
-        fill: '#2d3a1d',
+      fontFamily: '"Noto Sans KR", sans-serif',
+      fontSize: 18,
+      fontWeight: 'bold',
+      fill: '#6880a0',
     });
-    var zzz = new PIXI.Text({ text: 'Z z Z', style: zStyle });
-    zzz.anchor.set(0.5);
-    zzz.x = R._px * 8;
-    zzz.y = -R._px * 8;
+    var zzz = new PIXI.Text({ text: 'z z z', style: zStyle });
+    zzz.anchor.set(0, 1);
+    zzz.x = 30;
+    zzz.y = -60;
     zzz.visible = false;
-    petContainer.addChild(zzz);
-    R._zzz = zzz;
+    container.addChild(zzz);
+    self._zzz = zzz;
 
-    // Poop indicator
-    var pStyle = new PIXI.TextStyle({
-        fontFamily: '"Press Start 2P", monospace',
-        fontSize: Math.max(10, R._px * 1.6),
-        fill: '#2d3a1d',
+    // Pointer interaction: tap pet to pet it
+    container.eventMode = 'static';
+    container.cursor = 'pointer';
+    container.on('pointerdown', function() {
+      if (typeof handleAction === 'function') handleAction('pet');
     });
-    var poop = new PIXI.Text({ text: 'o~', style: pStyle });
-    poop.anchor.set(0.5);
-    poop.x = R._px * 9;
-    poop.y = R._px * 7;
-    poop.visible = false;
-    petContainer.addChild(poop);
-    R._poop = poop;
 
-    // Ground line
-    var ground = new PIXI.Graphics();
-    var groundY = R._px * 11;
-    for (var dx = -R._px * 12; dx < R._px * 12; dx += R._px * 1.5) {
-        ground.rect(dx, groundY, R._px * 0.8, 2);
-    }
-    ground.fill({ color: 0x5a6b42 });
-    petContainer.addChild(ground);
+    // Set random initial blink interval (180–300 frames)
+    self._blinkInterval = 180 + Math.floor(Math.random() * 120);
 
-    // Small grass tufts along the ground
-    var grass = new PIXI.Graphics();
-    var grassPositions = [-10, -7, -3, 2, 6, 9];
-    for (var gi = 0; gi < grassPositions.length; gi++) {
-        var gx = grassPositions[gi] * R._px;
-        var gy = groundY - 1;
-        // Each tuft is 2-3 small vertical lines
-        grass.rect(gx, gy - R._px * 0.8, 1, R._px * 0.8);
-        grass.rect(gx + 2, gy - R._px * 1.2, 1, R._px * 1.2);
-        grass.rect(gx + 4, gy - R._px * 0.6, 1, R._px * 0.6);
-    }
-    grass.fill({ color: 0x6a7a52 });
-    petContainer.addChild(grass);
-}
+    app.ticker.add(function() { self.animate(); });
+  },
 
-// ===== PET WANDERING STATE =====
-var wander = { x: 0, y: 0, targetX: 0, targetY: 0, timer: 0, interval: 60, jumpY: 0, jumpTimer: 0 };
+  buildPet: function(stage) {
+    var self = this;
+    // Remove old pet parts (not the zzz)
+    if (self.body)           { self.container.removeChild(self.body);           self.body.destroy(); }
+    if (self.leftEye)        { self.container.removeChild(self.leftEye);        self.leftEye.destroy(); }
+    if (self.rightEye)       { self.container.removeChild(self.rightEye);       self.rightEye.destroy(); }
+    if (self.leftHighlight)  { self.container.removeChild(self.leftHighlight);  self.leftHighlight.destroy(); }
+    if (self.rightHighlight) { self.container.removeChild(self.rightHighlight); self.rightHighlight.destroy(); }
+    if (self.mouth)          { self.container.removeChild(self.mouth);          self.mouth.destroy(); }
+    if (self.leftCheek)      { self.container.removeChild(self.leftCheek);      self.leftCheek.destroy(); }
+    if (self.rightCheek)     { self.container.removeChild(self.rightCheek);     self.rightCheek.destroy(); }
+    if (self.feet)           { self.container.removeChild(self.feet);           self.feet.destroy(); }
+    if (self.ears)           { self.container.removeChild(self.ears);           self.ears.destroy(); }
+    if (self.arms)           { self.container.removeChild(self.arms);           self.arms.destroy(); }
+    if (self.crown)          { self.container.removeChild(self.crown);          self.crown.destroy(); }
 
-function updateWander() {
-    if (st.sleeping) {
-        wander.x *= 0.97;
-        wander.y *= 0.97;
-        wander.jumpY *= 0.95;
-        return;
-    }
+    self._drawBody(stage);
+  },
 
-    // Mood affects behavior
-    var avg = statAvg();
-    var speed = avg >= 60 ? 0.06 : avg >= 30 ? 0.03 : 0.015;
-    var jumpChance = avg >= 60 ? 0.25 : avg >= 30 ? 0.1 : 0.02;
+  _drawBody: function(stage) {
+    var self = this;
+    self._stage = stage;
+    var data = PET_STAGES[Math.min(stage, PET_STAGES.length - 1)];
+    var bW = data.bodyW;
+    var bH = data.bodyH;
+    var hx = bW / 2;
+    var hy = bH / 2;
+    var col = data.color;
 
-    wander.timer++;
-    if (wander.timer >= wander.interval) {
-        wander.timer = 0;
-        wander.interval = avg >= 60 ? (30 + Math.random() * 60) : (80 + Math.random() * 160);
-        var range = avg >= 60 ? R._px * 10 : R._px * 4;
-        wander.targetX = (Math.random() - 0.5) * range;
-        wander.targetY = (Math.random() - 0.5) * range * 0.4;
-
-        if (Math.random() < jumpChance) {
-            wander.jumpTimer = 20;
-        }
-    }
-
-    // Smooth movement (speed based on mood)
-    wander.x += (wander.targetX - wander.x) * speed;
-    wander.y += (wander.targetY - wander.y) * speed;
-
-    // Jump animation
-    if (wander.jumpTimer > 0) {
-        wander.jumpTimer--;
-        wander.jumpY = -Math.sin(wander.jumpTimer / 20 * Math.PI) * R._px * 4;
+    // === BODY ===
+    var body = new PIXI.Graphics();
+    if (stage === 0) {
+      // Egg: taller oval
+      body.ellipse(0, 0, bW / 2, bH / 2);
+      body.fill({ color: col });
+      body.stroke({ color: 0xe8d0b8, width: 2 });
+      // Crack line (zigzag)
+      body.moveTo(-8, -bH * 0.05);
+      body.lineTo(-4,  bH * 0.05);
+      body.lineTo( 2, -bH * 0.02);
+      body.lineTo( 7,  bH * 0.06);
+      body.stroke({ color: 0xc8b098, width: 2 });
     } else {
-        wander.jumpY *= 0.9;
+      // Rounded rectangle body
+      var rx = bW * parseFloat(data.bodyRadius) / 100;
+      body.roundRect(-hx, -hy, bW, bH, rx);
+      body.fill({ color: col });
+      body.stroke({ color: 0xe8d0b8, width: 2 });
     }
-}
+    self.container.addChildAt(body, 0);
+    self.body = body;
 
-// ===== DRAW PET =====
-var STAGE_NAMES = ['egg', 'baby', 'child', 'teen', 'adult'];
+    if (stage === 0) return; // Egg has no face
 
-function drawPet() {
-    if (!R || !R.ready || !R._petGfx) return;
-
-    R.frame++;
-    var sprite = SPRITES[STAGE_NAMES[st.stage]];
-    var px = R._px;
-
-    updateWander();
-
-    var bounce = st.sleeping
-        ? Math.sin(R.frame * 0.03) * 2
-        : Math.sin(R.frame * 0.06) * 3;
-
-    // Apply wandering + jump offset to pet container
-    R.petContainer.x = R.W / 2 + wander.x;
-    R.petContainer.y = R.H / 2 + wander.y + wander.jumpY;
-
-    R._petGfx.clear();
-
-    var offsetX = -10 * px;
-    var offsetY = -10 * px;
-
-    for (var y = 0; y < 20; y++) {
-        for (var x = 0; x < 20; x++) {
-            if (sprite[y][x]) {
-                R._petGfx.rect(offsetX + x * px, offsetY + y * px + bounce, px, px);
-            }
-        }
-    }
-    R._petGfx.fill('#3a4a2a');
-
-    // Sad tears
-    var avg = statAvg();
-    if (avg < 25 && !st.sleeping && st.stage > 0) {
-        var tearSize = Math.max(2, px * 0.4);
-        R._petGfx.rect(offsetX + 6 * px + 2, offsetY + 7 * px + bounce + px, tearSize, px);
-        R._petGfx.rect(offsetX + 13 * px + 2, offsetY + 7 * px + bounce + px, tearSize, px);
-        R._petGfx.fill('#3a4a2a');
+    // === EARS (stages 3+) ===
+    if (data.hasEars) {
+      var ears = new PIXI.Graphics();
+      // Left ear
+      ears.ellipse(-hx * 0.85, -hy * 0.85, bW * 0.12, bH * 0.14);
+      ears.fill({ color: col });
+      ears.stroke({ color: 0xe8d0b8, width: 1.5 });
+      // Right ear
+      ears.ellipse(hx * 0.85, -hy * 0.85, bW * 0.12, bH * 0.14);
+      ears.fill({ color: col });
+      ears.stroke({ color: 0xe8d0b8, width: 1.5 });
+      self.container.addChildAt(ears, 0); // behind body
+      self.ears = ears;
     }
 
-    // Zzz animation
-    if (st.sleeping && R._zzz.visible) {
-        var zFloat = Math.sin(R.frame * 0.04) * R._px * 1.5;
-        R._zzz.y = -R._px * 7 + zFloat;
-        R._zzz.alpha = 0.4 + 0.6 * Math.abs(Math.sin(R.frame * 0.04));
+    // === CROWN (stages 6+) ===
+    if (data.hasCrown) {
+      var crown = new PIXI.Graphics();
+      var cw = bW * 0.55;
+      crown.moveTo(-cw / 2, -hy - 4);
+      crown.lineTo(-cw / 2, -hy - 16);
+      crown.lineTo(-cw / 6, -hy - 8);
+      crown.lineTo(0,        -hy - 20);
+      crown.lineTo( cw / 6, -hy - 8);
+      crown.lineTo( cw / 2, -hy - 16);
+      crown.lineTo( cw / 2, -hy - 4);
+      crown.closePath();
+      crown.fill({ color: 0xf0c030 });
+      crown.stroke({ color: 0xd8a820, width: 1.5 });
+      self.container.addChild(crown);
+      self.crown = crown;
     }
-}
 
-// ===== PET STATE UPDATES (called from game.js) =====
-function updatePetOverlays() {
-    if (!R || !R.ready) return;
-    R._zzz.visible = st.sleeping;
-    R._poop.visible = st.poop >= 3;
-}
-
-// ===== CELEBRATION EFFECT (particles in canvas) =====
-function celebrateEvolution() {
-    if (!R || !R.petContainer) return;
-    var symbols = ['*', '+', '.', 'o'];
-    var px = R._px;
-    for (var i = 0; i < 12; i++) {
-        (function (delay) {
-            setTimeout(function () {
-                var sym = symbols[Math.floor(Math.random() * symbols.length)];
-                var style = new PIXI.TextStyle({
-                    fontFamily: '"Press Start 2P", monospace',
-                    fontSize: Math.max(8, px * (1.2 + Math.random() * 0.8)),
-                    fill: '#2d3a1d',
-                });
-                var t = new PIXI.Text({ text: sym, style: style });
-                t.anchor.set(0.5);
-                var angle = (Math.PI * 2 / 12) * delay / 80;
-                var radius = px * 5;
-                t.x = Math.cos(angle) * radius * 0.5;
-                t.y = Math.sin(angle) * radius * 0.5;
-                R.petContainer.addChild(t);
-
-                var startX = t.x;
-                var startY = t.y;
-                var elapsed = 0;
-                var ticker = function (dt) {
-                    elapsed += dt.deltaTime * 16.67;
-                    var p = elapsed / 600;
-                    t.x = startX + Math.cos(angle) * radius * p;
-                    t.y = startY + Math.sin(angle) * radius * p - px * 3 * p;
-                    t.alpha = 1 - p;
-                    t.rotation = p * 2;
-                    if (p >= 1) {
-                        PIXI.Ticker.shared.remove(ticker);
-                        if (t.parent) t.parent.removeChild(t);
-                        t.destroy();
-                    }
-                };
-                PIXI.Ticker.shared.add(ticker);
-            }, delay);
-        })(i * 80);
+    // === ARMS (stages 5+) ===
+    if (data.hasArms) {
+      var arms = new PIXI.Graphics();
+      // Left arm
+      arms.ellipse(-hx - bW * 0.08, 0, bW * 0.10, bH * 0.18);
+      arms.fill({ color: col });
+      arms.stroke({ color: 0xe8d0b8, width: 1.5 });
+      // Right arm
+      arms.ellipse(hx + bW * 0.08, 0, bW * 0.10, bH * 0.18);
+      arms.fill({ color: col });
+      arms.stroke({ color: 0xe8d0b8, width: 1.5 });
+      self.container.addChild(arms);
+      self.arms = arms;
     }
-}
 
-// ===== PET ACTION ANIMATIONS =====
+    // === FEET (stages 2+) ===
+    if (data.hasFeet) {
+      var feet = new PIXI.Graphics();
+      // Left foot
+      feet.ellipse(-hx * 0.45, hy + bH * 0.07, bW * 0.15, bH * 0.09);
+      feet.fill({ color: col });
+      feet.stroke({ color: 0xe8d0b8, width: 1.5 });
+      // Right foot
+      feet.ellipse(hx * 0.45, hy + bH * 0.07, bW * 0.15, bH * 0.09);
+      feet.fill({ color: col });
+      feet.stroke({ color: 0xe8d0b8, width: 1.5 });
+      self.container.addChild(feet);
+      self.feet = feet;
+    }
 
-// Eating animation: pet bobs up and down rapidly (nom nom)
-function petEatAnim() {
-    if (!R || !R.petContainer) return;
-    var count = 0;
-    var ticker = function(dt) {
-        count += dt.deltaTime * 16.67;
-        var phase = count / 80;
-        R.petContainer.scale.y = 1 + Math.sin(phase * Math.PI * 2) * 0.08;
-        R.petContainer.scale.x = 1 - Math.sin(phase * Math.PI * 2) * 0.05;
-        if (count >= 600) {
-            R.petContainer.scale.set(1, 1);
-            PIXI.Ticker.shared.remove(ticker);
-        }
-    };
-    PIXI.Ticker.shared.add(ticker);
-}
+    // === CHEEKS ===
+    var cheekSize = bW * 0.13;
+    var leftCheek = new PIXI.Graphics();
+    leftCheek.ellipse(-hx * 0.55, hy * 0.25, cheekSize, cheekSize * 0.6);
+    leftCheek.fill({ color: 0xf0a8a0, alpha: 0.55 });
+    self.container.addChild(leftCheek);
+    self.leftCheek = leftCheek;
 
-// Cleaning animation: pet spins/shakes
-function petCleanAnim() {
-    if (!R || !R.petContainer) return;
-    var count = 0;
-    var ticker = function(dt) {
-        count += dt.deltaTime * 16.67;
-        var p = count / 500;
-        R.petContainer.rotation = Math.sin(p * Math.PI * 6) * 0.15 * (1 - p);
-        if (count >= 500) {
-            R.petContainer.rotation = 0;
-            PIXI.Ticker.shared.remove(ticker);
-        }
-    };
-    PIXI.Ticker.shared.add(ticker);
-}
+    var rightCheek = new PIXI.Graphics();
+    rightCheek.ellipse(hx * 0.55, hy * 0.25, cheekSize, cheekSize * 0.6);
+    rightCheek.fill({ color: 0xf0a8a0, alpha: 0.55 });
+    self.container.addChild(rightCheek);
+    self.rightCheek = rightCheek;
 
-// Happy jump animation (after winning game)
-function petHappyJump() {
-    if (!R || !R.petContainer) return;
-    var count = 0;
-    var ticker = function(dt) {
-        count += dt.deltaTime * 16.67;
-        var p = count / 400;
-        wander.jumpY = -Math.abs(Math.sin(p * Math.PI * 3)) * R._px * 5 * (1 - p);
-        if (count >= 400) {
-            wander.jumpY = 0;
-            PIXI.Ticker.shared.remove(ticker);
-        }
-    };
-    PIXI.Ticker.shared.add(ticker);
-}
+    // === EYES ===
+    var eyeSize = data.eyeSize || 11;
+    var eyeY = -hy * 0.30;
+    var eyeOffX = hx * 0.40;
+
+    var leftEye = new PIXI.Graphics();
+    leftEye.circle(-eyeOffX, eyeY, eyeSize);
+    leftEye.fill({ color: 0x3a3028 });
+    self.container.addChild(leftEye);
+    self.leftEye = leftEye;
+
+    var rightEye = new PIXI.Graphics();
+    rightEye.circle(eyeOffX, eyeY, eyeSize);
+    rightEye.fill({ color: 0x3a3028 });
+    self.container.addChild(rightEye);
+    self.rightEye = rightEye;
+
+    // Eye highlights
+    var leftHL = new PIXI.Graphics();
+    leftHL.circle(-eyeOffX + eyeSize * 0.3, eyeY - eyeSize * 0.3, eyeSize * 0.35);
+    leftHL.fill({ color: 0xffffff });
+    self.container.addChild(leftHL);
+    self.leftHighlight = leftHL;
+
+    var rightHL = new PIXI.Graphics();
+    rightHL.circle(eyeOffX + eyeSize * 0.3, eyeY - eyeSize * 0.3, eyeSize * 0.35);
+    rightHL.fill({ color: 0xffffff });
+    self.container.addChild(rightHL);
+    self.rightHighlight = rightHL;
+
+    // === MOUTH ===
+    var mouth = new PIXI.Graphics();
+    self.container.addChild(mouth);
+    self.mouth = mouth;
+
+    self.setExpression('happy');
+  },
+
+  setExpression: function(mood) {
+    var self = this;
+    self._mood = mood;
+
+    if (!self.leftEye || !self.mouth) return;
+
+    // Derive eye geometry from current stage data to stay consistent with _drawBody
+    var stageIdx = Math.min(self._stage || 0, PET_STAGES.length - 1);
+    var data = PET_STAGES[stageIdx];
+    var bW = data.bodyW;
+    var bH = data.bodyH;
+    var hx = bW / 2;
+    var hy = bH / 2;
+
+    self.leftEye.clear();
+    self.rightEye.clear();
+    self.leftHighlight.clear();
+    self.rightHighlight.clear();
+    self.mouth.clear();
+
+    var eyeR = data.eyeSize || 11;
+    var eyeY = -hy * 0.30;
+    var eyeOffX = hx * 0.40;
+
+    if (mood === 'sleeping') {
+      // Closed horizontal lines
+      self.leftEye.rect(-eyeOffX - eyeR, eyeY - 1.5, eyeR * 2, 3);
+      self.leftEye.fill({ color: 0x3a3028 });
+      self.rightEye.rect(eyeOffX - eyeR, eyeY - 1.5, eyeR * 2, 3);
+      self.rightEye.fill({ color: 0x3a3028 });
+      // No highlights, no mouth shown clearly
+      if (self._zzz) self._zzz.visible = true;
+      return;
+    }
+
+    if (self._zzz) self._zzz.visible = false;
+
+    if (mood === 'happy') {
+      // Round eyes
+      self.leftEye.circle(-eyeOffX, eyeY, eyeR);
+      self.leftEye.fill({ color: 0x3a3028 });
+      self.rightEye.circle(eyeOffX, eyeY, eyeR);
+      self.rightEye.fill({ color: 0x3a3028 });
+      // Highlights
+      self.leftHighlight.circle(-eyeOffX + eyeR * 0.3, eyeY - eyeR * 0.3, eyeR * 0.35);
+      self.leftHighlight.fill({ color: 0xffffff });
+      self.rightHighlight.circle(eyeOffX + eyeR * 0.3, eyeY - eyeR * 0.3, eyeR * 0.35);
+      self.rightHighlight.fill({ color: 0xffffff });
+      // Wide smile arc
+      self.mouth.arc(0, eyeY + eyeR * 2.8, eyeR * 1.4, 0.15, Math.PI - 0.15);
+      self.mouth.stroke({ color: 0x3a3028, width: 2.5 });
+
+    } else if (mood === 'neutral') {
+      // Round eyes
+      self.leftEye.circle(-eyeOffX, eyeY, eyeR);
+      self.leftEye.fill({ color: 0x3a3028 });
+      self.rightEye.circle(eyeOffX, eyeY, eyeR);
+      self.rightEye.fill({ color: 0x3a3028 });
+      // Highlights
+      self.leftHighlight.circle(-eyeOffX + eyeR * 0.3, eyeY - eyeR * 0.3, eyeR * 0.35);
+      self.leftHighlight.fill({ color: 0xffffff });
+      self.rightHighlight.circle(eyeOffX + eyeR * 0.3, eyeY - eyeR * 0.3, eyeR * 0.35);
+      self.rightHighlight.fill({ color: 0xffffff });
+      // Flat mouth
+      self.mouth.moveTo(-eyeR * 1.0, eyeY + eyeR * 2.8);
+      self.mouth.lineTo( eyeR * 1.0, eyeY + eyeR * 2.8);
+      self.mouth.stroke({ color: 0x3a3028, width: 2.5 });
+
+    } else if (mood === 'sad') {
+      // Droopy eyes — slightly squinted
+      self.leftEye.ellipse(-eyeOffX, eyeY, eyeR, eyeR * 0.7);
+      self.leftEye.fill({ color: 0x3a3028 });
+      self.rightEye.ellipse(eyeOffX, eyeY, eyeR, eyeR * 0.7);
+      self.rightEye.fill({ color: 0x3a3028 });
+      self.leftHighlight.circle(-eyeOffX + eyeR * 0.3, eyeY - eyeR * 0.2, eyeR * 0.3);
+      self.leftHighlight.fill({ color: 0xffffff });
+      self.rightHighlight.circle(eyeOffX + eyeR * 0.3, eyeY - eyeR * 0.2, eyeR * 0.3);
+      self.rightHighlight.fill({ color: 0xffffff });
+      // Frown arc (upside-down smile)
+      self.mouth.arc(0, eyeY + eyeR * 4.2, eyeR * 1.3, Math.PI + 0.15, -0.15);
+      self.mouth.stroke({ color: 0x3a3028, width: 2.5 });
+    }
+  },
+
+  update: function(st) {
+    var self = this;
+    if (!self.container || !self._app) return;
+
+    // Update expression based on mood
+    var mood = typeof Pet !== 'undefined' ? Pet.getMood(st) : 'neutral';
+    if (self._pettedTimer > 0) {
+      self._pettedTimer--;
+      mood = 'happy';
+    }
+    if (mood !== self._mood) {
+      self.setExpression(mood);
+    }
+
+    // Update zzz visibility
+    if (self._zzz) {
+      self._zzz.visible = (st && st.sleeping);
+    }
+
+    // Wander: determine energy from stats
+    var avg = 50;
+    if (st) {
+      avg = (st.hunger + st.mood + (100 - st.sleepy)) / 3;
+    }
+    var speed = avg >= 60 ? 0.05 : avg >= 30 ? 0.025 : 0.012;
+
+    self._wanderTimer++;
+    var interval = avg >= 60 ? 80 : 180;
+    if (self._wanderTimer >= interval) {
+      self._wanderTimer = 0;
+      var range = avg >= 60 ? 60 : 25;
+      self._wanderTargetX = (Math.random() - 0.5) * range;
+    }
+
+    if (st && st.sleeping) {
+      self._wanderX *= 0.96;
+    } else {
+      self._wanderX += (self._wanderTargetX - self._wanderX) * speed;
+    }
+
+    var W = self._app.screen.width;
+    self.container.x = W / 2 + self._wanderX;
+    // container.y is managed by animate() which also applies bob + _jumpY
+  },
+
+  animate: function() {
+    var self = this;
+    if (!self.container) return;
+    self._frame++;
+
+    // Idle bob
+    var bob = Math.sin(self._frame * 0.055) * 3;
+    self.container.y = (self._app ? self._app.screen.height * 0.52 : 300) + self._jumpY + bob;
+
+    // Blink logic
+    self._blinkTimer++;
+    if (!self._isBlinking && self._blinkTimer >= self._blinkInterval) {
+      self._isBlinking = true;
+      self._blinkTimer = 0;
+      self._blinkInterval = 180 + Math.floor(Math.random() * 120);
+      // Squish eyes for 150ms
+      if (self.leftEye)  self.leftEye.scale.y  = 0.15;
+      if (self.rightEye) self.rightEye.scale.y  = 0.15;
+      if (self.leftHighlight)  self.leftHighlight.visible  = false;
+      if (self.rightHighlight) self.rightHighlight.visible = false;
+      setTimeout(function() {
+        self._isBlinking = false;
+        if (self.leftEye)  self.leftEye.scale.y  = 1;
+        if (self.rightEye) self.rightEye.scale.y  = 1;
+        if (self.leftHighlight)  self.leftHighlight.visible  = true;
+        if (self.rightHighlight) self.rightHighlight.visible = true;
+      }, 150);
+    }
+
+    // Jump decay
+    if (self._jumpTimer > 0) {
+      self._jumpTimer--;
+      self._jumpY = -Math.sin((1 - self._jumpTimer / 20) * Math.PI) * 40;
+    } else {
+      self._jumpY *= 0.85;
+    }
+
+    // Wiggle (egg tap)
+    if (self._wiggleTimer > 0) {
+      self._wiggleTimer--;
+      self.container.rotation = Math.sin(self._wiggleTimer * 0.6) * 0.18 * (self._wiggleTimer / 15);
+    } else {
+      self.container.rotation *= 0.8;
+    }
+
+    // Zzz float animation
+    if (self._zzz && self._zzz.visible) {
+      self._zzz.y = -60 + Math.sin(self._frame * 0.04) * 6;
+      self._zzz.alpha = 0.5 + 0.5 * Math.abs(Math.sin(self._frame * 0.04));
+    }
+  },
+
+  wiggle: function() {
+    this._wiggleTimer = 15;
+  },
+
+  celebrate: function() {
+    var self = this;
+    self._jumpTimer = 20;
+    self.setExpression('happy');
+  },
+
+  petted: function() {
+    var self = this;
+    self._pettedTimer = 120; // ~2 seconds at 60fps
+    self.setExpression('happy');
+    // Small bounce
+    self._jumpTimer = 10;
+  },
+};

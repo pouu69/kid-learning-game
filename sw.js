@@ -1,12 +1,21 @@
-var CACHE_NAME = 'tamagoji-v2';
+var CACHE_NAME = 'tamagoji-v3';
 var urlsToCache = [
     '/',
     '/index.html',
     '/css/styles.css',
-    '/js/sprites.js',
+    '/js/curriculum.js',
+    '/js/storage.js',
+    '/js/pet.js',
     '/js/effects.js',
+    '/js/world.js',
     '/js/renderer.js',
-    '/js/minigames.js',
+    '/js/sprites.js',
+    '/js/learning.js',
+    '/js/activities/meet.js',
+    '/js/activities/discover.js',
+    '/js/activities/play.js',
+    '/js/activities/reunite.js',
+    '/js/report.js',
     '/js/game.js',
     '/manifest.json'
 ];

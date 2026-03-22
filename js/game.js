@@ -1,527 +1,294 @@
-// ===== CONSTANTS =====
-var MS_PER_HOUR = 3600000;
-var MS_PER_DAY = 86400000;
+// js/game.js
+// 게임 루프, 스탯 관리, 화면 전환
 
-// Helper: average of all 4 stats
-function statAvg() {
-    return (st.hunger + st.happiness + st.energy + st.clean) / 4;
+var st = null;
+var tickCount = 0;
+var sessionStart = Date.now();
+var currentScreen = 'home';
+var hatchTaps = 0;
+var _tickInterval = null;
+
+function initGame() {
+  st = loadState();
+  if (st && st.name) {
+    applyOfflineDecay(st);
+    updateDaily(st);
+    showScreen('home');
+    startTicking();
+    initWorld();
+  } else {
+    st = createDefaultState();
+    showScreen('naming');
+  }
 }
 
-// Helper: format age from birthTime
-function formatAge(birthTime) {
-    var ms = Date.now() - (birthTime || Date.now());
-    var days = Math.floor(ms / MS_PER_DAY);
-    return days > 0 ? days + '일' : Math.floor(ms / MS_PER_HOUR) + '시간';
+function startTicking() {
+  if (_tickInterval) clearInterval(_tickInterval);
+  _tickInterval = setInterval(tick, 1000);
 }
 
-// ===== GAME CONFIG & STATE =====
-var STAGES = [
-    { name: '알', exp: 50 },
-    { name: '아기', exp: 150 },
-    { name: '어린이', exp: 350 },
-    { name: '청소년', exp: 600 },
-    { name: '어른', exp: Infinity },
-];
-
-var ACTIONS = ['밥주기', '놀기', '자기', '씻기'];
-var ACTION_KEYS = ['feed', 'play', 'sleep', 'clean'];
-var selAction = 0;
-
-var st = {
-    name: '', hunger: 100, happiness: 100, energy: 100, clean: 100,
-    exp: 0, stage: 0, sleeping: false, dead: false, poop: 0,
-    lastUpdate: Date.now(),
-    cd: { feed: 0, play: 0, sleep: 0, clean: 0 },
-    birthTime: Date.now(),
-};
-
-// ===== DOM REFERENCES =====
-var DOM = {};
-
-function cacheDom() {
-    DOM.nameScreen = document.getElementById('nameScreen');
-    DOM.gameScreen = document.getElementById('gameScreen');
-    DOM.deathScreen = document.getElementById('deathScreen');
-    DOM.nameInput = document.getElementById('nameInput');
-    DOM.petName = document.getElementById('petName');
-    DOM.petStage = document.getElementById('petStage');
-    DOM.moodText = document.getElementById('moodText');
-
-    DOM.barHunger = document.getElementById('barHunger');
-    DOM.barHappy = document.getElementById('barHappy');
-    DOM.barEnergy = document.getElementById('barEnergy');
-    DOM.barClean = document.getElementById('barClean');
-
-    DOM.valHunger = document.getElementById('valHunger');
-    DOM.valHappy = document.getElementById('valHappy');
-    DOM.valEnergy = document.getElementById('valEnergy');
-    DOM.valClean = document.getElementById('valClean');
-
-    DOM.barExp = document.getElementById('barExp');
-    DOM.valExp = document.getElementById('valExp');
-
-    DOM.deathMsg = document.getElementById('deathMsg');
-
-    DOM.actionItems = document.querySelectorAll('.action-item');
+function initWorld() {
+  var container = document.getElementById('worldCanvas');
+  if (container && typeof World !== 'undefined') {
+    World.init(container).then(function() {
+      World.syncLetterFlowers(st.learning.knownLetters);
+      if (typeof PetRenderer !== 'undefined') {
+        PetRenderer.init(World.app, st);
+      }
+      updateHome(st);
+    });
+  }
 }
 
-// ===== SCREEN SWITCHING =====
-function showScreen(name) {
-    DOM.nameScreen.style.display = (name === 'name') ? 'flex' : 'none';
-    DOM.gameScreen.style.display = (name === 'game') ? 'flex' : 'none';
-    DOM.deathScreen.style.display = (name === 'death') ? 'flex' : 'none';
-}
-
-function showDeath() {
-    DOM.deathMsg.textContent = st.name + '(이)가 떠나버렸어요...\n' + formatAge(st.birthTime) + ' 동안 함께했어요.\n다음엔 더 잘 돌봐주세요!';
-    showScreen('death');
-    if (typeof sfxBad === 'function') sfxBad();
-}
-
-// ===== UPDATE UI =====
-function updateUI() {
-    if (!DOM.petName) return;
-
-    DOM.petName.textContent = st.name;
-    DOM.petStage.textContent = STAGES[st.stage].name + ' ' + formatAge(st.birthTime);
-
-    // Stat bars
-    var stats = [
-        { bar: DOM.barHunger, val: DOM.valHunger, v: st.hunger },
-        { bar: DOM.barHappy, val: DOM.valHappy, v: st.happiness },
-        { bar: DOM.barEnergy, val: DOM.valEnergy, v: st.energy },
-        { bar: DOM.barClean, val: DOM.valClean, v: st.clean },
-    ];
-
-    for (var i = 0; i < stats.length; i++) {
-        var s = stats[i];
-        s.bar.style.width = s.v + '%';
-        s.val.textContent = Math.round(s.v);
-
-        if (s.v < 20) {
-            s.bar.classList.add('flash');
-        } else {
-            s.bar.classList.remove('flash');
-        }
+function applyOfflineDecay(st) {
+  var elapsed = (Date.now() - st.lastUpdate) / 1000;
+  if (elapsed <= 0) return;
+  if (st.sleeping) {
+    st.sleepy = Math.max(0, st.sleepy - elapsed * 1.5);
+    if (st.sleepy <= 0) {
+      st.sleeping = false;
+      st.sleepy = 0;
     }
-
-    // EXP
-    var need = STAGES[st.stage].exp;
-    if (need === Infinity) {
-        DOM.valExp.textContent = 'MAX';
-        DOM.barExp.style.width = '100%';
-    } else {
-        DOM.valExp.textContent = Math.floor(st.exp) + '/' + need;
-        DOM.barExp.style.width = ((st.exp / need) * 100) + '%';
-    }
-
-    // Mood
-    var avg = statAvg();
-    if (st.sleeping) DOM.moodText.textContent = 'z z z . . .';
-    else if (avg >= 80) DOM.moodText.textContent = '~ 기분 좋다 ~';
-    else if (avg >= 60) DOM.moodText.textContent = '괜찮아~';
-    else if (avg >= 40) DOM.moodText.textContent = '음...';
-    else if (avg >= 20) DOM.moodText.textContent = '기분 안좋아...';
-    else DOM.moodText.textContent = '도와줘...';
-
-    // Sleep label
-    DOM.actionItems[2].textContent = st.sleeping ? '깨우기' : '자기';
-
-    // Heart indicators
-    updateHeart('heartHunger', st.hunger);
-    updateHeart('heartHappy', st.happiness);
-    updateHeart('heartEnergy', st.energy);
-    updateHeart('heartClean', st.clean);
-
-    // Pet overlays (PixiJS)
-    if (typeof updatePetOverlays === 'function') updatePetOverlays();
+    return;
+  }
+  var cappedElapsed = Math.min(elapsed, 3600);
+  st.hunger = Math.max(0, st.hunger - cappedElapsed * 0.3);
+  st.mood = Math.max(0, st.mood - cappedElapsed * 0.2);
+  st.sleepy = Math.min(100, st.sleepy + cappedElapsed * 0.15);
 }
 
-var _heartCache = {};
-function updateHeart(id, value) {
-    if (!_heartCache[id]) {
-        var el = document.getElementById(id);
-        if (!el) return;
-        _heartCache[id] = { el: el, icon: el.querySelector('.heart-icon') };
-    }
-    var cached = _heartCache[id];
-    var el = cached.el;
-    var icon = cached.icon;
-    el.classList.remove('full', 'half', 'low');
-    // Show as filled blocks: 5 levels
-    var level = Math.ceil(value / 20); // 0~5
-    var filled = '';
-    for (var i = 0; i < 5; i++) {
-        filled += i < level ? '|' : '.';
-    }
-    icon.textContent = filled;
-
-    if (value >= 60) {
-        el.classList.add('full');
-    } else if (value >= 30) {
-        el.classList.add('half');
-    } else {
-        el.classList.add('low');
-    }
-}
-
-function updateActionLabels() {
-    for (var i = 0; i < DOM.actionItems.length; i++) {
-        if (i === selAction) {
-            DOM.actionItems[i].classList.add('selected');
-        } else {
-            DOM.actionItems[i].classList.remove('selected');
-        }
-        // Show cooldown state
-        if (st.cd[ACTION_KEYS[i]] > 0) {
-            DOM.actionItems[i].classList.add('cooldown');
-        } else {
-            DOM.actionItems[i].classList.remove('cooldown');
-        }
-    }
-}
-
-// ===== GAME LOGIC =====
 function tick() {
-    if (st.dead) return;
-    var now = Date.now();
-    var dt = (now - st.lastUpdate) / 1000;
-    st.lastUpdate = now;
+  if (!st || !st.name) return;
+  tickCount++;
 
-    if (!st.sleeping) {
-        st.hunger = Math.max(0, st.hunger - dt * 0.35);
-        st.happiness = Math.max(0, st.happiness - dt * 0.25);
-        st.energy = Math.max(0, st.energy - dt * 0.2);
-        st.clean = Math.max(0, st.clean - dt * 0.18);
-        // Poop rate increases when cleanliness is low
-        var prevPoop = st.poop;
-        var poopRate = st.clean < 30 ? 0.2 : 0.08;
-        st.poop += dt * poopRate;
-        if (prevPoop < 3 && st.poop >= 3) notify('씻겨줘!');
+  if (!st.sleeping) {
+    st.hunger = Math.max(0, st.hunger - 0.3);
+    st.mood = Math.max(0, st.mood - 0.2);
+    st.sleepy = Math.min(100, st.sleepy + 0.15);
+  } else {
+    st.sleepy = Math.max(0, st.sleepy - 1.5);
+    if (st.sleepy <= 0) {
+      st.sleeping = false;
+      st.sleepy = 0;
+    }
+  }
+
+  if (tickCount % 60 === 0) {
+    st.daily.minutesToday++;
+    st.reports.totalMinutes++;
+  }
+
+  Pet.updateRequest(st);
+
+  if (tickCount % 30 === 0) saveState(st);
+
+  if (currentScreen === 'home') {
+    updateHome(st);
+  }
+}
+
+// showScreen is defined in index.html inline script (nameScreen pattern)
+// This wrapper just tracks currentScreen
+var _origShowScreen = null;
+function showScreen(name) {
+  currentScreen = name;
+  var screens = document.querySelectorAll('.screen');
+  for (var i = 0; i < screens.length; i++) {
+    screens[i].classList.remove('active');
+  }
+  // HTML uses nameScreen pattern (e.g. homeScreen, learningScreen)
+  var el = document.getElementById(name + 'Screen');
+  if (el) {
+    el.classList.remove('hidden');
+    el.classList.add('active');
+  }
+}
+
+function updateHome(st) {
+  var nameEl = document.getElementById('petNameLabel');
+  var stageEl = document.getElementById('petStageLabel');
+  if (nameEl) nameEl.textContent = st.name;
+  if (stageEl) {
+    var evo = EVOLUTION[st.stage] || EVOLUTION[0];
+    stageEl.textContent = evo.name;
+  }
+
+  var barH = document.getElementById('fillHunger');
+  var barM = document.getElementById('fillMood');
+  var barS = document.getElementById('fillSleepy');
+  if (barH) barH.style.width = Math.max(0, Math.min(100, st.hunger)) + '%';
+  if (barM) barM.style.width = Math.max(0, Math.min(100, st.mood)) + '%';
+  if (barS) barS.style.width = Math.max(0, Math.min(100, st.sleepy)) + '%';
+
+  var speechBubble = document.getElementById('speechBubble');
+  if (speechBubble) {
+    var text = Pet.getSpeechText(st);
+    if (text && text !== '~') {
+      speechBubble.textContent = text;
+      speechBubble.classList.remove('hidden');
     } else {
-        st.energy = Math.min(100, st.energy + dt * 1.5);
-        st.hunger = Math.max(0, st.hunger - dt * 0.12);
-        if (st.energy >= 100) {
-            st.sleeping = false;
-            notify('일어났다!');
-        }
+      speechBubble.classList.add('hidden');
     }
+  }
 
-    for (var k in st.cd) {
-        if (st.cd[k] > 0) st.cd[k] = Math.max(0, st.cd[k] - dt * 1000);
-    }
-
-    if (st.poop >= 3) st.clean = Math.max(0, st.clean - dt * 0.4);
-
-    if (st.hunger <= 0 && st.happiness <= 0) {
-        st.dead = true;
-        showDeath();
-        return;
-    }
-
-    var avg = statAvg();
-    if (avg > 70) addExp(dt * 0.15);
-
-    // Low stat warnings (roughly every 30 seconds when low)
-    if (!st.sleeping && Math.random() < 0.033) {
-        if (st.hunger < 15) notify('배고파...');
-        else if (st.energy < 15) notify('피곤해...');
-        else if (st.clean < 15) notify('더러워...');
-        else if (st.happiness < 15) notify('심심해...');
-    }
-
-    // Random events (roughly every 60 seconds)
-    if (!st.sleeping && Math.random() < 0.016) {
-        triggerRandomEvent();
-    }
-
-    updateUI();
-    updateTimeOfDay();
-
-    // Save every 10 ticks instead of every tick
-    if (!tick._count) tick._count = 0;
-    tick._count++;
-    if (tick._count % 10 === 0) save();
-}
-
-var RANDOM_EVENTS = [
-    { msg: '뭔가 발견했다!', hunger: 0, happy: 5, energy: 0, clean: 0, exp: 3 },
-    { msg: '나비를 쫓았다~', hunger: 0, happy: 8, energy: -5, clean: 0, exp: 2 },
-    { msg: '낮잠이 오는걸...', hunger: 0, happy: 0, energy: -10, clean: 0, exp: 0 },
-    { msg: '맛있는 냄새가!', hunger: -8, happy: 3, energy: 0, clean: 0, exp: 0 },
-    { msg: '비가 왔다!', hunger: 0, happy: -3, energy: 0, clean: 5, exp: 1 },
-    { msg: '친구를 만났다!', hunger: 0, happy: 12, energy: -3, clean: 0, exp: 5 },
-];
-
-function triggerRandomEvent() {
-    var evt = RANDOM_EVENTS[Math.floor(Math.random() * RANDOM_EVENTS.length)];
-    notify(evt.msg);
-    st.hunger = Math.max(0, Math.min(100, st.hunger + (evt.hunger || 0)));
-    st.happiness = Math.max(0, Math.min(100, st.happiness + (evt.happy || 0)));
-    st.energy = Math.max(0, Math.min(100, st.energy + (evt.energy || 0)));
-    st.clean = Math.max(0, Math.min(100, st.clean + (evt.clean || 0)));
-    if (evt.exp > 0) addExp(evt.exp);
-    if (typeof petHappyJump === 'function') petHappyJump();
-}
-
-// Day/night cycle - pet viewport background changes
-var _petAreaEl = null;
-var _lastTodHour = -1;
-function updateTimeOfDay() {
-    if (!_petAreaEl) _petAreaEl = document.querySelector('.pet-area');
-    if (!_petAreaEl) return;
-    var petArea = _petAreaEl;
-    var hour = new Date().getHours();
-    if (hour === _lastTodHour) return;
-    _lastTodHour = hour;
-    var bgColor, canvasBg;
-    // 6-18: day, 18-21: sunset, 21-6: night
-    if (hour >= 6 && hour < 18) {
-        bgColor = '#c8d8b0';
-        canvasBg = 0xc8d8b0;
-    } else if (hour >= 18 && hour < 21) {
-        bgColor = '#a8b098';
-        canvasBg = 0xa8b098;
+  var actionBtn = document.getElementById('actionBtn');
+  var petHint = document.querySelector('.pet-hint');
+  if (actionBtn) {
+    var btn = Pet.getActionButton(st);
+    if (btn) {
+      actionBtn.textContent = btn.label;
+      actionBtn.dataset.action = btn.action;
+      actionBtn.classList.remove('hidden');
+      if (petHint) petHint.classList.add('hidden');
     } else {
-        bgColor = '#6a7860';
-        canvasBg = 0x6a7860;
+      actionBtn.classList.add('hidden');
+      if (petHint) petHint.classList.remove('hidden');
     }
-    petArea.style.background = bgColor;
-    // Also update PixiJS canvas background
-    if (R && R.app && R.app.renderer) {
-        try { R.app.renderer.background.color = canvasBg; } catch(e) {}
+  }
+
+  if (typeof PetRenderer !== 'undefined' && PetRenderer.update) {
+    PetRenderer.update(st);
+  }
+}
+
+function handleAction(action) {
+  if (action === 'hatch') {
+    hatchTaps++;
+    if (typeof PetRenderer !== 'undefined' && PetRenderer.wiggle) {
+      PetRenderer.wiggle();
     }
-}
-
-function addExp(n) {
-    st.exp += n;
-    var need = STAGES[st.stage].exp;
-    if (st.exp >= need && st.stage < STAGES.length - 1) {
-        st.stage++;
-        st.exp = 0;
-        notify(st.name + ' -> ' + STAGES[st.stage].name + ' 성장!');
-        if (typeof celebrateEvolution === 'function') celebrateEvolution();
-        if (typeof sfxEvolve === 'function') sfxEvolve();
+    if (hatchTaps >= 3) {
+      st.stage = 1;
+      st.learning.currentWord = {
+        word: CURRICULUM[0].word,
+        phase: 1,
+        startedAt: Date.now()
+      };
+      if (typeof PetRenderer !== 'undefined' && PetRenderer.celebrate) {
+        PetRenderer.celebrate();
+      }
+      playSound('evolve');
+      saveState(st);
+      updateHome(st);
     }
-}
+    return;
+  }
 
-// ===== ACTIONS =====
-function doAction(key) {
-    if (key === 'status') { showStatOverlay(); return; }
-    if (st.dead || st.cd[key] > 0) return;
-
-    switch (key) {
-        case 'feed':
-            if (st.hunger >= 95) { notify('배불러!'); return; }
-            st.hunger = Math.min(100, st.hunger + 25);
-            st.clean = Math.max(0, st.clean - 3);
-            addExp(5);
-            floatText('+밥');
-            st.cd.feed = 3000;
-            if (typeof petEatAnim === 'function') petEatAnim();
-            break;
-        case 'play':
-            if (st.energy < 15) { notify('너무 피곤해...'); return; }
-            openMiniGame();
-            return;
-        case 'sleep':
-            if (st.sleeping) {
-                st.sleeping = false;
-                notify('일어났다!');
-            } else {
-                if (st.energy >= 95) { notify('잠이 안 와!'); return; }
-                st.sleeping = true;
-            }
-            st.cd.sleep = 2000;
-            break;
-        case 'clean':
-            if (st.clean >= 95 && st.poop < 1) { notify('깨끗해!'); return; }
-            st.clean = Math.min(100, st.clean + 30);
-            st.poop = 0;
-            addExp(3);
-            floatText('+청결');
-            st.cd.clean = 3000;
-            if (typeof petCleanAnim === 'function') petCleanAnim();
-            break;
+  if (action === 'feed' || action === 'play') {
+    showScreen('learning');
+    if (typeof Learning !== 'undefined') {
+      Learning.startLearning(st);
     }
-    if (navigator.vibrate) navigator.vibrate(20);
-    if (typeof sfxClick === 'function') sfxClick();
-    updateUI();
-}
+    return;
+  }
 
-function showStatOverlay() {
-    var ov = document.getElementById('statOverlay');
-    if (!ov) return;
+  if (action === 'sleep') {
+    st.sleeping = true;
+    saveState(st);
+    updateHome(st);
+    return;
+  }
 
-    // Show first, then update (so it's always visible even if update fails)
-    ov.style.display = 'flex';
+  if (action === 'wake') {
+    st.sleeping = false;
+    saveState(st);
+    updateHome(st);
+    return;
+  }
 
-    try {
-        var bars = [
-            { bar: 'barHunger2', val: 'valHunger2', v: st.hunger },
-            { bar: 'barHappy2', val: 'valHappy2', v: st.happiness },
-            { bar: 'barEnergy2', val: 'valEnergy2', v: st.energy },
-            { bar: 'barClean2', val: 'valClean2', v: st.clean },
-        ];
-        for (var i = 0; i < bars.length; i++) {
-            var b = bars[i];
-            var barEl = document.getElementById(b.bar);
-            var valEl = document.getElementById(b.val);
-            if (barEl) barEl.style.width = b.v + '%';
-            if (valEl) valEl.textContent = Math.round(b.v);
-        }
-        var need = STAGES[st.stage].exp;
-        var expBar = document.getElementById('barExp2');
-        var expVal = document.getElementById('valExp2');
-        if (need === Infinity) {
-            if (expVal) expVal.textContent = 'MAX';
-            if (expBar) expBar.style.width = '100%';
-        } else {
-            if (expVal) expVal.textContent = Math.floor(st.exp) + '/' + need;
-            if (expBar) expBar.style.width = ((st.exp / need) * 100) + '%';
-        }
-    } catch(e) {}
-}
-
-function hideStatOverlay() {
-    var ov = document.getElementById('statOverlay');
-    if (ov) ov.style.display = 'none';
-}
-
-// ===== BUTTONS =====
-function btnPrev() {
-    selAction = (selAction + ACTIONS.length - 1) % ACTIONS.length;
-    updateActionLabels();
-}
-
-function btnNext() {
-    selAction = (selAction + 1) % ACTIONS.length;
-    updateActionLabels();
-}
-
-function btnOk() {
-    doAction(ACTION_KEYS[selAction]);
-}
-
-// ===== SAVE / LOAD =====
-function save() {
-    var data = {};
-    for (var k in st) data[k] = st[k];
-    data.lastUpdate = Date.now();
-    localStorage.setItem('tamagoji', JSON.stringify(data));
-}
-
-function load() {
-    var d = localStorage.getItem('tamagoji');
-    if (d) {
-        var s = JSON.parse(d);
-        for (var k in s) st[k] = s[k];
-        st.lastUpdate = Date.now();
-        st.cd = { feed: 0, play: 0, sleep: 0, clean: 0 };
-        return true;
+  if (action === 'pet') {
+    st.mood = Math.min(100, st.mood + 5);
+    if (typeof PetRenderer !== 'undefined' && PetRenderer.petted) {
+      PetRenderer.petted();
     }
-    return false;
+    saveState(st);
+    updateHome(st);
+  }
 }
 
-// ===== DEATH / RESET =====
-function resetGame() {
-    if (!confirm('정말 다시 시작할까요?')) return;
-    localStorage.removeItem('tamagoji');
-    st = {
-        name: '', hunger: 100, happiness: 100, energy: 100, clean: 100,
-        exp: 0, stage: 0, sleeping: false, dead: false, poop: 0,
-        lastUpdate: Date.now(), cd: { feed: 0, play: 0, sleep: 0, clean: 0 },
-        birthTime: Date.now(),
-    };
-    selAction = 0;
-    showScreen('name');
-    DOM.nameInput.value = '';
+function onLearningComplete(result) {
+  if (result.fed) st.hunger = Math.min(100, st.hunger + 25);
+  if (result.played) st.mood = Math.min(100, st.mood + 15);
+  st.daily.activitiesDone++;
+
+  if (st.daily.activitiesDone >= 3 && !st.daily.bonusUnlocked) {
+    st.daily.bonusUnlocked = true;
+  }
+
+  var evo = Pet.checkEvolution(st);
+  if (evo) {
+    st.stage = evo.stage;
+    playSound('evolve');
+  }
+
+  saveState(st);
+
+  if (result.newWord) {
+    showReward(result.newWord);
+  } else {
+    showScreen('home');
+    updateHome(st);
+    if (typeof World !== 'undefined') {
+      World.syncLetterFlowers(st.learning.knownLetters);
+    }
+  }
 }
 
-// ===== START =====
-function startGame() {
-    var name = DOM.nameInput.value.trim();
-    if (!name) {
-        DOM.nameInput.style.borderColor = '#5a1d1d';
-        return;
+function showReward(word) {
+  showScreen('reward');
+  var content = document.getElementById('rewardContent');
+  if (!content) return;
+
+  content.innerHTML = '';
+
+  var petDiv = document.createElement('div');
+  petDiv.className = 'reward-pet';
+  petDiv.innerHTML = '<div class="reward-pet-bounce"></div>';
+  content.appendChild(petDiv);
+
+  var wordDiv = document.createElement('div');
+  wordDiv.className = 'reward-word';
+  wordDiv.textContent = word + '!';
+  content.appendChild(wordDiv);
+
+  var msgDiv = document.createElement('div');
+  msgDiv.className = 'reward-message';
+  msgDiv.textContent = st.name + '가 새로운 말을 배웠어!';
+  content.appendChild(msgDiv);
+
+  var btn = document.createElement('button');
+  btn.className = 'btn-action reward-btn';
+  btn.textContent = '돌아가기';
+  btn.onclick = function() {
+    showScreen('home');
+    updateHome(st);
+    if (typeof World !== 'undefined') {
+      World.syncLetterFlowers(st.learning.knownLetters);
     }
-    st.name = name;
-    st.lastUpdate = Date.now();
-    showScreen('game');
+  };
+  content.appendChild(btn);
 
-    // Initialize PixiJS renderer after game screen is visible
-    if (!R || !R.ready) {
-        createRenderer().then(function () {
-            R.app.ticker.add(function () {
-                drawPet();
-            });
-            updateUI();
-            updateActionLabels();
-        });
-    } else {
-        updateUI();
-        updateActionLabels();
+  speakText(word);
+
+  setTimeout(function() {
+    if (typeof World !== 'undefined' && World.app) {
+      var W = World.app.screen.width;
+      var H = World.app.screen.height;
+      showStarParticles(W / 2, H / 2, 20);
     }
-
-    notify(name + ' 탄생!');
-    save();
-
-    // First-play hints
-    setTimeout(function() { notify('< > 로 메뉴를 고르고 OK!'); }, 3000);
-    setTimeout(function() { notify('배고프면 밥을 줘요~'); }, 6000);
+  }, 300);
 }
 
-function init() {
-    cacheDom();
-
-    // Event listeners
-    document.getElementById('nameStartBtn').addEventListener('click', startGame);
-    document.getElementById('restartBtn').addEventListener('click', resetGame);
-    document.getElementById('btnPrev').addEventListener('click', btnPrev);
-    document.getElementById('btnOk').addEventListener('click', btnOk);
-    document.getElementById('btnNext').addEventListener('click', btnNext);
-    document.getElementById('closeStatBtn').addEventListener('click', hideStatOverlay);
-    document.getElementById('statBtn').addEventListener('click', showStatOverlay);
-
-    DOM.nameInput.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') startGame();
-    });
-
-    // Action item click handlers
-    for (var i = 0; i < DOM.actionItems.length; i++) {
-        DOM.actionItems[i].addEventListener('click', function () {
-            var idx = parseInt(this.getAttribute('data-idx'));
-            selAction = idx;
-            updateActionLabels();
-            doAction(ACTION_KEYS[idx]);
-        });
-    }
-
-    // Keyboard controls
-    document.addEventListener('keydown', function (e) {
-        if (DOM.nameScreen.style.display !== 'none') return;
-        if (DOM.gameScreen.style.display === 'none') return;
-        if (e.key === 'ArrowLeft') btnPrev();
-        else if (e.key === 'ArrowRight') btnNext();
-        else if (e.key === 'Enter' || e.key === ' ') btnOk();
-    });
-
-    // Check saved game
-    if (load() && st.name) {
-        showScreen('game');
-        createRenderer().then(function () {
-            R.app.ticker.add(function () {
-                drawPet();
-            });
-            updateUI();
-            updateActionLabels();
-            if (st.dead) showDeath();
-        });
-    } else {
-        showScreen('name');
-    }
-
-    setInterval(tick, 1000);
+function getState() {
+  return st;
 }
 
-init();
+function setName(name) {
+  st.name = name.slice(0, 6);
+  st.birthTime = Date.now();
+  updateDaily(st);
+  saveState(st);
+  showScreen('home');
+  startTicking();
+  initWorld();
+}

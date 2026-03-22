@@ -2,153 +2,216 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#f0e6d2">
-    <title>TAMAGOJI</title>
+    <meta name="theme-color" content="#fdf8f0">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>타마고지</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    <style>
-        @font-face {
-            font-family: 'Galmuri9';
-            src: url('https://cdn.jsdelivr.net/npm/galmuri@latest/dist/Galmuri9.woff2') format('woff2');
-            font-weight: normal;
-            font-display: swap;
-        }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>*</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>&#128049;</text></svg>">
 </head>
 <body>
 
-    <!-- NAME SCREEN -->
-    <div id="nameScreen" class="screen">
-        <div class="name-screen-inner">
-            <pre class="name-egg">    ****
-  **    **
- *        *
- *        *
- *        *
-  **    **
-    ****</pre>
-            <div class="name-title">TAMAGOJI</div>
-            <div class="name-subtitle">알에서 깨어날 친구의<br>이름을 지어주세요</div>
-            <input type="text" id="nameInput" placeholder="이름" maxlength="6">
-            <button id="nameStartBtn" class="name-start-btn">시 작</button>
+    <!-- NAMING SCREEN -->
+    <div id="namingScreen" class="screen active">
+        <div class="naming-inner">
+            <div class="naming-title">말 배우는 펫</div>
+            <div class="naming-subtitle">친구의 이름을 지어주세요</div>
+            <div class="naming-egg" aria-hidden="true"></div>
+            <input
+                type="text"
+                id="nameInput"
+                class="naming-input"
+                placeholder="이름"
+                maxlength="6"
+                autocomplete="off"
+                autocorrect="off"
+                spellcheck="false"
+            >
+            <button class="btn-primary" onclick="submitName()">시작하기</button>
         </div>
     </div>
 
-    <!-- GAME SCREEN -->
-    <div id="gameScreen" class="screen" style="display:none;">
-        <!-- Header -->
-        <div class="header">
-            <span id="petName" class="header-name"></span>
-            <div class="header-right">
-                <button id="statBtn" class="header-stat-btn">상태</button>
-                <span id="petStage" class="header-stage"></span>
+    <!-- HOME SCREEN -->
+    <div id="homeScreen" class="screen">
+        <!-- Floating header -->
+        <div class="home-header">
+            <div class="pet-info glass" id="petInfo">
+                <span class="pet-name" id="petNameLabel"></span>
+                <span class="pet-stage" id="petStageLabel"></span>
+            </div>
+            <div class="stat-icons" id="statIcons">
+                <div class="stat-icon glass">
+                    <span style="color:#f08080;font-size:0.85rem;">&#9829;</span>
+                    <div class="stat-minibar">
+                        <div class="stat-fill" id="fillHunger" style="background:#f08080;width:100%;"></div>
+                    </div>
+                </div>
+                <div class="stat-icon glass">
+                    <span style="color:#f4b870;font-size:0.85rem;">&#9786;</span>
+                    <div class="stat-minibar">
+                        <div class="stat-fill" id="fillMood" style="background:#f4b870;width:100%;"></div>
+                    </div>
+                </div>
+                <div class="stat-icon glass">
+                    <span style="color:#c8a0d8;font-size:0.85rem;">&#9789;</span>
+                    <div class="stat-minibar">
+                        <div class="stat-fill" id="fillSleepy" style="background:#c8a0d8;width:100%;"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Pet Area (main focus - takes most of the screen) -->
-        <div class="pet-area">
-            <div id="petCanvas"></div>
-            <div id="moodText" class="mood-text"></div>
-        </div>
+        <!-- World canvas (PixiJS renders here) -->
+        <div class="world-canvas" id="worldCanvas"></div>
 
-        <!-- Status Hearts (compact stat indicator) -->
-        <div class="hearts-bar">
-            <div class="heart-item" id="heartHunger"><span class="heart-icon">H</span><span class="heart-label">밥</span></div>
-            <div class="heart-item" id="heartHappy"><span class="heart-icon">H</span><span class="heart-label">기분</span></div>
-            <div class="heart-item" id="heartEnergy"><span class="heart-icon">H</span><span class="heart-label">힘</span></div>
-            <div class="heart-item" id="heartClean"><span class="heart-icon">H</span><span class="heart-label">청결</span></div>
-        </div>
+        <!-- Speech bubble -->
+        <div class="speech-bubble hidden" id="speechBubble"></div>
 
-        <!-- Hidden stat bars for JS compatibility -->
-        <div style="display:none;">
-            <div><div id="barHunger"></div></div>
-            <div><div id="barHappy"></div></div>
-            <div><div id="barEnergy"></div></div>
-            <div><div id="barClean"></div></div>
-            <span id="valHunger">100</span>
-            <span id="valHappy">100</span>
-            <span id="valEnergy">100</span>
-            <span id="valClean">100</span>
-            <div><div id="barExp"></div></div>
-            <span id="valExp">0/50</span>
-        </div>
-
-        <!-- Action Labels -->
-        <div class="action-section">
-            <span class="action-item selected" data-idx="0">밥주기</span>
-            <span class="action-item" data-idx="1">놀기</span>
-            <span class="action-item" data-idx="2">자기</span>
-            <span class="action-item" data-idx="3">씻기</span>
-        </div>
-
-        <!-- Stat Detail Overlay -->
-        <div id="statOverlay" class="stat-overlay" style="display:none;">
-            <div class="stat-detail-box">
-                <div class="stat-detail-title">상 태</div>
-                <div class="stat-detail-row"><span>배고픔</span><div class="stat-bar-bg"><div id="barHunger2" class="stat-bar-fill"></div></div><span id="valHunger2">100</span></div>
-                <div class="stat-detail-row"><span>기분</span><div class="stat-bar-bg"><div id="barHappy2" class="stat-bar-fill"></div></div><span id="valHappy2">100</span></div>
-                <div class="stat-detail-row"><span>에너지</span><div class="stat-bar-bg"><div id="barEnergy2" class="stat-bar-fill"></div></div><span id="valEnergy2">100</span></div>
-                <div class="stat-detail-row"><span>청결</span><div class="stat-bar-bg"><div id="barClean2" class="stat-bar-fill"></div></div><span id="valClean2">100</span></div>
-                <div class="stat-detail-row exp-row"><span>EXP</span><div class="stat-bar-bg"><div id="barExp2" class="stat-bar-fill exp-fill"></div></div><span id="valExp2">0/50</span></div>
-                <button id="closeStatBtn" class="name-start-btn" style="margin-top:12px;padding:10px 30px;min-height:40px;">닫기</button>
-            </div>
-        </div>
-
-        <!-- Buttons -->
-        <div class="button-section">
-            <button id="btnPrev" class="game-btn">&lt;</button>
-            <button id="btnOk" class="game-btn">OK</button>
-            <button id="btnNext" class="game-btn">&gt;</button>
-        </div>
-
-        <div class="bottom-pad"></div>
-    </div>
-
-    <!-- DEATH SCREEN -->
-    <div id="deathScreen" class="screen" style="display:none;">
-        <div class="death-inner">
-            <div class="death-title">GAME OVER</div>
-            <div id="deathMsg" class="death-msg"></div>
-            <button id="restartBtn" class="name-start-btn">다시하기</button>
+        <!-- Footer with action button -->
+        <div class="home-footer">
+            <button class="btn-action" id="actionBtn" onclick="handleActionClick()">배우기</button>
+            <div class="pet-hint">터치해서 쓰다듬기</div>
         </div>
     </div>
 
-    <!-- MINIGAME OVERLAY -->
-    <div id="minigameScreen" class="screen minigame-overlay" style="display:none;"></div>
+    <!-- LEARNING SCREEN -->
+    <div id="learningScreen" class="screen">
+        <div class="learning-header">
+            <button class="btn-back glass" onclick="exitLearning()">&#8592; 돌아가기</button>
+            <div class="progress-dots" id="progressDots"></div>
+        </div>
+        <div class="learning-content" id="learningContent"></div>
+        <div class="mini-pet" id="miniPet"></div>
+    </div>
 
-    <!-- NOTIFICATION -->
-    <div id="notification" class="notification"></div>
+    <!-- REWARD SCREEN -->
+    <div id="rewardScreen" class="screen">
+        <div class="reward-inner">
+            <div class="reward-pet-bounce" id="rewardPet"></div>
+            <div class="reward-word" id="rewardWord"></div>
+            <div class="reward-message" id="rewardMessage"></div>
+            <div class="reward-content" id="rewardContent"></div>
+            <button class="btn-primary" id="rewardBtn" onclick="exitLearning()">홈으로</button>
+        </div>
+    </div>
 
-    <!-- FLOAT TEXT CONTAINER -->
-    <div id="floatContainer"></div>
+    <!-- REPORT SCREEN (hidden, 3sec long press on pet-info) -->
+    <div id="reportScreen" class="screen hidden">
+        <div class="report-header glass">
+            <span class="report-title">학습 리포트</span>
+            <button class="btn-back glass" onclick="showScreen('home')">&#8592; 닫기</button>
+        </div>
+        <div class="report-content" id="reportContent"></div>
+    </div>
 
+    <!-- Scripts: load order matters, no modules -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/8.6.6/pixi.min.js"></script>
+    <script src="js/curriculum.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/pet.js"></script>
+    <script src="js/effects.js"></script>
+    <script src="js/world.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/sprites.js"></script>
+    <script src="js/learning.js"></script>
+    <script src="js/activities/meet.js"></script>
+    <script src="js/activities/discover.js"></script>
+    <script src="js/activities/play.js"></script>
+    <script src="js/activities/reunite.js"></script>
+    <script src="js/report.js"></script>
+    <script src="js/game.js"></script>
     <script>
-    // Fix mobile browser viewport height (address bar issue)
+    // ── Inline bootstrap ──────────────────────────────────────────────────────
+
+    // Fix mobile viewport height (address bar issue)
     function setVH() {
         var vh = window.innerHeight * 0.01;
         document.documentElement.style.setProperty('--vh', vh + 'px');
     }
     setVH();
     window.addEventListener('resize', setVH);
-    window.addEventListener('orientationchange', function() { setTimeout(setVH, 100); });
-    </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/8.6.6/pixi.min.js"></script>
-    <script src="js/sprites.js"></script>
-    <script src="js/effects.js"></script>
-    <script src="js/renderer.js"></script>
-    <script src="js/minigames.js"></script>
-    <script src="js/game.js"></script>
-    <script>
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js').catch(function(){});
+    window.addEventListener('orientationchange', function () { setTimeout(setVH, 100); });
+
+    // Screen switcher (used globally)
+    function showScreen(name) {
+        document.querySelectorAll('.screen').forEach(function (s) {
+            s.classList.remove('active');
+        });
+        var target = document.getElementById(name + 'Screen');
+        if (target) {
+            target.classList.remove('hidden');
+            target.classList.add('active');
+        }
     }
+
+    // Naming screen submit
+    function submitName() {
+        var input = document.getElementById('nameInput');
+        var name = (input ? input.value : '').trim();
+        if (typeof setName === 'function') {
+            setName(name);
+        }
+    }
+
+    // Home action button
+    function handleActionClick() {
+        if (typeof Pet !== 'undefined' && typeof Pet.getActionButton === 'function') {
+            var st = typeof getState === 'function' ? getState() : {};
+            var btn = Pet.getActionButton(st);
+            if (btn && typeof handleAction === 'function') {
+                handleAction(btn.action);
+            }
+        }
+    }
+
+    // Learning back button
+    function exitLearning() {
+        showScreen('home');
+    }
+
+    // Long press (3 seconds) on .pet-info opens report screen
+    (function () {
+        var pressTimer = null;
+        var THRESHOLD = 3000;
+
+        function startPress(e) {
+            pressTimer = setTimeout(function () {
+                pressTimer = null;
+                if (typeof renderReport === 'function') renderReport();
+                showScreen('report');
+            }, THRESHOLD);
+        }
+
+        function cancelPress() {
+            if (pressTimer) {
+                clearTimeout(pressTimer);
+                pressTimer = null;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var petInfo = document.getElementById('petInfo');
+            if (petInfo) {
+                petInfo.addEventListener('touchstart', startPress, { passive: true });
+                petInfo.addEventListener('touchend', cancelPress);
+                petInfo.addEventListener('touchcancel', cancelPress);
+                petInfo.addEventListener('mousedown', startPress);
+                petInfo.addEventListener('mouseup', cancelPress);
+                petInfo.addEventListener('mouseleave', cancelPress);
+            }
+        });
+    })();
+
+    // Init
+    document.addEventListener('DOMContentLoaded', function () {
+        if (typeof initGame === 'function') initGame();
+    });
     </script>
 </body>
 </html>
