@@ -102,24 +102,25 @@ var PetRenderer = {
     var col = data.color;
 
     // === BODY ===
+    var strokeCol = data.strokeColor || 0xe8d0b8;
     var body = new PIXI.Graphics();
     if (stage === 0) {
       // Egg: taller oval
       body.ellipse(0, 0, bW / 2, bH / 2);
       body.fill({ color: col });
-      body.stroke({ color: 0xe8d0b8, width: 2 });
+      body.stroke({ color: strokeCol, width: 2 });
       // Crack line (zigzag)
       body.moveTo(-8, -bH * 0.05);
       body.lineTo(-4,  bH * 0.05);
       body.lineTo( 2, -bH * 0.02);
       body.lineTo( 7,  bH * 0.06);
-      body.stroke({ color: 0xc8b098, width: 2 });
+      body.stroke({ color: 0xc8a080, width: 2 });
     } else {
       // Rounded rectangle body
       var rx = bW * parseFloat(data.bodyRadius) / 100;
       body.roundRect(-hx, -hy, bW, bH, rx);
       body.fill({ color: col });
-      body.stroke({ color: 0xe8d0b8, width: 2 });
+      body.stroke({ color: strokeCol, width: 2 });
     }
     self.container.addChildAt(body, 0);
     self.body = body;
@@ -132,11 +133,11 @@ var PetRenderer = {
       // Left ear
       ears.ellipse(-hx * 0.85, -hy * 0.85, bW * 0.12, bH * 0.14);
       ears.fill({ color: col });
-      ears.stroke({ color: 0xe8d0b8, width: 1.5 });
+      ears.stroke({ color: strokeCol, width: 1.5 });
       // Right ear
       ears.ellipse(hx * 0.85, -hy * 0.85, bW * 0.12, bH * 0.14);
       ears.fill({ color: col });
-      ears.stroke({ color: 0xe8d0b8, width: 1.5 });
+      ears.stroke({ color: strokeCol, width: 1.5 });
       self.container.addChildAt(ears, 0); // behind body
       self.ears = ears;
     }
@@ -165,11 +166,11 @@ var PetRenderer = {
       // Left arm
       arms.ellipse(-hx - bW * 0.08, 0, bW * 0.10, bH * 0.18);
       arms.fill({ color: col });
-      arms.stroke({ color: 0xe8d0b8, width: 1.5 });
+      arms.stroke({ color: strokeCol, width: 1.5 });
       // Right arm
       arms.ellipse(hx + bW * 0.08, 0, bW * 0.10, bH * 0.18);
       arms.fill({ color: col });
-      arms.stroke({ color: 0xe8d0b8, width: 1.5 });
+      arms.stroke({ color: strokeCol, width: 1.5 });
       self.container.addChild(arms);
       self.arms = arms;
     }
@@ -180,11 +181,11 @@ var PetRenderer = {
       // Left foot
       feet.ellipse(-hx * 0.45, hy + bH * 0.07, bW * 0.15, bH * 0.09);
       feet.fill({ color: col });
-      feet.stroke({ color: 0xe8d0b8, width: 1.5 });
+      feet.stroke({ color: strokeCol, width: 1.5 });
       // Right foot
       feet.ellipse(hx * 0.45, hy + bH * 0.07, bW * 0.15, bH * 0.09);
       feet.fill({ color: col });
-      feet.stroke({ color: 0xe8d0b8, width: 1.5 });
+      feet.stroke({ color: strokeCol, width: 1.5 });
       self.container.addChild(feet);
       self.feet = feet;
     }
@@ -430,13 +431,53 @@ var PetRenderer = {
     var self = this;
     self._jumpTimer = 20;
     self.setExpression('happy');
+    // Show celebration particles at pet position
+    if (typeof showCelebration === 'function' && self._app) {
+      var cx = self.container.x;
+      var cy = self.container.y - 30;
+      showCelebration(cx, cy);
+    }
   },
 
   petted: function() {
     var self = this;
     self._pettedTimer = 120; // ~2 seconds at 60fps
     self.setExpression('happy');
-    // Small bounce
-    self._jumpTimer = 10;
+    // Bounce
+    self._jumpTimer = 14;
+    // Float hearts up from pet
+    if (typeof World !== 'undefined' && World.app && self.container) {
+      var heartTexts = ['\u2665', '\u2665', '\u2665'];
+      for (var i = 0; i < heartTexts.length; i++) {
+        (function(idx) {
+          setTimeout(function() {
+            var heart = new PIXI.Text({
+              text: heartTexts[idx],
+              style: { fontSize: 16 + Math.random() * 10, fill: 0xf08080, fontWeight: 'bold' }
+            });
+            heart.x = self.container.x + (Math.random() - 0.5) * 40;
+            heart.y = self.container.y - 20;
+            heart.alpha = 1;
+            heart._vy = -1.2 - Math.random() * 0.8;
+            heart._vx = (Math.random() - 0.5) * 0.8;
+            heart._life = 55;
+            World.app.stage.addChild(heart);
+            var ticker = function() {
+              heart.x += heart._vx;
+              heart.y += heart._vy;
+              heart.alpha -= 0.018;
+              heart._life--;
+              if (heart._life <= 0) {
+                World.app.stage.removeChild(heart);
+                World.app.ticker.remove(ticker);
+                heart.destroy();
+              }
+            };
+            World.app.ticker.add(ticker);
+          }, idx * 180);
+        })(i);
+      }
+    }
+    if (typeof playSound === 'function') playSound('click');
   },
 };

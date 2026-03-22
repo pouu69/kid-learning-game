@@ -46,11 +46,78 @@ var World = {
 
       self._buildClouds();
       self.updateTimeOfDay();
+      self._addDecorations();
 
       app.ticker.add(function() { self.animate(); });
 
       window.addEventListener('resize', function() { self.resize(); });
     });
+  },
+
+  _addDecorations: function() {
+    var self = this;
+    var W = self.app.screen.width;
+    var H = self.app.screen.height;
+
+    // Grass tufts scattered on the hill area
+    for (var i = 0; i < 5; i++) {
+      var tuft = new PIXI.Graphics();
+      var tx = 20 + Math.random() * (W - 40);
+      var ty = H * 0.52 + Math.random() * (H * 0.28);
+      // Left blade
+      tuft.fill({ color: 0x88b888 });
+      tuft.moveTo(tx, ty);
+      tuft.lineTo(tx - 3, ty - 8 - Math.random() * 6);
+      tuft.lineTo(tx + 3, ty);
+      tuft.fill();
+      // Right blade
+      tuft.fill({ color: 0x78a878 });
+      tuft.moveTo(tx + 4, ty);
+      tuft.lineTo(tx + 6, ty - 10 - Math.random() * 5);
+      tuft.lineTo(tx + 8, ty);
+      tuft.fill();
+      self.app.stage.addChild(tuft);
+    }
+
+    // Small flowers (circle + stem)
+    var flowerColors = [0xf4a8a8, 0xf8d870, 0xc8a8e8, 0xf0b888];
+    for (var fi = 0; fi < 4; fi++) {
+      var flower = new PIXI.Graphics();
+      var fx = 30 + Math.random() * (W - 60);
+      var fy = H * 0.54 + Math.random() * (H * 0.22);
+      var fc = flowerColors[fi % flowerColors.length];
+      // Stem
+      flower.rect(fx - 1, fy - 10, 2, 10);
+      flower.fill({ color: 0x68a870 });
+      // Petals (4 small circles around center)
+      for (var p = 0; p < 4; p++) {
+        var angle = p * Math.PI / 2;
+        flower.circle(fx + Math.cos(angle) * 4, fy - 10 + Math.sin(angle) * 4, 3);
+        flower.fill({ color: fc });
+      }
+      // Center
+      flower.circle(fx, fy - 10, 3);
+      flower.fill({ color: 0xf8f0a0 });
+      self.app.stage.addChild(flower);
+    }
+
+    // Butterfly: a small shape that drifts across in a sine wave
+    self._butterfly = new PIXI.Graphics();
+    // Left wing
+    self._butterfly.ellipse(-6, 0, 7, 5);
+    self._butterfly.fill({ color: 0xf0a0d0, alpha: 0.85 });
+    // Right wing
+    self._butterfly.ellipse(6, 0, 7, 5);
+    self._butterfly.fill({ color: 0xd0a0f0, alpha: 0.85 });
+    // Body
+    self._butterfly.rect(-1, -4, 2, 8);
+    self._butterfly.fill({ color: 0x806060 });
+
+    self._butterfly.x = -30;
+    self._butterfly.y = H * 0.25;
+    self._butterflyBaseY = H * 0.25;
+    self._butterflyFrame = 0;
+    self.app.stage.addChild(self._butterfly);
   },
 
   _buildClouds: function() {
@@ -336,6 +403,22 @@ var World = {
         bob += Math.sin(flower._bumpTimer / 12 * Math.PI) * -8;
       }
       flower.y = flower._baseY + bob;
+    }
+
+    // Butterfly drift
+    if (self._butterfly) {
+      self._butterflyFrame = (self._butterflyFrame || 0) + 1;
+      self._butterfly.x += 0.55;
+      self._butterfly.y = self._butterflyBaseY + Math.sin(self._butterflyFrame * 0.04) * 22;
+      // Wing flap: scale y alternates
+      self._butterfly.scale.y = 0.7 + 0.3 * Math.abs(Math.sin(self._butterflyFrame * 0.18));
+      // Wrap around when off-screen
+      if (self._butterfly.x > W + 30) {
+        self._butterfly.x = -30;
+        self._butterflyBaseY = self.app.screen.height * (0.18 + Math.random() * 0.20);
+        self._butterfly.y = self._butterflyBaseY;
+        self._butterflyFrame = 0;
+      }
     }
 
     // Twinkle stars at night: subtle alpha oscillation on the starsGfx

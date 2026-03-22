@@ -150,6 +150,7 @@ var Learning = {
 
   // Called when a letter is learned
   onLetterComplete: function(st, target) {
+    var self = this;
     var letter = target.data.letter;
     if (target.type === 'consonant') {
       if (st.learning.knownConsonants.indexOf(letter) === -1) {
@@ -163,8 +164,10 @@ var Learning = {
       st.learning.vowelIndex++;
     }
 
-    // Check evolution
+    // Check evolution before showing reward
+    var prevStage = st.stage;
     this._checkEvolution(st);
+    var didEvolve = st.stage > prevStage;
 
     // Update flower in world
     if (typeof World !== 'undefined') {
@@ -172,48 +175,96 @@ var Learning = {
     }
 
     saveState(st);
-    this.closePopup();
 
-    // Pet reaction
-    if (typeof PetRenderer !== 'undefined' && PetRenderer.celebrate) {
-      PetRenderer.celebrate();
+    // Show reward in popup before closing
+    if (self.popupEl) {
+      var rewardEl = document.createElement('div');
+      rewardEl.style.cssText = 'text-align:center;padding:2rem;';
+      rewardEl.innerHTML = '<div style="font-size:4rem">' + letter + '</div>' +
+        '<div style="font-size:1.2rem;color:#6a8a5a;margin-top:1rem;font-family:var(--font-display)">잘했어!</div>';
+      self.popupEl.innerHTML = '';
+      self.popupEl.appendChild(rewardEl);
     }
+
+    // Celebration effects
+    if (typeof showCelebration === 'function') {
+      showCelebration(window.innerWidth / 2, window.innerHeight / 2);
+    }
+    if (didEvolve && typeof flashScreen === 'function') {
+      flashScreen();
+    }
+
     playSound('correct');
     speakText(target.data.sound);
 
-    // Stat recovery
-    st.hunger = Math.min(100, st.hunger + 15);
-    st.mood = Math.min(100, st.mood + 10);
-    saveState(st);
-    updateHome(st);
+    setTimeout(function() {
+      self.closePopup();
+
+      // Pet reaction
+      if (typeof PetRenderer !== 'undefined' && PetRenderer.celebrate) {
+        PetRenderer.celebrate();
+      }
+
+      // Stat recovery
+      st.hunger = Math.min(100, st.hunger + 15);
+      st.mood = Math.min(100, st.mood + 10);
+      saveState(st);
+      updateHome(st);
+    }, 1500);
   },
 
   // Called when a word is completed
   onWordComplete: function(st, wordData) {
+    var self = this;
     if (st.learning.completedWords.indexOf(wordData.word) === -1) {
       st.learning.completedWords.push(wordData.word);
     }
     st.learning.wordIndex++;
 
+    var prevStage = st.stage;
     this._checkEvolution(st);
+    var didEvolve = st.stage > prevStage;
 
     if (typeof World !== 'undefined') {
       World.addWordFlower(wordData.word);
     }
 
     saveState(st);
-    this.closePopup();
 
-    if (typeof PetRenderer !== 'undefined' && PetRenderer.celebrate) {
-      PetRenderer.celebrate();
+    // Show reward in popup before closing
+    if (self.popupEl) {
+      var rewardEl = document.createElement('div');
+      rewardEl.style.cssText = 'text-align:center;padding:2rem;';
+      rewardEl.innerHTML = '<div style="font-size:3rem">' + wordData.word + '</div>' +
+        '<div style="font-size:1.2rem;color:#6a8a5a;margin-top:1rem;font-family:var(--font-display)">잘했어!</div>';
+      self.popupEl.innerHTML = '';
+      self.popupEl.appendChild(rewardEl);
     }
-    playSound('correct');
+
+    // Celebration effects
+    if (typeof showCelebration === 'function') {
+      showCelebration(window.innerWidth / 2, window.innerHeight / 2);
+    }
+    if (didEvolve && typeof flashScreen === 'function') {
+      flashScreen();
+      playSound('evolve');
+    } else {
+      playSound('correct');
+    }
     speakText(wordData.word);
 
-    st.hunger = Math.min(100, st.hunger + 20);
-    st.mood = Math.min(100, st.mood + 15);
-    saveState(st);
-    updateHome(st);
+    setTimeout(function() {
+      self.closePopup();
+
+      if (typeof PetRenderer !== 'undefined' && PetRenderer.celebrate) {
+        PetRenderer.celebrate();
+      }
+
+      st.hunger = Math.min(100, st.hunger + 20);
+      st.mood = Math.min(100, st.mood + 15);
+      saveState(st);
+      updateHome(st);
+    }, 1500);
   },
 
   _checkEvolution: function(st) {

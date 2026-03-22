@@ -72,6 +72,48 @@ function playSound(type) {
   } catch(e) {}
 }
 
+function showCelebration(x, y) {
+  showStarParticles(x, y, 25);
+  if (typeof World === 'undefined' || !World.app) return;
+  var colors = [0xf4b870, 0xf08080, 0xa8d8b0, 0x88c8e8, 0xc8a0d8, 0xf0d060];
+  for (var i = 0; i < 12; i++) {
+    var circle = new PIXI.Graphics();
+    var color = colors[Math.floor(Math.random() * colors.length)];
+    var size = 4 + Math.random() * 8;
+    circle.circle(0, 0, size).fill({ color: color });
+    circle.x = x + (Math.random() - 0.5) * 120;
+    circle.y = y + (Math.random() - 0.5) * 100;
+    circle.alpha = 0.9;
+    circle._vx = (Math.random() - 0.5) * 3;
+    circle._vy = -2 - Math.random() * 3;
+    circle._life = 50 + Math.random() * 30;
+    World.app.stage.addChild(circle);
+    (function(c) {
+      var ticker = function() {
+        c.x += c._vx;
+        c.y += c._vy;
+        c._vy += 0.05;
+        c.alpha -= 0.012;
+        c._life--;
+        if (c._life <= 0) {
+          World.app.stage.removeChild(c);
+          World.app.ticker.remove(ticker);
+          c.destroy();
+        }
+      };
+      World.app.ticker.add(ticker);
+    })(circle);
+  }
+}
+
+function flashScreen() {
+  var flash = document.createElement('div');
+  flash.style.cssText = 'position:fixed;inset:0;background:white;opacity:0.6;z-index:9999;pointer-events:none;transition:opacity 0.5s';
+  document.body.appendChild(flash);
+  setTimeout(function() { flash.style.opacity = '0'; }, 50);
+  setTimeout(function() { if (flash.parentNode) flash.parentNode.removeChild(flash); }, 600);
+}
+
 function showStarParticles(x, y, count) {
   if (typeof World === 'undefined' || !World.app) return;
   var n = Math.min(count || 15, 50);
