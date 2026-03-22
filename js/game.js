@@ -31,7 +31,7 @@ function initWorld() {
   var container = document.getElementById('worldCanvas');
   if (container && typeof World !== 'undefined') {
     World.init(container).then(function() {
-      var allKnown = st.learning.knownConsonants.concat(st.learning.knownVowels);
+      var allKnown = (st.learning.knownConsonants || []).concat(st.learning.knownVowels || []);
       World.syncLetterFlowers(allKnown);
       if (typeof PetRenderer !== 'undefined') {
         PetRenderer.init(World.app, st);
@@ -214,7 +214,7 @@ function onLearningComplete(result) {
     st.daily.bonusUnlocked = true;
   }
   saveState(st);
-  var allKnown = st.learning.knownConsonants.concat(st.learning.knownVowels);
+  var allKnown = (st.learning.knownConsonants || []).concat(st.learning.knownVowels || []);
   if (typeof World !== 'undefined') {
     World.syncLetterFlowers(allKnown);
   }
@@ -250,7 +250,7 @@ function showReward(word) {
     showScreen('home');
     updateHome(st);
     if (typeof World !== 'undefined') {
-      var allKnown = st.learning.knownConsonants.concat(st.learning.knownVowels);
+      var allKnown = (st.learning.knownConsonants || []).concat(st.learning.knownVowels || []);
       World.syncLetterFlowers(allKnown);
     }
   };

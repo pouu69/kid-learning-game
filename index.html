@@ -76,7 +76,9 @@
         <!-- Footer with action button -->
         <div class="home-footer">
             <button class="btn-action" id="actionBtn" onclick="handleActionClick()">배우기</button>
-            <div class="pet-hint">터치해서 쓰다듬기</div>
+            <div class="pet-hint" id="petHint">
+                <div class="pet-hint-finger"></div>
+            </div>
         </div>
     </div>
 
@@ -198,9 +200,20 @@
         });
     })();
 
-    // Init
+    // World canvas touch → pet interaction
     document.addEventListener('DOMContentLoaded', function () {
         if (typeof initGame === 'function') initGame();
+
+        var worldCanvas = document.getElementById('worldCanvas');
+        if (worldCanvas) {
+            worldCanvas.addEventListener('click', function(e) {
+                // Don't trigger if clicking a button
+                if (e.target.tagName === 'BUTTON') return;
+                if (typeof handleAction === 'function') {
+                    handleAction('pet');
+                }
+            });
+        }
     });
     </script>
 </body>
