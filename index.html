@@ -73,12 +73,15 @@
         <!-- Speech bubble -->
         <div class="speech-bubble hidden" id="speechBubble"></div>
 
-        <!-- Footer with action button -->
-        <div class="home-footer">
-            <button class="btn-action hidden" id="actionBtn" onclick="handleActionClick()"></button>
-            <div class="pet-hint" id="petHint">
-                <div class="pet-hint-finger"></div>
-            </div>
+        <!-- Floating need icon (appears near pet when hungry/bored/sleepy) -->
+        <div class="need-icon hidden" id="needIcon" onclick="handleActionClick()">
+            <div class="need-icon-inner" id="needIconInner"></div>
+            <div class="need-icon-pulse"></div>
+        </div>
+
+        <!-- Pet hint finger (shows when idle) -->
+        <div class="pet-hint" id="petHint">
+            <div class="pet-hint-finger"></div>
         </div>
     </div>
 
@@ -151,14 +154,12 @@
         }
     }
 
-    // Home action button
+    // Home action — triggered by need icon click
     function handleActionClick() {
-        if (typeof Pet !== 'undefined' && typeof Pet.getActionButton === 'function') {
-            var st = typeof getState === 'function' ? getState() : {};
-            var btn = Pet.getActionButton(st);
-            if (btn && typeof handleAction === 'function') {
-                handleAction(btn.action);
-            }
+        var needIcon = document.getElementById('needIcon');
+        var action = needIcon ? needIcon.dataset.action : null;
+        if (action && typeof handleAction === 'function') {
+            handleAction(action);
         }
     }
 

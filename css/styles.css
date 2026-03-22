@@ -348,10 +348,54 @@ body {
     background: linear-gradient(transparent, rgba(253,248,240,0.9) 30%);
 }
 
-/* Pet stroke hint — visual finger guide instead of text */
+/* Floating need icon — replaces text buttons */
+.need-icon {
+    position: absolute;
+    top: 30%;
+    right: 15%;
+    z-index: 20;
+    cursor: pointer;
+    animation: needBounce 1.5s ease infinite;
+    user-select: none;
+    touch-action: manipulation;
+}
+.need-icon-inner {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+}
+.need-icon-inner svg {
+    display: block;
+}
+.need-icon-pulse {
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    border: 3px solid var(--tangerine);
+    opacity: 0;
+    animation: needPulseRing 2s ease infinite;
+    pointer-events: none;
+}
+@keyframes needBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-12px); }
+}
+@keyframes needPulseRing {
+    0% { transform: scale(0.8); opacity: 0.8; }
+    100% { transform: scale(1.4); opacity: 0; }
+}
+
+/* Pet stroke hint — visual finger guide near pet */
 .pet-hint {
-    text-align: center;
-    margin-top: 0.75rem;
+    position: absolute;
+    bottom: 25%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 15;
     user-select: none;
     pointer-events: none;
 }
