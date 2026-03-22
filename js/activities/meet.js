@@ -87,7 +87,7 @@ var LetterActivity = {
       ctx.clearRect(0, 0, 300, 300);
       ctx.setLineDash([6, 6]);
       ctx.strokeStyle = '#c8c0b0';
-      ctx.lineWidth = 4;
+      ctx.lineWidth = 8;
       ctx.lineCap = 'round';
       for (var s = 0; s < letterData.strokes.length; s++) {
         var stroke = letterData.strokes[s];
@@ -103,6 +103,24 @@ var LetterActivity = {
           }
           ctx.stroke();
         }
+        // Show stroke number at start of each stroke
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#b0a898';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        var numX, numY;
+        if (stroke[0] && stroke[0].circle) {
+          numX = stroke[0].cx * scale;
+          numY = (stroke[0].cy - stroke[0].r) * scale - 12;
+        } else {
+          numX = stroke[0].x * scale;
+          numY = stroke[0].y * scale - 12;
+        }
+        ctx.fillText((s + 1).toString(), numX, numY);
+        ctx.textAlign = 'start';
+        ctx.textBaseline = 'alphabetic';
+        ctx.setLineDash([6, 6]);
       }
       ctx.setLineDash([]);
     }
@@ -121,13 +139,14 @@ var LetterActivity = {
     }
 
     var isDrawing = false;
-    var hitRadius = 300 * 0.15;
+    var failCount = 0;
+    var hitRadius = 300 * 0.25;
 
     function onStart(e) {
       e.preventDefault();
       isDrawing = true;
       ctx.strokeStyle = '#3a3028';
-      ctx.lineWidth = 6;
+      ctx.lineWidth = 10;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       var rect = canvas.getBoundingClientRect();
@@ -170,18 +189,25 @@ var LetterActivity = {
         if (checkpoints[i].hit) hitCount++;
       }
       var coverage = checkpoints.length > 0 ? hitCount / checkpoints.length : 1;
-      if (coverage >= 0.7) {
+      if (coverage >= 0.4) {
         playSound('correct');
         speakText(target.data.sound, 0.7);
         setTimeout(function() { self._distinguishLetter(st, target); }, 1000);
       } else {
-        // Show finger guide again
-        speakText('다시 해볼까', 0.7);
-        setTimeout(function() {
-          drawGuide();
-          for (var i = 0; i < checkpoints.length; i++) checkpoints[i].hit = false;
-          self._animateStrokeGuide(canvas, letterData, scale);
-        }, 800);
+        failCount++;
+        if (failCount >= 2) {
+          // Auto-pass with encouragement — don't let kids get stuck
+          speakText('잘했어', 0.7);
+          setTimeout(function() { self._distinguishLetter(st, target); }, 1000);
+        } else {
+          // Show finger guide again
+          speakText('다시 해볼까', 0.7);
+          setTimeout(function() {
+            drawGuide();
+            for (var i = 0; i < checkpoints.length; i++) checkpoints[i].hit = false;
+            self._animateStrokeGuide(canvas, letterData, scale);
+          }, 800);
+        }
       }
     }
 
@@ -294,44 +320,127 @@ var LetterActivity = {
     }, 3000);
   },
 
-  // Utility: animate stroke order on canvas
+  // Utility: animate stroke order on canvas — full multi-stroke demo
   _animateStrokeGuide: function(canvas, letterData, scale) {
     var ctx = canvas.getContext('2d');
-    // Draw arrow along first stroke
-    if (!letterData.strokes || letterData.strokes.length === 0) return;
-    var stroke = letterData.strokes[0];
-    if (stroke[0] && stroke[0].circle) return; // skip circle animation for now
-    if (stroke.length < 2) return;
+    var strokes = letterData.strokes;
+    if (!strokes || strokes.length === 0) return;
 
-    var startX = stroke[0].x * scale;
-    var startY = stroke[0].y * scale;
-    var endX = stroke[stroke.length - 1].x * scale;
-    var endY = stroke[stroke.length - 1].y * scale;
+    var strokeIndex = 0;
+    var self = this;
 
-    // Draw start dot
-    ctx.fillStyle = '#f4b870';
-    ctx.globalAlpha = 0.6;
-    ctx.beginPath();
-    ctx.arc(startX, startY, 12, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1.0;
+    function animateStroke() {
+      if (strokeIndex >= strokes.length) return;
+      var stroke = strokes[strokeIndex];
+      var num = strokeIndex + 1;
 
-    // Animate dot moving along path
-    var progress = 0;
-    function animDot() {
-      if (progress > 1) return;
-      progress += 0.03;
-      var x = startX + (endX - startX) * progress;
-      var y = startY + (endY - startY) * progress;
-      ctx.fillStyle = '#f4b870';
-      ctx.globalAlpha = 0.4;
-      ctx.beginPath();
-      ctx.arc(x, y, 8, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1.0;
-      if (progress <= 1) requestAnimationFrame(animDot);
+      if (stroke[0] && stroke[0].circle) {
+        // Circle stroke — draw it gradually
+        var angle = 0;
+        var cx = stroke[0].cx * scale;
+        var cy = stroke[0].cy * scale;
+        var r = stroke[0].r * scale;
+
+        // Show number
+        ctx.fillStyle = '#f4b870';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(num.toString(), cx, cy - r - 8);
+        ctx.textAlign = 'start';
+        ctx.textBaseline = 'alphabetic';
+
+        function drawCircleStep() {
+          if (angle > Math.PI * 2) {
+            strokeIndex++;
+            setTimeout(animateStroke, 300);
+            return;
+          }
+          ctx.strokeStyle = '#f4b870';
+          ctx.lineWidth = 6;
+          ctx.lineCap = 'round';
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, angle, angle + 0.15);
+          ctx.stroke();
+          angle += 0.15;
+          requestAnimationFrame(drawCircleStep);
+        }
+        drawCircleStep();
+      } else if (stroke.length >= 2) {
+        var startX = stroke[0].x * scale;
+        var startY = stroke[0].y * scale;
+        var endX = stroke[stroke.length - 1].x * scale;
+        var endY = stroke[stroke.length - 1].y * scale;
+
+        // Show stroke number at start
+        ctx.fillStyle = '#f4b870';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        var numOffsetX = startX < 150 ? -15 : 15;
+        var numOffsetY = startY < 150 ? -15 : 15;
+        ctx.fillText(num.toString(), startX + numOffsetX, startY + numOffsetY);
+        ctx.textAlign = 'start';
+        ctx.textBaseline = 'alphabetic';
+
+        // Show start dot
+        ctx.fillStyle = '#f4b870';
+        ctx.globalAlpha = 0.8;
+        ctx.beginPath();
+        ctx.arc(startX, startY, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+
+        // Animate line drawing
+        var progress = 0;
+        var prevX = startX;
+        var prevY = startY;
+
+        function drawLineStep() {
+          if (progress > 1) {
+            // Draw end dot
+            ctx.fillStyle = '#f4b870';
+            ctx.globalAlpha = 0.6;
+            ctx.beginPath();
+            ctx.arc(endX, endY, 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+
+            strokeIndex++;
+            setTimeout(animateStroke, 400);
+            return;
+          }
+
+          progress += 0.04;
+          var t = Math.min(progress, 1);
+          var totalLen = stroke.length - 1;
+          var segIdx = Math.min(Math.floor(t * totalLen), totalLen - 1);
+          var localT = (t * totalLen) - segIdx;
+          var x = stroke[segIdx].x * scale + (stroke[segIdx + 1].x * scale - stroke[segIdx].x * scale) * localT;
+          var y = stroke[segIdx].y * scale + (stroke[segIdx + 1].y * scale - stroke[segIdx].y * scale) * localT;
+
+          ctx.strokeStyle = '#f4b870';
+          ctx.lineWidth = 6;
+          ctx.lineCap = 'round';
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.moveTo(prevX, prevY);
+          ctx.lineTo(x, y);
+          ctx.stroke();
+
+          prevX = x;
+          prevY = y;
+          requestAnimationFrame(drawLineStep);
+        }
+        drawLineStep();
+      } else {
+        strokeIndex++;
+        animateStroke();
+      }
     }
-    animDot();
+
+    animateStroke();
   },
 
   _generateCheckpoints: function(stroke, count, scale) {

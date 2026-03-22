@@ -42,6 +42,7 @@ var Learning = {
 
   // Open learning popup overlay (no screen transition)
   openPopup: function(content) {
+    var self = this;
     // Create overlay if not exists
     if (!this.overlayEl) {
       this.overlayEl = document.createElement('div');
@@ -57,11 +58,73 @@ var Learning = {
       this.overlayEl.appendChild(this.popupEl);
     }
     this.popupEl.innerHTML = '';
+
+    // Close button (X, top-right)
+    var closeBtn = document.createElement('button');
+    closeBtn.className = 'popup-close-btn';
+    closeBtn.innerHTML = '&#10005;';
+    closeBtn.setAttribute('aria-label', '닫기');
+    closeBtn.onclick = function() {
+      self.closePopup();
+    };
+    this.popupEl.appendChild(closeBtn);
+
+    // Progress indicator
+    var st = typeof getState === 'function' ? getState() : null;
+    if (st) {
+      var target = this.getCurrentTarget(st);
+      if (target) {
+        var progressEl = document.createElement('div');
+        progressEl.className = 'learning-progress';
+
+        if (target.type === 'consonant') {
+          var total = CURRICULUM.consonants.length;
+          var done = st.learning.consonantIndex;
+          for (var i = 0; i < total; i++) {
+            var dot = document.createElement('span');
+            var cls = 'progress-dot';
+            if (i < done) cls += ' done';
+            else if (i === done) cls += ' current';
+            dot.className = cls;
+            progressEl.appendChild(dot);
+          }
+        } else if (target.type === 'vowel') {
+          var totalV = CURRICULUM.vowels.length;
+          var doneV = st.learning.vowelIndex;
+          for (var v = 0; v < totalV; v++) {
+            var dotV = document.createElement('span');
+            var clsV = 'progress-dot';
+            if (v < doneV) clsV += ' done';
+            else if (v === doneV) clsV += ' current';
+            dotV.className = clsV;
+            progressEl.appendChild(dotV);
+          }
+        } else if (target.type === 'word') {
+          var countEl = document.createElement('span');
+          countEl.className = 'progress-word-count';
+          countEl.textContent = (st.learning.wordIndex + 1) + '/' + CURRICULUM.words.length;
+          progressEl.appendChild(countEl);
+        }
+
+        this.popupEl.appendChild(progressEl);
+      }
+    }
+
+    // Main content
     if (typeof content === 'string') {
-      this.popupEl.innerHTML = content;
+      var wrapper = document.createElement('div');
+      wrapper.innerHTML = content;
+      this.popupEl.appendChild(wrapper);
     } else if (content instanceof HTMLElement) {
       this.popupEl.appendChild(content);
     }
+
+    // Peeking pet at bottom
+    var peek = document.createElement('div');
+    peek.className = 'popup-pet-peek';
+    peek.innerHTML = '<div class="peek-eyes"><span class="peek-eye"></span><span class="peek-eye"></span></div><div class="peek-mouth"></div>';
+    this.popupEl.appendChild(peek);
+
     this.overlayEl.classList.add('active');
   },
 
