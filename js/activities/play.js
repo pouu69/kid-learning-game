@@ -86,10 +86,11 @@ var PlayActivity = {
       piece.dataset.letter = draggablePieces[m].letter;
       piece.dataset.originalIndex = draggablePieces[m].index;
 
-      // Touch drag
+      // Touch drag (with cleanup via AbortController)
       (function(pieceEl) {
         var startX, startY, origLeft, origTop;
         var isDragging = false;
+        var controller = new AbortController();
 
         pieceEl.addEventListener('pointerdown', function(e) {
           e.preventDefault();
@@ -113,7 +114,7 @@ var PlayActivity = {
           var dy = e.clientY - startY;
           pieceEl.style.left = (origLeft + dx) + 'px';
           pieceEl.style.top = (origTop + dy) + 'px';
-        });
+        }, { signal: controller.signal });
 
         document.addEventListener('pointerup', function(e) {
           if (!isDragging) return;
@@ -167,8 +168,11 @@ var PlayActivity = {
             pieceEl.style.left = '';
             pieceEl.style.top = '';
             pieceEl.style.zIndex = '';
+          } else {
+            // Clean up this piece's listeners
+            controller.abort();
           }
-        });
+        }, { signal: controller.signal });
       })(piece);
 
       pieceArea.appendChild(piece);

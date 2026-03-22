@@ -138,17 +138,7 @@
     window.addEventListener('resize', setVH);
     window.addEventListener('orientationchange', function () { setTimeout(setVH, 100); });
 
-    // Screen switcher (used globally)
-    function showScreen(name) {
-        document.querySelectorAll('.screen').forEach(function (s) {
-            s.classList.remove('active');
-        });
-        var target = document.getElementById(name + 'Screen');
-        if (target) {
-            target.classList.remove('hidden');
-            target.classList.add('active');
-        }
-    }
+    // showScreen is defined in game.js (tracks currentScreen state)
 
     // Naming screen submit
     function submitName() {
@@ -183,7 +173,7 @@
         function startPress(e) {
             pressTimer = setTimeout(function () {
                 pressTimer = null;
-                if (typeof renderReport === 'function') renderReport();
+                if (typeof renderReport === 'function' && typeof getState === 'function') renderReport(getState());
                 showScreen('report');
             }, THRESHOLD);
         }
