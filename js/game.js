@@ -37,6 +37,13 @@ function initWorld() {
         PetRenderer.init(World.app, st);
       }
       updateHome(st);
+      // Daily greeting: pet celebrates on new session
+      setTimeout(function() {
+        if (typeof PetRenderer !== 'undefined' && PetRenderer.petted) {
+          PetRenderer.petted();
+        }
+        if (typeof playSound === 'function') playSound('correct');
+      }, 1500);
     });
   }
 }
@@ -214,6 +221,10 @@ function onLearningComplete(result) {
   var allKnown = (st.learning.knownConsonants || []).concat(st.learning.knownVowels || []);
   if (typeof World !== 'undefined') {
     World.syncLetterFlowers(allKnown);
+  }
+  // Feeding animation when hunger was restored
+  if (result.fed && typeof PetRenderer !== 'undefined' && PetRenderer.feedAnim) {
+    PetRenderer.feedAnim();
   }
   updateHome(st);
 }

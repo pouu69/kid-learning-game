@@ -25,11 +25,16 @@ var LetterActivity = {
     bigLetter.textContent = letter;
     container.appendChild(bigLetter);
 
-    // Sound button (speaker icon, no text)
+    // Sound button (speaker icon, no text) — bigger and animated
     var soundBtn = document.createElement('button');
-    soundBtn.className = 'sound-btn';
-    soundBtn.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>';
-    soundBtn.onclick = function() { speakText(target.data.sound, 0.7); };
+    soundBtn.className = 'sound-btn sound-btn-big sound-btn-wave';
+    soundBtn.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>';
+    soundBtn.onclick = function() {
+      soundBtn.classList.remove('sound-btn-press');
+      void soundBtn.offsetWidth; // reflow to restart animation
+      soundBtn.classList.add('sound-btn-press');
+      speakText(target.data.sound, 0.7);
+    };
     container.appendChild(soundBtn);
 
     // "Next" button (arrow icon, no text) — appears after 2 seconds
@@ -176,6 +181,13 @@ var LetterActivity = {
           var dy = y - checkpoints[i].y;
           if (Math.sqrt(dx * dx + dy * dy) < hitRadius) {
             checkpoints[i].hit = true;
+            // Visually mark hit checkpoint with green dot
+            ctx.fillStyle = '#a8d8b0';
+            ctx.globalAlpha = 0.4;
+            ctx.beginPath();
+            ctx.arc(checkpoints[i].x, checkpoints[i].y, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
           }
         }
       }
@@ -247,11 +259,16 @@ var LetterActivity = {
     var container = document.createElement('div');
     container.className = 'letter-activity';
 
-    // Sound button at top — plays the target letter sound
+    // Sound button at top — plays the target letter sound, with ear icon hint
     var soundBtn = document.createElement('button');
-    soundBtn.className = 'sound-btn sound-btn-big';
+    soundBtn.className = 'sound-btn sound-btn-big sound-btn-wave';
     soundBtn.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>';
-    soundBtn.onclick = function() { speakText(target.data.sound, 0.7); };
+    soundBtn.onclick = function() {
+      soundBtn.classList.remove('sound-btn-press');
+      void soundBtn.offsetWidth;
+      soundBtn.classList.add('sound-btn-press');
+      speakText(target.data.sound, 0.7);
+    };
     container.appendChild(soundBtn);
 
     // Choice grid
@@ -276,10 +293,12 @@ var LetterActivity = {
               Learning.onLetterComplete(st, target);
             }, 1000);
           } else {
+            el.classList.remove('choice-wrong');
+            void el.offsetWidth; // reflow to restart animation
             el.classList.add('choice-wrong');
             wrongCount++;
-            if (wrongCount >= 3) {
-              // Highlight correct answer
+            if (wrongCount >= 2) {
+              // Pulse-hint the correct answer after 2 wrong answers
               var allChoices = grid.querySelectorAll('.distinguish-choice');
               for (var c = 0; c < allChoices.length; c++) {
                 if (allChoices[c].dataset.letter === letter) {

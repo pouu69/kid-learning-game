@@ -77,13 +77,29 @@ var PuzzleActivity = {
       var piece = self._createPiece(allPieces[m], allSlots, function() {
         filledSlots++;
         if (filledSlots >= totalSlots) {
-          // All slots filled! Word complete
+          // Flash all slots with pop animation
+          var allSlotEls = container.querySelectorAll('.puzzle-slot');
+          for (var f = 0; f < allSlotEls.length; f++) {
+            allSlotEls[f].style.animation = 'none';
+            void allSlotEls[f].offsetWidth;
+            allSlotEls[f].style.animation = 'popIn 0.3s ease';
+            allSlotEls[f].style.background = '#e8f0e0';
+          }
+          // Show completed word above blocks
+          var wordDisplay = document.createElement('div');
+          wordDisplay.style.cssText = 'font-size:3rem;font-weight:900;color:#3a3028;text-align:center;margin:1rem 0;animation:popIn 0.5s ease;font-family:var(--font-display)';
+          wordDisplay.textContent = wordData.word;
+          container.insertBefore(wordDisplay, container.firstChild);
+          // Celebration
+          if (typeof showCelebration === 'function') {
+            showCelebration(window.innerWidth / 2, window.innerHeight / 2);
+          }
           playSound('correct');
           speakText(wordData.word, 0.7);
           setTimeout(function() {
             if (self._controller) self._controller.abort();
             Learning.onWordComplete(st, wordData);
-          }, 1200);
+          }, 1800);
         }
       });
       piecesArea.appendChild(piece);

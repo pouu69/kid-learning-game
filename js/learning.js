@@ -176,6 +176,17 @@ var Learning = {
 
     saveState(st);
 
+    // Check if entire consonant stage is now complete → show recap
+    if (target.type === 'consonant' && st.learning.consonantIndex >= CURRICULUM.consonants.length) {
+      self._showStageRecap(st, 'consonant');
+      return;
+    }
+    // Check if entire vowel stage is now complete → show recap
+    if (target.type === 'vowel' && st.learning.vowelIndex >= CURRICULUM.vowels.length) {
+      self._showStageRecap(st, 'vowel');
+      return;
+    }
+
     // Show reward in popup before closing
     if (self.popupEl) {
       var rewardEl = document.createElement('div');
@@ -211,6 +222,75 @@ var Learning = {
       saveState(st);
       updateHome(st);
     }, 1500);
+  },
+
+  // Show recap grid of all learned letters before advancing stage
+  _showStageRecap: function(st, type) {
+    var self = this;
+    var letters = type === 'consonant' ? st.learning.knownConsonants : st.learning.knownVowels;
+
+    var container = document.createElement('div');
+    container.className = 'letter-activity';
+
+    // Checkmark celebration icon
+    var check = document.createElement('div');
+    check.style.cssText = 'width:60px;height:60px;border-radius:50%;background:#a8d8b0;display:flex;align-items:center;justify-content:center;font-size:2rem;color:white;animation:popIn 0.5s ease;margin-bottom:0.5rem';
+    check.textContent = '\u2713';
+    container.appendChild(check);
+
+    // Letter grid — tappable to hear sounds
+    var grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:1rem 0;width:100%;max-width:300px';
+    for (var i = 0; i < letters.length; i++) {
+      var cell = document.createElement('div');
+      cell.className = 'distinguish-choice choice-correct';
+      cell.textContent = letters[i];
+      cell.style.animation = 'popIn ' + (0.3 + i * 0.1) + 's ease';
+      (function(ltr) {
+        cell.onclick = function() {
+          var data = null;
+          for (var ci = 0; ci < CURRICULUM.consonants.length; ci++) {
+            if (CURRICULUM.consonants[ci].letter === ltr) { data = CURRICULUM.consonants[ci]; break; }
+          }
+          if (!data) {
+            for (var vi = 0; vi < CURRICULUM.vowels.length; vi++) {
+              if (CURRICULUM.vowels[vi].letter === ltr) { data = CURRICULUM.vowels[vi]; break; }
+            }
+          }
+          if (data) speakText(data.sound, 0.7);
+        };
+      })(letters[i]);
+      grid.appendChild(cell);
+    }
+    container.appendChild(grid);
+
+    self.popupEl.innerHTML = '';
+    self.popupEl.appendChild(container);
+
+    // Celebration
+    if (typeof showCelebration === 'function') {
+      showCelebration(window.innerWidth / 2, window.innerHeight / 2);
+    }
+    playSound('evolve');
+
+    // Auto-advance to next stage after 3.5 seconds
+    setTimeout(function() {
+      self.closePopup();
+      if (type === 'consonant') {
+        st.learning.stage = 2;
+        st.learning.vowelIndex = 0;
+      } else {
+        st.learning.stage = 3;
+        st.learning.wordIndex = 0;
+      }
+      if (typeof PetRenderer !== 'undefined' && PetRenderer.celebrate) {
+        PetRenderer.celebrate();
+      }
+      st.hunger = Math.min(100, st.hunger + 15);
+      st.mood = Math.min(100, st.mood + 10);
+      saveState(st);
+      updateHome(st);
+    }, 3500);
   },
 
   // Called when a word is completed
@@ -282,6 +362,48 @@ var Learning = {
     if (newStage > st.stage) {
       st.stage = newStage;
       playSound('evolve');
+
+      // Evolution celebration
+      if (typeof flashScreen === 'function') flashScreen();
+
+      if (typeof PetRenderer !== 'undefined') {
+        PetRenderer.buildPet(newStage);
+        PetRenderer._jumpTimer = 30;
+        PetRenderer.setExpression('happy');
+
+        // Show new stage name as floating text above pet
+        if (PetRenderer._app && PetRenderer.container && typeof PET_STAGES !== 'undefined') {
+          var stageData = PET_STAGES[Math.min(newStage, PET_STAGES.length - 1)];
+          var stageName = stageData ? stageData.name : '';
+          var nameStyle = new PIXI.TextStyle({
+            fontFamily: '"Noto Sans KR", sans-serif',
+            fontSize: 20,
+            fontWeight: 'bold',
+            fill: '#f0c030',
+            stroke: { color: '#8a6010', width: 3 },
+          });
+          var nameText = new PIXI.Text({ text: stageName + '!', style: nameStyle });
+          nameText.anchor.set(0.5, 1);
+          nameText.x = PetRenderer.container.x;
+          nameText.y = PetRenderer.container.y - 80;
+          nameText.alpha = 1;
+          nameText._life = 90;
+          PetRenderer._app.stage.addChild(nameText);
+          var nameTicker = function() {
+            nameText.y -= 0.5;
+            nameText._life--;
+            if (nameText._life < 30) {
+              nameText.alpha -= 0.033;
+            }
+            if (nameText._life <= 0) {
+              PetRenderer._app.stage.removeChild(nameText);
+              PetRenderer._app.ticker.remove(nameTicker);
+              nameText.destroy();
+            }
+          };
+          PetRenderer._app.ticker.add(nameTicker);
+        }
+      }
     }
   }
 };

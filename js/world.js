@@ -12,6 +12,8 @@ var World = {
   clouds: [],
   letterFlowers: [],
   _frame: 0,
+  _weather: 'clear',
+  _rainDrops: [],
 
   init: function(container) {
     var self = this;
@@ -51,7 +53,43 @@ var World = {
       app.ticker.add(function() { self.animate(); });
 
       window.addEventListener('resize', function() { self.resize(); });
+
+      // Day/night update every 60 seconds
+      setInterval(function() { self.updateTimeOfDay(); }, 60000);
+
+      // Weather change every 5 minutes
+      setInterval(function() {
+        var rand = Math.random();
+        if (rand < 0.7) {
+          if (self._weather !== 'clear') { self._stopRain(); self._weather = 'clear'; }
+        } else {
+          if (self._weather === 'clear') { self._startRain(); self._weather = 'rain'; }
+        }
+      }, 300000);
     });
+  },
+
+  _startRain: function() {
+    var self = this;
+    var W = self.app.screen.width;
+    var H = self.app.screen.height;
+    for (var i = 0; i < 20; i++) {
+      var drop = new PIXI.Graphics();
+      drop.rect(0, 0, 1.5, 8).fill({ color: 0x88aacc, alpha: 0.4 });
+      drop.x = Math.random() * W;
+      drop.y = Math.random() * H * 0.5;
+      drop._speed = 3 + Math.random() * 2;
+      self._rainDrops.push(drop);
+      self.app.stage.addChild(drop);
+    }
+  },
+
+  _stopRain: function() {
+    for (var i = 0; i < this._rainDrops.length; i++) {
+      this.app.stage.removeChild(this._rainDrops[i]);
+      this._rainDrops[i].destroy();
+    }
+    this._rainDrops = [];
   },
 
   _addDecorations: function() {
@@ -383,6 +421,17 @@ var World = {
     var self = this;
     self._frame++;
     var W = self.app.screen.width;
+
+    // Move rain drops
+    for (var r = 0; r < self._rainDrops.length; r++) {
+      var d = self._rainDrops[r];
+      d.y += d._speed;
+      d.x -= 0.5;
+      if (d.y > self.app.screen.height) {
+        d.y = -10;
+        d.x = Math.random() * self.app.screen.width;
+      }
+    }
 
     // Drift clouds right, wrap around
     for (var i = 0; i < self.clouds.length; i++) {

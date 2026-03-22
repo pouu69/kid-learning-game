@@ -29,6 +29,8 @@ var PetRenderer = {
   _needBubble: null,   // PixiJS container for need thought bubble
   _needType: null,     // current need: 'hungry'|'bored'|'sleepy'|null
   _needFrame: 0,
+  _feedAnimTimer: 0,   // feeding animation countdown
+  _chewCount: 0,       // chew cycles remaining
 
   init: function(app, st) {
     var self = this;
@@ -44,6 +46,13 @@ var PetRenderer = {
     container.y = H * 0.52;
 
     app.stage.addChild(container);
+
+    // Shadow under pet
+    var shadow = new PIXI.Graphics();
+    shadow.ellipse(0, 0, 30, 8).fill({ color: 0x000000, alpha: 0.12 });
+    shadow.y = 45;
+    container.addChildAt(shadow, 0);
+    self._shadow = shadow;
 
     self.buildPet(st ? st.stage : 0);
 
@@ -333,19 +342,34 @@ var PetRenderer = {
     var self = this;
     if (!self.container || !self._app) return;
 
+    // Track sleeping transitions
+    var wasSleeping = self._mood === 'sleeping';
+    var isSleeping = (st && st.sleeping);
+
     // Update expression based on mood
     var mood = typeof Pet !== 'undefined' ? Pet.getMood(st) : 'neutral';
     if (self._pettedTimer > 0) {
       self._pettedTimer--;
       mood = 'happy';
     }
+
+    // Handle sleep/wake transitions
+    if (isSleeping && !wasSleeping) {
+      // Pet just fell asleep — run sleep animation
+      self.sleepAnim();
+    } else if (!isSleeping && wasSleeping) {
+      // Pet just woke up — restore visuals
+      self.wakeAnim();
+      mood = 'happy';
+    }
+
     if (mood !== self._mood) {
       self.setExpression(mood);
     }
 
     // Update zzz visibility
     if (self._zzz) {
-      self._zzz.visible = (st && st.sleeping);
+      self._zzz.visible = isSleeping;
     }
 
     // Wander: determine energy from stats
@@ -382,6 +406,12 @@ var PetRenderer = {
     // Idle bob
     var bob = Math.sin(self._frame * 0.055) * 3;
     self.container.y = (self._app ? self._app.screen.height * 0.52 : 300) + self._jumpY + bob;
+
+    // Shadow follows pet but stays grounded
+    if (self._shadow) {
+      self._shadow.y = 45 - self._jumpY * 0.3;
+      self._shadow.scale.x = 1 - Math.abs(self._jumpY) * 0.005;
+    }
 
     // Blink logic
     self._blinkTimer++;
@@ -423,6 +453,59 @@ var PetRenderer = {
     if (self._zzz && self._zzz.visible) {
       self._zzz.y = -60 + Math.sin(self._frame * 0.04) * 6;
       self._zzz.alpha = 0.5 + 0.5 * Math.abs(Math.sin(self._frame * 0.04));
+    }
+
+    // Idle behaviors (only when not doing something else)
+    if (!self._needType && self._pettedTimer <= 0 && self._mood !== 'sleeping') {
+      // Look around every ~300 frames (5 sec)
+      if (self._frame % 300 === 0) {
+        self._wanderTargetX = (Math.random() - 0.5) * 60;
+      }
+      // Small hop every ~900 frames (15 sec)
+      if (self._frame % 900 === 0) {
+        self._jumpTimer = 8;
+      }
+      // Head tilt every ~1800 frames (30 sec)
+      if (self._frame % 1800 === 0) {
+        self._wiggleTimer = 5;
+      }
+    }
+
+    // Chew animation (from feedAnim)
+    if (self._feedAnimTimer > 0) {
+      self._feedAnimTimer--;
+      if (self._feedAnimTimer === 0 && self._chewCount > 0) {
+        self._chewCount--;
+        // Toggle mouth open/close
+        if (self.mouth) {
+          var stageIdx = Math.min(self._stage || 0, PET_STAGES.length - 1);
+          var data = PET_STAGES[stageIdx];
+          var bW = data.bodyW;
+          var bH = data.bodyH;
+          var hx = bW / 2;
+          var hy = bH / 2;
+          var eyeR = data.eyeSize || 11;
+          var eyeY = -hy * 0.30;
+          self.mouth.clear();
+          if (self._chewCount % 2 === 0) {
+            // Open
+            self.mouth.ellipse(0, eyeY + eyeR * 3.2, eyeR * 1.4, eyeR * 0.8);
+            self.mouth.fill({ color: 0x3a3028 });
+          } else {
+            // Closed smile
+            self.mouth.arc(0, eyeY + eyeR * 2.8, eyeR * 1.4, 0.15, Math.PI - 0.15);
+            self.mouth.stroke({ color: 0x3a3028, width: 2.5 });
+          }
+        }
+        if (self._chewCount > 0) {
+          self._feedAnimTimer = 12; // ~200ms per chew
+        } else {
+          // Done chewing: restore happy expression
+          setTimeout(function() {
+            self.setExpression('happy');
+          }, 300);
+        }
+      }
     }
 
     // Need bubble — strong pulse + sparkle to attract attention
@@ -611,5 +694,159 @@ var PetRenderer = {
 
   hideNeed: function() {
     this.showNeed(null);
+  },
+
+  // Feeding animation: food icon falls into open mouth, then pet chews, hearts float up
+  feedAnim: function() {
+    var self = this;
+    if (!self._app || !self.container) return;
+
+    // Open mouth wide
+    if (self.mouth) {
+      self.mouth.clear();
+      var stageIdx = Math.min(self._stage || 0, PET_STAGES.length - 1);
+      var data = PET_STAGES[stageIdx];
+      var bW = data.bodyW;
+      var bH = data.bodyH;
+      var hx = bW / 2;
+      var hy = bH / 2;
+      var eyeR = data.eyeSize || 11;
+      var eyeY = -hy * 0.30;
+      // Wide open mouth (ellipse)
+      self.mouth.ellipse(0, eyeY + eyeR * 3.2, eyeR * 1.6, eyeR * 1.0);
+      self.mouth.fill({ color: 0x3a3028 });
+    }
+
+    // Food icon (rice bowl emoji representation: orange circle with white dot)
+    var food = new PIXI.Graphics();
+    food.circle(0, 0, 10).fill({ color: 0xf4b870 });
+    food.circle(0, 0, 6).fill({ color: 0xffffff });
+    food.x = self.container.x;
+    food.y = self.container.y - 100;
+    food.alpha = 1;
+    self._app.stage.addChild(food);
+
+    var stageIdx2 = Math.min(self._stage || 0, PET_STAGES.length - 1);
+    var data2 = PET_STAGES[stageIdx2];
+    var mouthY = self.container.y - data2.bodyH * 0.10;
+
+    // Animate food falling into mouth
+    var fallTicker = function() {
+      food.y += 6;
+      if (food.y >= mouthY) {
+        self._app.stage.removeChild(food);
+        self._app.ticker.remove(fallTicker);
+        food.destroy();
+        // Start chewing
+        self._chewCount = 3;
+        self._feedAnimTimer = 1;
+        // Float hearts up
+        self._floatHearts();
+      }
+    };
+    self._app.ticker.add(fallTicker);
+  },
+
+  // Float hearts up from pet (used by feeding and petted)
+  _floatHearts: function() {
+    var self = this;
+    if (!self._app || !self.container) return;
+    var heartTexts = ['\u2665', '\u2665', '\u2665'];
+    for (var i = 0; i < heartTexts.length; i++) {
+      (function(idx) {
+        setTimeout(function() {
+          var heart = new PIXI.Text({
+            text: heartTexts[idx],
+            style: { fontSize: 14 + Math.random() * 8, fill: 0xf08080, fontWeight: 'bold' }
+          });
+          heart.x = self.container.x + (Math.random() - 0.5) * 40;
+          heart.y = self.container.y - 30;
+          heart.alpha = 1;
+          heart._vy = -1.2 - Math.random() * 0.8;
+          heart._vx = (Math.random() - 0.5) * 0.8;
+          heart._life = 55;
+          self._app.stage.addChild(heart);
+          var ticker = function() {
+            heart.x += heart._vx;
+            heart.y += heart._vy;
+            heart.alpha -= 0.018;
+            heart._life--;
+            if (heart._life <= 0) {
+              self._app.stage.removeChild(heart);
+              self._app.ticker.remove(ticker);
+              heart.destroy();
+            }
+          };
+          self._app.ticker.add(ticker);
+        }, idx * 200);
+      })(i);
+    }
+  },
+
+  // Sleep animation: pet closes eyes slowly, Zzz floats, background dims
+  sleepAnim: function() {
+    var self = this;
+    if (!self.container) return;
+
+    // Gradually close eyes by scaling down over 500ms
+    var steps = 30; // ~500ms at 60fps
+    var step = 0;
+    var closeTicker = function() {
+      step++;
+      var t = step / steps;
+      if (self.leftEye)  self.leftEye.scale.y  = Math.max(0.05, 1 - t);
+      if (self.rightEye) self.rightEye.scale.y = Math.max(0.05, 1 - t);
+      if (self.leftHighlight)  self.leftHighlight.alpha  = Math.max(0, 1 - t);
+      if (self.rightHighlight) self.rightHighlight.alpha = Math.max(0, 1 - t);
+      if (step >= steps) {
+        if (self._app) self._app.ticker.remove(closeTicker);
+        // Switch to sleeping expression which draws flat lines
+        self.setExpression('sleeping');
+        if (self.leftHighlight)  self.leftHighlight.alpha  = 0;
+        if (self.rightHighlight) self.rightHighlight.alpha = 0;
+      }
+    };
+    if (self._app) self._app.ticker.add(closeTicker);
+
+    // Dim overlay on world canvas
+    if (typeof World !== 'undefined' && World.app) {
+      var overlay = new PIXI.Graphics();
+      var W = World.app.screen.width;
+      var H = World.app.screen.height;
+      overlay.rect(0, 0, W, H).fill({ color: 0x000000, alpha: 0.0 });
+      World.app.stage.addChildAt(overlay, 1);
+      var dimStep = 0;
+      var dimTicker = function() {
+        dimStep++;
+        overlay.alpha = Math.min(0.25, dimStep * 0.008);
+        if (dimStep >= 32) {
+          World.app.ticker.remove(dimTicker);
+        }
+      };
+      World.app.ticker.add(dimTicker);
+      // Store reference to remove on wake
+      self._sleepOverlay = overlay;
+    }
+  },
+
+  // Remove sleep overlay when pet wakes
+  wakeAnim: function() {
+    var self = this;
+    if (self._sleepOverlay && typeof World !== 'undefined' && World.app) {
+      var ov = self._sleepOverlay;
+      var undimTicker = function() {
+        ov.alpha -= 0.015;
+        if (ov.alpha <= 0) {
+          World.app.stage.removeChild(ov);
+          World.app.ticker.remove(undimTicker);
+          ov.destroy();
+        }
+      };
+      World.app.ticker.add(undimTicker);
+      self._sleepOverlay = null;
+    }
+    // Restore eye highlights
+    if (self.leftHighlight)  self.leftHighlight.alpha  = 1;
+    if (self.rightHighlight) self.rightHighlight.alpha = 1;
   },
 };
