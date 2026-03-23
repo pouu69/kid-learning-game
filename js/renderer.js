@@ -47,10 +47,10 @@ var PetRenderer = {
 
     app.stage.addChild(container);
 
-    // Shadow under pet
+    // Shadow under pet (scaled for larger body)
     var shadow = new PIXI.Graphics();
-    shadow.ellipse(0, 0, 30, 8).fill({ color: 0x000000, alpha: 0.12 });
-    shadow.y = 45;
+    shadow.ellipse(0, 0, 50, 14).fill({ color: 0x000000, alpha: 0.12 });
+    shadow.y = 80;
     container.addChildAt(shadow, 0);
     self._shadow = shadow;
 
@@ -356,14 +356,18 @@ var PetRenderer = {
     // Handle sleep/wake transitions
     if (isSleeping && !wasSleeping) {
       // Pet just fell asleep — run sleep animation
+      self._sleepAnimating = true;
       self.sleepAnim();
+      self._mood = 'sleeping'; // track state without calling setExpression
     } else if (!isSleeping && wasSleeping) {
       // Pet just woke up — restore visuals
+      self._sleepAnimating = false;
       self.wakeAnim();
       mood = 'happy';
     }
 
-    if (mood !== self._mood) {
+    // Don't override expression during sleep transition animation
+    if (!self._sleepAnimating && mood !== self._mood) {
       self.setExpression(mood);
     }
 
@@ -372,30 +376,14 @@ var PetRenderer = {
       self._zzz.visible = isSleeping;
     }
 
-    // Wander: determine energy from stats
+    // Wander speed based on energy
     var avg = 50;
     if (st) {
       avg = (st.hunger + st.mood + (100 - st.sleepy)) / 3;
     }
-    var speed = avg >= 60 ? 0.05 : avg >= 30 ? 0.025 : 0.012;
+    self._wanderSpeed = avg >= 60 ? 0.04 : avg >= 30 ? 0.02 : 0.01;
 
-    self._wanderTimer++;
-    var interval = avg >= 60 ? 80 : 180;
-    if (self._wanderTimer >= interval) {
-      self._wanderTimer = 0;
-      var range = avg >= 60 ? 60 : 25;
-      self._wanderTargetX = (Math.random() - 0.5) * range;
-    }
-
-    if (st && st.sleeping) {
-      self._wanderX *= 0.96;
-    } else {
-      self._wanderX += (self._wanderTargetX - self._wanderX) * speed;
-    }
-
-    var W = self._app.screen.width;
-    self.container.x = W / 2 + self._wanderX;
-    // container.y is managed by animate() which also applies bob + _jumpY
+    // Movement is handled in animate() at 60fps for smoothness
   },
 
   animate: function() {
@@ -404,18 +392,28 @@ var PetRenderer = {
     self._frame++;
 
     // Idle bob
-    var bob = Math.sin(self._frame * 0.055) * 3;
+    var bob = Math.sin(self._frame * 0.055) * 5;
     self.container.y = (self._app ? self._app.screen.height * 0.52 : 300) + self._jumpY + bob;
+
+    // Smooth wander left/right
+    var spd = self._wanderSpeed || 0.03;
+    if (self._mood === 'sleeping') {
+      self._wanderX *= 0.97;
+    } else {
+      self._wanderX += (self._wanderTargetX - self._wanderX) * spd;
+    }
+    var W = self._app ? self._app.screen.width : 600;
+    self.container.x = W / 2 + self._wanderX;
 
     // Shadow follows pet but stays grounded
     if (self._shadow) {
-      self._shadow.y = 45 - self._jumpY * 0.3;
+      self._shadow.y = 80 - self._jumpY * 0.3;
       self._shadow.scale.x = 1 - Math.abs(self._jumpY) * 0.005;
     }
 
-    // Blink logic
+    // Blink logic (skip when sleeping — eyes are already closed)
     self._blinkTimer++;
-    if (!self._isBlinking && self._blinkTimer >= self._blinkInterval) {
+    if (self._mood !== 'sleeping' && !self._isBlinking && self._blinkTimer >= self._blinkInterval) {
       self._isBlinking = true;
       self._blinkTimer = 0;
       self._blinkInterval = 180 + Math.floor(Math.random() * 120);
@@ -426,6 +424,8 @@ var PetRenderer = {
       if (self.rightHighlight) self.rightHighlight.visible = false;
       setTimeout(function() {
         self._isBlinking = false;
+        // Don't reopen eyes if pet fell asleep during the blink
+        if (self._mood === 'sleeping') return;
         if (self.leftEye)  self.leftEye.scale.y  = 1;
         if (self.rightEye) self.rightEye.scale.y  = 1;
         if (self.leftHighlight)  self.leftHighlight.visible  = true;
@@ -455,19 +455,98 @@ var PetRenderer = {
       self._zzz.alpha = 0.5 + 0.5 * Math.abs(Math.sin(self._frame * 0.04));
     }
 
-    // Idle behaviors (only when not doing something else)
-    if (!self._needType && self._pettedTimer <= 0 && self._mood !== 'sleeping') {
-      // Look around every ~300 frames (5 sec)
-      if (self._frame % 300 === 0) {
-        self._wanderTargetX = (Math.random() - 0.5) * 60;
+    // === Dynamic idle behaviors — pet should feel alive! ===
+    if (self._mood !== 'sleeping' && self._stage > 0) {
+      // Wander more frequently (every ~120 frames = 2 sec)
+      if (self._frame % 120 === 0) {
+        self._wanderTargetX = (Math.random() - 0.5) * 100;
       }
-      // Small hop every ~900 frames (15 sec)
-      if (self._frame % 900 === 0) {
-        self._jumpTimer = 8;
+
+      // Random actions cycle — pick one every ~180 frames (3 sec)
+      if (self._frame % 180 === 0 && self._pettedTimer <= 0) {
+        var roll = Math.random();
+        if (roll < 0.25) {
+          // Small hop
+          self._jumpTimer = 10;
+        } else if (roll < 0.4) {
+          // Head tilt / wiggle
+          self._wiggleTimer = 8;
+        } else if (roll < 0.5 && self._mood === 'happy') {
+          // Happy: double hop
+          self._jumpTimer = 14;
+          setTimeout(function() { self._jumpTimer = 10; }, 400);
+        } else if (roll < 0.55 && self._mood === 'happy') {
+          // Emit a music note
+          self.emitParticles('note', 1);
+        }
       }
-      // Head tilt every ~1800 frames (30 sec)
-      if (self._frame % 1800 === 0) {
-        self._wiggleTimer = 5;
+
+      // Breathing scale animation — gentle pulse on body
+      if (self.body) {
+        var breathe = 1 + Math.sin(self._frame * 0.03) * 0.015;
+        self.body.scale.set(breathe, 1 + Math.sin(self._frame * 0.03 + 0.5) * 0.02);
+      }
+
+      // Ear wiggle for stages with ears (every ~240 frames)
+      // Use guard flag to prevent ticker accumulation
+      if (self.ears && self._frame % 240 === 0 && !self._earAnimating) {
+        self._earAnimating = true;
+        var earWiggle = 8;
+        var earTick = function() {
+          earWiggle--;
+          self.ears.rotation = Math.sin(earWiggle * 0.8) * 0.12 * (earWiggle / 8);
+          if (earWiggle <= 0) {
+            self.ears.rotation = 0;
+            self._earAnimating = false;
+            if (self._app) self._app.ticker.remove(earTick);
+          }
+        };
+        if (self._app) self._app.ticker.add(earTick);
+      }
+
+      // Arm wave for stages with arms (every ~360 frames)
+      if (self.arms && self._frame % 360 === 0 && !self._armAnimating) {
+        self._armAnimating = true;
+        var armWave = 12;
+        var armTick = function() {
+          armWave--;
+          self.arms.rotation = Math.sin(armWave * 0.5) * 0.15 * (armWave / 12);
+          if (armWave <= 0) {
+            self.arms.rotation = 0;
+            self._armAnimating = false;
+            if (self._app) self._app.ticker.remove(armTick);
+          }
+        };
+        if (self._app) self._app.ticker.add(armTick);
+      }
+
+      // Need-based behaviors (every ~150 frames = 2.5 sec)
+      if (self._frame % 150 === 0 && self._needType) {
+        if (self._needType === 'hungry') {
+          self.emitParticles('sweat', 1);
+          self._wiggleTimer = 3; // small shiver
+        } else if (self._needType === 'sleepy') {
+          self._wiggleTimer = 4;
+          // Head droops slightly (guarded)
+          if (self.container && !self._droopAnimating) {
+            self._droopAnimating = true;
+            var droopTimer = 15;
+            var droopTick = function() {
+              droopTimer--;
+              self.container.rotation = Math.sin(droopTimer * 0.2) * 0.06;
+              if (droopTimer <= 0) {
+                self.container.rotation = 0;
+                self._droopAnimating = false;
+                if (self._app) self._app.ticker.remove(droopTick);
+              }
+            };
+            if (self._app) self._app.ticker.add(droopTick);
+          }
+        } else if (self._needType === 'bored') {
+          // Restless hop
+          self._jumpTimer = 6;
+          self._wanderTargetX = (Math.random() - 0.5) * 120;
+        }
       }
     }
 
@@ -505,6 +584,22 @@ var PetRenderer = {
             self.setExpression('happy');
           }, 300);
         }
+      }
+    }
+
+    // PixiJS speech bubble animation
+    if (self._pixiBubble) {
+      if (self._pixiBubble._fadeIn) {
+        self._pixiBubble.alpha = Math.min(1, self._pixiBubble.alpha + 0.08);
+        if (self._pixiBubble.alpha >= 1) self._pixiBubble._fadeIn = false;
+      }
+      self._pixiBubble.y = -110 + Math.sin(self._frame * 0.04) * 3;
+      self._pixiBubbleTimer--;
+      if (self._pixiBubbleTimer <= 20) {
+        self._pixiBubble.alpha = Math.max(0, self._pixiBubbleTimer / 20);
+      }
+      if (self._pixiBubbleTimer <= 0) {
+        self.hidePixiBubble();
       }
     }
 
@@ -547,6 +642,139 @@ var PetRenderer = {
 
   wiggle: function() {
     this._wiggleTimer = 15;
+  },
+
+  // Progressive crack lines on egg (called each tap during hatch)
+  addCrack: function(tapCount) {
+    var self = this;
+    if (!self.body || self._stage !== 0) return;
+
+    var data = PET_STAGES[0];
+    var bW = data.bodyW;
+    var bH = data.bodyH;
+
+    // Draw crack lines that increase with each tap
+    var crack = new PIXI.Graphics();
+    var cx = (Math.random() - 0.5) * bW * 0.4;
+    var cy = (Math.random() - 0.5) * bH * 0.3;
+    var segments = 2 + tapCount;
+
+    crack.moveTo(cx, cy);
+    for (var i = 0; i < segments; i++) {
+      cx += (Math.random() - 0.5) * 16;
+      cy += 6 + Math.random() * 8;
+      crack.lineTo(cx, cy);
+    }
+    crack.stroke({ color: 0x8a6040, width: 2 });
+
+    self.container.addChild(crack);
+
+    // Small chip particles fly off
+    if (self._app) {
+      for (var p = 0; p < tapCount; p++) {
+        var chip = new PIXI.Graphics();
+        var chipSize = 3 + Math.random() * 4;
+        chip.poly([0, 0, chipSize, -chipSize * 0.5, chipSize * 0.7, chipSize]);
+        chip.fill({ color: 0xf0e0c0 });
+        chip.x = self.container.x + cx;
+        chip.y = self.container.y + cy;
+        chip._vx = (Math.random() - 0.5) * 4;
+        chip._vy = -2 - Math.random() * 3;
+        chip._life = 30;
+        self._app.stage.addChild(chip);
+        (function(c) {
+          var t = function() {
+            c.x += c._vx;
+            c.y += c._vy;
+            c._vy += 0.15;
+            c.rotation += 0.1;
+            c._life--;
+            c.alpha = c._life / 30;
+            if (c._life <= 0) {
+              self._app.stage.removeChild(c);
+              self._app.ticker.remove(t);
+              c.destroy();
+            }
+          };
+          self._app.ticker.add(t);
+        })(chip);
+      }
+    }
+
+    // Screen shake effect
+    self._wiggleTimer = 8 + tapCount * 2;
+  },
+
+  // Egg shell burst effect on hatch completion
+  eggBurst: function() {
+    var self = this;
+    if (!self._app || !self.container) return;
+
+    var data = PET_STAGES[0];
+    var bW = data.bodyW;
+    var bH = data.bodyH;
+    var cx = self.container.x;
+    var cy = self.container.y;
+
+    // Create many shell fragments flying outward
+    var shellColor = data.color;
+    var strokeColor = data.strokeColor || 0xd8b898;
+    for (var i = 0; i < 12; i++) {
+      var frag = new PIXI.Graphics();
+      var fw = 8 + Math.random() * 12;
+      var fh = 6 + Math.random() * 10;
+      frag.roundRect(-fw / 2, -fh / 2, fw, fh, 3);
+      frag.fill({ color: shellColor });
+      frag.stroke({ color: strokeColor, width: 1 });
+
+      frag.x = cx + (Math.random() - 0.5) * bW * 0.6;
+      frag.y = cy + (Math.random() - 0.5) * bH * 0.4;
+      var angle = Math.atan2(frag.y - cy, frag.x - cx);
+      frag._vx = Math.cos(angle) * (3 + Math.random() * 4);
+      frag._vy = Math.sin(angle) * (3 + Math.random() * 4) - 2;
+      frag._life = 40 + Math.random() * 20;
+      frag._rotSpeed = (Math.random() - 0.5) * 0.3;
+
+      self._app.stage.addChild(frag);
+      (function(f) {
+        var t = function() {
+          f.x += f._vx;
+          f.y += f._vy;
+          f._vy += 0.12;
+          f.rotation += f._rotSpeed;
+          f._life--;
+          if (f._life < 15) f.alpha = f._life / 15;
+          if (f._life <= 0) {
+            self._app.stage.removeChild(f);
+            self._app.ticker.remove(t);
+            f.destroy();
+          }
+        };
+        self._app.ticker.add(t);
+      })(frag);
+    }
+
+    // Flash white circle expanding from center
+    var flash = new PIXI.Graphics();
+    flash.circle(0, 0, 10);
+    flash.fill({ color: 0xffffff, alpha: 0.9 });
+    flash.x = cx;
+    flash.y = cy;
+    flash._life = 20;
+    self._app.stage.addChild(flash);
+    var flashTicker = function() {
+      flash._life--;
+      flash.scale.set(1 + (20 - flash._life) * 0.4);
+      flash.alpha = flash._life / 20 * 0.8;
+      if (flash._life <= 0) {
+        self._app.stage.removeChild(flash);
+        self._app.ticker.remove(flashTicker);
+        flash.destroy();
+      }
+    };
+    self._app.ticker.add(flashTicker);
+
+    if (typeof playSound === 'function') playSound('evolve');
   },
 
   celebrate: function() {
@@ -600,7 +828,7 @@ var PetRenderer = {
         })(i);
       }
     }
-    if (typeof playSound === 'function') playSound('click');
+    // No click sound here — petted fires on every canvas tap, too noisy
   },
 
   // Show/hide need thought bubble above pet (PixiJS drawn)
@@ -801,6 +1029,7 @@ var PetRenderer = {
       if (step >= steps) {
         if (self._app) self._app.ticker.remove(closeTicker);
         // Switch to sleeping expression which draws flat lines
+        self._sleepAnimating = false;
         self.setExpression('sleeping');
         if (self.leftHighlight)  self.leftHighlight.alpha  = 0;
         if (self.rightHighlight) self.rightHighlight.alpha = 0;
@@ -848,5 +1077,114 @@ var PetRenderer = {
     // Restore eye highlights
     if (self.leftHighlight)  self.leftHighlight.alpha  = 1;
     if (self.rightHighlight) self.rightHighlight.alpha = 1;
+  },
+
+  // === PixiJS Speech Bubble ===
+  _pixiBubble: null,
+  _pixiBubbleText: null,
+  _pixiBubbleTimer: 0,
+
+  showPixiBubble: function(text, duration) {
+    var self = this;
+    if (!self._app || !self.container) return;
+
+    // Remove existing
+    self.hidePixiBubble();
+
+    var bubble = new PIXI.Container();
+
+    // Measure text first
+    var style = new PIXI.TextStyle({
+      fontFamily: '"Gaegu", cursive',
+      fontSize: 18,
+      fontWeight: '700',
+      fill: '#3a3028',
+    });
+    var txt = new PIXI.Text({ text: text, style: style });
+    txt.anchor.set(0.5, 0.5);
+
+    var padX = 16;
+    var padY = 10;
+    var bw = txt.width + padX * 2;
+    var bh = txt.height + padY * 2;
+
+    // Bubble background
+    var bg = new PIXI.Graphics();
+    bg.roundRect(-bw / 2, -bh / 2, bw, bh, 14);
+    bg.fill({ color: 0xffffff, alpha: 0.95 });
+    bg.stroke({ color: 0xe8d8c8, width: 2 });
+    // Tail triangle
+    bg.moveTo(-6, bh / 2);
+    bg.lineTo(0, bh / 2 + 8);
+    bg.lineTo(6, bh / 2);
+    bg.closePath();
+    bg.fill({ color: 0xffffff, alpha: 0.95 });
+
+    bubble.addChild(bg);
+    bubble.addChild(txt);
+
+    bubble.x = 0;
+    bubble.y = -110;
+    bubble.alpha = 0;
+    bubble._fadeIn = true;
+
+    self.container.addChild(bubble);
+    self._pixiBubble = bubble;
+    self._pixiBubbleTimer = duration || 180; // ~3 seconds at 60fps
+  },
+
+  hidePixiBubble: function() {
+    if (this._pixiBubble && this.container) {
+      this.container.removeChild(this._pixiBubble);
+      this._pixiBubble.destroy({ children: true });
+      this._pixiBubble = null;
+    }
+    this._pixiBubbleTimer = 0;
+  },
+
+  // === Emotion particles (hearts, stars, sweat drops) ===
+  emitParticles: function(type, count) {
+    var self = this;
+    if (!self._app || !self.container) return;
+    var n = count || 5;
+    var configs = {
+      heart:  { text: '\u2665', color: 0xf08080, size: 14 },
+      star:   { text: '\u2605', color: 0xf0d060, size: 14 },
+      sweat:  { text: '\u2022', color: 0x88b8e8, size: 10 },
+      note:   { text: '\u266A', color: 0xc8a0d8, size: 16 },
+    };
+    var cfg = configs[type] || configs.star;
+
+    for (var i = 0; i < n; i++) {
+      (function(idx) {
+        setTimeout(function() {
+          var p = new PIXI.Text({
+            text: cfg.text,
+            style: { fontSize: cfg.size + Math.random() * 6, fill: cfg.color, fontWeight: 'bold' }
+          });
+          p.x = self.container.x + (Math.random() - 0.5) * 50;
+          p.y = self.container.y - 30;
+          p.alpha = 1;
+          p._vx = (Math.random() - 0.5) * 1.5;
+          p._vy = -1.5 - Math.random() * 1;
+          p._life = 50;
+          self._app.stage.addChild(p);
+          var ticker = function() {
+            p.x += p._vx;
+            p.y += p._vy;
+            p._vy += 0.02;
+            p.alpha -= 0.02;
+            p.rotation += 0.03;
+            p._life--;
+            if (p._life <= 0) {
+              self._app.stage.removeChild(p);
+              self._app.ticker.remove(ticker);
+              p.destroy();
+            }
+          };
+          self._app.ticker.add(ticker);
+        }, idx * 120);
+      })(i);
+    }
   },
 };

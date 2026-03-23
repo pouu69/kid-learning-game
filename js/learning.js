@@ -134,17 +134,97 @@ var Learning = {
     }
   },
 
-  // Start learning for current target
-  startLearning: function(st) {
-    var target = this.getCurrentTarget(st);
-    if (!target) return;
+  // Spaced repetition learning system
+  // Pattern: 새 글자 → 복습 → 복습 → 새 글자 → 복습 → 복습 ...
+  _sessionCount: 0,
 
+  startLearning: function(st) {
+    this._sessionCount++;
+
+    // Initialize practice tracker if missing
+    if (!st.learning.practiceCount) st.learning.practiceCount = {};
+
+    var target = this.getCurrentTarget(st);
+    var knownLetters = (st.learning.knownConsonants || []).concat(st.learning.knownVowels || []);
+    var knownWords = st.learning.completedWords || [];
+    var hasReviewable = knownLetters.length >= 1 || knownWords.length >= 1;
+
+    if (!target && !hasReviewable) return; // Nothing to learn or review
+
+    if (!target) {
+      // All curriculum done — pure review mode
+      this._startReview(st);
+      return;
+    }
+
+    // Spaced repetition: new → review → review cycle
+    // Every 2 out of 3 sessions should be review (if there's anything to review)
+    if (hasReviewable && this._sessionCount % 3 !== 1) {
+      this._startReview(st);
+      return;
+    }
+
+    // New content
     if (target.type === 'consonant' || target.type === 'vowel') {
-      // Letter learning: show → trace → distinguish
       LetterActivity.start(st, target);
     } else if (target.type === 'word') {
-      // Word composition: 2D block puzzle
       PuzzleActivity.start(st, target.data);
+    }
+  },
+
+  // Smart review — prioritize least-practiced items
+  _startReview: function(st) {
+    var self = this;
+    if (!st.learning.practiceCount) st.learning.practiceCount = {};
+    var pc = st.learning.practiceCount;
+
+    var allLetters = (st.learning.knownConsonants || []).concat(st.learning.knownVowels || []);
+    var allWords = st.learning.completedWords || [];
+    var allItems = [];
+
+    // Build items with practice counts
+    for (var i = 0; i < allLetters.length; i++) {
+      allItems.push({ key: allLetters[i], type: 'letter', count: pc[allLetters[i]] || 0 });
+    }
+    for (var w = 0; w < allWords.length; w++) {
+      allItems.push({ key: allWords[w], type: 'word', count: pc[allWords[w]] || 0 });
+    }
+
+    if (allItems.length === 0) return;
+
+    // Sort by practice count (least practiced first), add randomness to ties
+    allItems.sort(function(a, b) {
+      var diff = a.count - b.count;
+      return diff !== 0 ? diff : (Math.random() - 0.5);
+    });
+
+    // Pick from the least practiced third
+    var pickRange = Math.max(1, Math.ceil(allItems.length / 3));
+    var pick = allItems[Math.floor(Math.random() * pickRange)];
+
+    // Track practice
+    pc[pick.key] = (pc[pick.key] || 0) + 1;
+    saveState(st);
+
+    if (pick.type === 'word') {
+      var wordData = null;
+      for (var wi = 0; wi < CURRICULUM.words.length; wi++) {
+        if (CURRICULUM.words[wi].word === pick.key) { wordData = CURRICULUM.words[wi]; break; }
+      }
+      if (wordData) {
+        PuzzleActivity.start(st, wordData);
+      }
+    } else {
+      var isConsonant = (st.learning.knownConsonants || []).indexOf(pick.key) !== -1;
+      var pool = isConsonant ? CURRICULUM.consonants : CURRICULUM.vowels;
+      var letterData = null;
+      for (var li = 0; li < pool.length; li++) {
+        if (pool[li].letter === pick.key) { letterData = pool[li]; break; }
+      }
+      if (letterData) {
+        var target = { type: isConsonant ? 'consonant' : 'vowel', data: letterData, index: 0, review: true };
+        LetterActivity.start(st, target);
+      }
     }
   },
 
@@ -189,10 +269,12 @@ var Learning = {
 
     // Show reward in popup before closing
     if (self.popupEl) {
+      var praises = ['잘했어!', '멋져!', '최고야!', '대단해!'];
+      var praise = praises[Math.floor(Math.random() * praises.length)];
       var rewardEl = document.createElement('div');
       rewardEl.style.cssText = 'text-align:center;padding:2rem;';
-      rewardEl.innerHTML = '<div style="font-size:4rem">' + letter + '</div>' +
-        '<div style="font-size:1.2rem;color:#6a8a5a;margin-top:1rem;font-family:var(--font-display)">잘했어!</div>';
+      rewardEl.innerHTML = '<div style="font-size:4rem;animation:popIn 0.4s ease">' + letter + '</div>' +
+        '<div style="font-size:1.4rem;color:#6a8a5a;margin-top:1rem;font-family:var(--font-display);animation:popIn 0.6s ease">' + praise + '</div>';
       self.popupEl.innerHTML = '';
       self.popupEl.appendChild(rewardEl);
     }
@@ -212,13 +294,16 @@ var Learning = {
       self.closePopup();
 
       // Pet reaction
-      if (typeof PetRenderer !== 'undefined' && PetRenderer.celebrate) {
-        PetRenderer.celebrate();
+      if (typeof PetRenderer !== 'undefined') {
+        if (PetRenderer.celebrate) PetRenderer.celebrate();
+        if (PetRenderer.emitParticles) PetRenderer.emitParticles('star', 5);
+        if (PetRenderer.showPixiBubble) PetRenderer.showPixiBubble('잘했어!', 120);
       }
 
-      // Stat recovery
+      // Stat recovery + activity tracking
       st.hunger = Math.min(100, st.hunger + 15);
       st.mood = Math.min(100, st.mood + 10);
+      st.daily.activitiesDone++;
       saveState(st);
       updateHome(st);
     }, 1500);
@@ -313,10 +398,12 @@ var Learning = {
 
     // Show reward in popup before closing
     if (self.popupEl) {
+      var wordPraises = ['새로운 말을 배웠어!', '또 하나 배웠다!', '점점 잘하고 있어!', '너무 잘해!'];
+      var wPraise = wordPraises[Math.floor(Math.random() * wordPraises.length)];
       var rewardEl = document.createElement('div');
       rewardEl.style.cssText = 'text-align:center;padding:2rem;';
-      rewardEl.innerHTML = '<div style="font-size:3rem">' + wordData.word + '</div>' +
-        '<div style="font-size:1.2rem;color:#6a8a5a;margin-top:1rem;font-family:var(--font-display)">잘했어!</div>';
+      rewardEl.innerHTML = '<div style="font-size:3.5rem;animation:popIn 0.4s ease">' + wordData.word + '</div>' +
+        '<div style="font-size:1.2rem;color:#6a8a5a;margin-top:1rem;font-family:var(--font-display);animation:popIn 0.6s ease">' + wPraise + '</div>';
       self.popupEl.innerHTML = '';
       self.popupEl.appendChild(rewardEl);
     }
@@ -336,12 +423,15 @@ var Learning = {
     setTimeout(function() {
       self.closePopup();
 
-      if (typeof PetRenderer !== 'undefined' && PetRenderer.celebrate) {
-        PetRenderer.celebrate();
+      if (typeof PetRenderer !== 'undefined') {
+        if (PetRenderer.celebrate) PetRenderer.celebrate();
+        if (PetRenderer.emitParticles) PetRenderer.emitParticles('note', 5);
+        if (PetRenderer.showPixiBubble) PetRenderer.showPixiBubble(wordData.word + '!', 120);
       }
 
       st.hunger = Math.min(100, st.hunger + 20);
       st.mood = Math.min(100, st.mood + 15);
+      st.daily.activitiesDone++;
       saveState(st);
       updateHome(st);
     }, 1500);

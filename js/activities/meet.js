@@ -11,48 +11,68 @@ var LetterActivity = {
     this._showLetter(st, target);
   },
 
-  // Phase 1: Show the letter big + play sound + pet reacts
+  // Phase 1: Show the letter big + name + sound + example
   _showLetter: function(st, target) {
     var self = this;
     var letter = target.data.letter;
+    var letterData = LETTERS[letter];
 
     var container = document.createElement('div');
     container.className = 'letter-activity';
 
-    // Big letter display
+    // Phase label
+    var phaseLabel = document.createElement('div');
+    phaseLabel.className = 'phase-label';
+    phaseLabel.textContent = (target.review) ? '복습해보자!' : '새 글자를 배워보자!';
+    container.appendChild(phaseLabel);
+
+    if (target.review) {
+      var badge = document.createElement('span');
+      badge.className = 'review-badge';
+      badge.textContent = '복습';
+      phaseLabel.appendChild(badge);
+    }
+
+    // Big letter display (tappable to hear sound)
     var bigLetter = document.createElement('div');
     bigLetter.className = 'letter-big';
     bigLetter.textContent = letter;
+    bigLetter.onclick = function() { speakText(target.data.sound, 0.7); };
     container.appendChild(bigLetter);
 
-    // Sound button (speaker icon, no text) — bigger and animated
+    // Letter name below (e.g. "기역", "니은")
+    var nameLabel = document.createElement('div');
+    nameLabel.className = 'letter-name-label';
+    nameLabel.textContent = letterData ? letterData.name : '';
+    container.appendChild(nameLabel);
+
+    // Sound button with text
     var soundBtn = document.createElement('button');
     soundBtn.className = 'sound-btn sound-btn-big sound-btn-wave';
     soundBtn.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>';
     soundBtn.onclick = function() {
       soundBtn.classList.remove('sound-btn-press');
-      void soundBtn.offsetWidth; // reflow to restart animation
+      void soundBtn.offsetWidth;
       soundBtn.classList.add('sound-btn-press');
       speakText(target.data.sound, 0.7);
     };
     container.appendChild(soundBtn);
 
-    // "Next" button (arrow icon, no text) — appears after 2 seconds
+    // "따라 써보기" button — appears after 2 seconds
     setTimeout(function() {
       var nextBtn = document.createElement('button');
-      nextBtn.className = 'guide-next-btn';
-      nextBtn.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>';
+      nextBtn.className = 'trace-check-btn';
+      nextBtn.textContent = '따라 써보기';
+      nextBtn.style.animation = 'popIn 0.3s ease';
       nextBtn.onclick = function() {
         self._traceLetter(st, target);
       };
       container.appendChild(nextBtn);
-      // Finger guide pointing to next button
-      self._showFingerGuide(nextBtn);
     }, 2000);
 
     Learning.openPopup(container);
 
-    // Auto play sound
+    // Auto play sound with name
     setTimeout(function() { speakText(target.data.sound, 0.7); }, 500);
   },
 
@@ -77,19 +97,19 @@ var LetterActivity = {
     canvasWrap.className = 'trace-canvas-wrap';
     var canvas = document.createElement('canvas');
     canvas.className = 'trace-canvas';
-    canvas.width = 300;
-    canvas.height = 300;
+    canvas.width = 400;
+    canvas.height = 400;
     canvasWrap.appendChild(canvas);
     container.appendChild(canvasWrap);
 
     Learning.openPopup(container);
 
     var ctx = canvas.getContext('2d');
-    var scale = 3;
+    var scale = 4;
 
     // Draw dotted guide
     function drawGuide() {
-      ctx.clearRect(0, 0, 300, 300);
+      ctx.clearRect(0, 0, 400, 400);
       ctx.setLineDash([6, 6]);
       ctx.strokeStyle = '#c8c0b0';
       ctx.lineWidth = 8;
@@ -134,10 +154,10 @@ var LetterActivity = {
     // Animated stroke order guide (arrow along path)
     self._animateStrokeGuide(canvas, letterData, scale);
 
-    // Generate checkpoints
+    // Generate checkpoints (more points + tighter radius = must trace accurately)
     var checkpoints = [];
     for (var s = 0; s < letterData.strokes.length; s++) {
-      var pts = self._generateCheckpoints(letterData.strokes[s], 10, scale);
+      var pts = self._generateCheckpoints(letterData.strokes[s], 20, scale);
       for (var cp = 0; cp < pts.length; cp++) {
         checkpoints.push({ x: pts[cp].x, y: pts[cp].y, hit: false });
       }
@@ -145,80 +165,102 @@ var LetterActivity = {
 
     var isDrawing = false;
     var failCount = 0;
-    var hitRadius = 300 * 0.25;
+    var hitRadius = 30;
 
     function onStart(e) {
       e.preventDefault();
+      // Stop the animated stroke guide on first touch
+      if (self._currentGuideStop) self._currentGuideStop.value = true;
+      if (self._guideTimeout) { clearTimeout(self._guideTimeout); self._guideTimeout = null; }
       isDrawing = true;
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1.0;
       ctx.strokeStyle = '#3a3028';
       ctx.lineWidth = 10;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       var rect = canvas.getBoundingClientRect();
-      var x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-      var y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+      var x = (e.clientX || (e.touches && e.touches[0].clientX) || 0) - rect.left;
+      var y = (e.clientY || (e.touches && e.touches[0].clientY) || 0) - rect.top;
       x = x * (canvas.width / rect.width);
       y = y * (canvas.height / rect.height);
       ctx.beginPath();
       ctx.moveTo(x, y);
+      // Track hits silently (no green dots while drawing)
+      _checkHit(x, y);
     }
 
     function onMove(e) {
       if (!isDrawing) return;
       e.preventDefault();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1.0;
+      ctx.strokeStyle = '#3a3028';
+      ctx.lineWidth = 10;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
       var rect = canvas.getBoundingClientRect();
-      var x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-      var y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+      var x = (e.clientX || (e.touches && e.touches[0].clientX) || 0) - rect.left;
+      var y = (e.clientY || (e.touches && e.touches[0].clientY) || 0) - rect.top;
       x = x * (canvas.width / rect.width);
       y = y * (canvas.height / rect.height);
       ctx.lineTo(x, y);
       ctx.stroke();
       ctx.beginPath();
       ctx.moveTo(x, y);
+      _checkHit(x, y);
+    }
+
+    function onEnd() {
+      isDrawing = false;
+    }
+
+    // Silently track which checkpoints are hit (no visual feedback during drawing)
+    function _checkHit(x, y) {
       for (var i = 0; i < checkpoints.length; i++) {
         if (!checkpoints[i].hit) {
           var dx = x - checkpoints[i].x;
           var dy = y - checkpoints[i].y;
           if (Math.sqrt(dx * dx + dy * dy) < hitRadius) {
             checkpoints[i].hit = true;
-            // Visually mark hit checkpoint with green dot
-            ctx.fillStyle = '#a8d8b0';
-            ctx.globalAlpha = 0.4;
-            ctx.beginPath();
-            ctx.arc(checkpoints[i].x, checkpoints[i].y, 8, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.globalAlpha = 1.0;
           }
         }
       }
     }
 
-    function onEnd() {
-      if (!isDrawing) return;
-      isDrawing = false;
+    // Evaluate coverage and show result
+    function evaluateTrace() {
       var hitCount = 0;
       for (var i = 0; i < checkpoints.length; i++) {
         if (checkpoints[i].hit) hitCount++;
       }
       var coverage = checkpoints.length > 0 ? hitCount / checkpoints.length : 1;
-      if (coverage >= 0.4) {
+
+      if (coverage >= 0.5) {
+        // Success — flash canvas green briefly
+        canvas.style.borderColor = '#a8d8b0';
+        canvas.style.boxShadow = '0 0 16px rgba(168,216,176,0.6)';
         playSound('correct');
         speakText(target.data.sound, 0.7);
         setTimeout(function() { self._distinguishLetter(st, target); }, 1000);
       } else {
         failCount++;
-        if (failCount >= 2) {
-          // Auto-pass with encouragement — don't let kids get stuck
-          speakText('잘했어', 0.7);
-          setTimeout(function() { self._distinguishLetter(st, target); }, 1000);
+        if (failCount >= 3) {
+          // Auto-pass after 3 attempts
+          speakText('잘했어! 다음으로 가자~', 0.75);
+          setTimeout(function() { self._distinguishLetter(st, target); }, 1200);
         } else {
-          // Show finger guide again
-          speakText('다시 해볼까', 0.7);
+          // Retry — flash canvas red briefly, then reset
+          canvas.style.borderColor = '#f08080';
+          canvas.style.boxShadow = '0 0 16px rgba(240,128,128,0.4)';
+          speakText('한 번 더 써볼까?', 0.75);
           setTimeout(function() {
+            canvas.style.borderColor = '';
+            canvas.style.boxShadow = '';
             drawGuide();
             for (var i = 0; i < checkpoints.length; i++) checkpoints[i].hit = false;
             self._animateStrokeGuide(canvas, letterData, scale);
-          }, 800);
+          }, 1000);
         }
       }
     }
@@ -228,14 +270,37 @@ var LetterActivity = {
     canvas.addEventListener('pointerup', onEnd);
     canvas.addEventListener('pointerleave', onEnd);
 
-    // Voice guide
-    setTimeout(function() { speakText('따라 그려봐', 0.7); }, 500);
+    // Button row: 다시 + 확인
+    var btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:12px;justify-content:center;width:100%;margin-top:0.5rem;';
 
-    // Auto re-guide after 10 seconds
+    var retryBtn = document.createElement('button');
+    retryBtn.className = 'trace-retry-btn';
+    retryBtn.innerHTML = '&#8634; 다시';
+    retryBtn.onclick = function() {
+      drawGuide();
+      for (var i = 0; i < checkpoints.length; i++) checkpoints[i].hit = false;
+      canvas.style.borderColor = '';
+      canvas.style.boxShadow = '';
+    };
+    btnRow.appendChild(retryBtn);
+
+    var checkBtn = document.createElement('button');
+    checkBtn.className = 'trace-check-btn';
+    checkBtn.innerHTML = '&#10003; 확인';
+    checkBtn.onclick = function() { evaluateTrace(); };
+    btnRow.appendChild(checkBtn);
+
+    container.appendChild(btnRow);
+
+    // Voice guide with encouraging message
+    setTimeout(function() { speakText('손가락으로 따라 그려봐!', 0.75); }, 500);
+
+    // Auto re-guide after 8 seconds with encouragement
     self._guideTimeout = setTimeout(function() {
       self._animateStrokeGuide(canvas, letterData, scale);
-      speakText('따라 그려봐', 0.7);
-    }, 10000);
+      speakText('천천히 따라 그려봐~', 0.75);
+    }, 8000);
   },
 
   // Phase 3: Distinguish this letter from similar ones
@@ -259,7 +324,15 @@ var LetterActivity = {
     var container = document.createElement('div');
     container.className = 'letter-activity';
 
-    // Sound button at top — plays the target letter sound, with ear icon hint
+    // Phase label — question
+    var phaseLabel = document.createElement('div');
+    phaseLabel.className = 'phase-label';
+    phaseLabel.textContent = '어떤 글자일까?';
+    container.appendChild(phaseLabel);
+
+    // Sound button — plays the target letter sound
+    var soundRow = document.createElement('div');
+    soundRow.style.cssText = 'display:flex;align-items:center;gap:12px;';
     var soundBtn = document.createElement('button');
     soundBtn.className = 'sound-btn sound-btn-big sound-btn-wave';
     soundBtn.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>';
@@ -269,7 +342,12 @@ var LetterActivity = {
       soundBtn.classList.add('sound-btn-press');
       speakText(target.data.sound, 0.7);
     };
-    container.appendChild(soundBtn);
+    soundRow.appendChild(soundBtn);
+    var soundHint = document.createElement('span');
+    soundHint.className = 'sound-hint-text';
+    soundHint.textContent = '소리를 듣고 골라봐!';
+    soundRow.appendChild(soundHint);
+    container.appendChild(soundRow);
 
     // Choice grid
     var grid = document.createElement('div');
@@ -294,8 +372,9 @@ var LetterActivity = {
             }, 1000);
           } else {
             el.classList.remove('choice-wrong');
-            void el.offsetWidth; // reflow to restart animation
+            void el.offsetWidth;
             el.classList.add('choice-wrong');
+            playSound('wrong');
             wrongCount++;
             if (wrongCount >= 2) {
               // Pulse-hint the correct answer after 2 wrong answers
@@ -340,16 +419,20 @@ var LetterActivity = {
   },
 
   // Utility: animate stroke order on canvas — full multi-stroke demo
-  _animateStrokeGuide: function(canvas, letterData, scale) {
+  _animateStrokeGuide: function(canvas, letterData, scale, stopFlag) {
     var ctx = canvas.getContext('2d');
     var strokes = letterData.strokes;
     if (!strokes || strokes.length === 0) return;
 
     var strokeIndex = 0;
     var self = this;
+    // Use a shared object to check stop signal from parent scope
+    var stopped = { value: false };
+    // Store reference so callers can stop it
+    self._currentGuideStop = stopped;
 
     function animateStroke() {
-      if (strokeIndex >= strokes.length) return;
+      if (stopped.value || strokeIndex >= strokes.length) return;
       var stroke = strokes[strokeIndex];
       var num = strokeIndex + 1;
 
@@ -370,6 +453,7 @@ var LetterActivity = {
         ctx.textBaseline = 'alphabetic';
 
         function drawCircleStep() {
+          if (stopped.value) return;
           if (angle > Math.PI * 2) {
             strokeIndex++;
             setTimeout(animateStroke, 300);
@@ -417,6 +501,7 @@ var LetterActivity = {
         var prevY = startY;
 
         function drawLineStep() {
+          if (stopped.value) return;
           if (progress > 1) {
             // Draw end dot
             ctx.fillStyle = '#f4b870';

@@ -7,6 +7,7 @@ var sessionStart = Date.now();
 var currentScreen = 'home';
 var hatchTaps = 0;
 var _tickInterval = null;
+// (PixiJS bubbles handle speech now, no DOM timer needed)
 
 function initGame() {
   st = loadState();
@@ -33,16 +34,26 @@ function initWorld() {
     World.init(container).then(function() {
       var allKnown = (st.learning.knownConsonants || []).concat(st.learning.knownVowels || []);
       World.syncLetterFlowers(allKnown);
+      // Also sync completed words as flowers
+      var completedWords = st.learning.completedWords || [];
+      for (var wi = 0; wi < completedWords.length; wi++) {
+        World.addWordFlower(completedWords[wi]);
+      }
       if (typeof PetRenderer !== 'undefined') {
         PetRenderer.init(World.app, st);
       }
       updateHome(st);
-      // Daily greeting: pet celebrates on new session
+      // Daily greeting: pet waves on new session
       setTimeout(function() {
         if (typeof PetRenderer !== 'undefined' && PetRenderer.petted) {
           PetRenderer.petted();
         }
-        if (typeof playSound === 'function') playSound('correct');
+        // Show greeting via PixiJS bubble
+        if (typeof PetRenderer !== 'undefined' && PetRenderer.showPixiBubble && st.stage > 0) {
+          var greeting = Pet.getGreeting(st);
+          PetRenderer.showPixiBubble(greeting, 180);
+          PetRenderer.emitParticles('star', 4);
+        }
       }, 1500);
     });
   }
@@ -95,9 +106,30 @@ function tick() {
   }
 }
 
-// showScreen is defined in index.html inline script (nameScreen pattern)
-// This wrapper just tracks currentScreen
-var _origShowScreen = null;
+// Cached DOM references (populated once on first updateHome)
+var _domCache = null;
+function _getDom() {
+  if (!_domCache) {
+    _domCache = {
+      nameEl: document.getElementById('petNameLabel'),
+      stageEl: document.getElementById('petStageLabel'),
+      barH: document.getElementById('fillHunger'),
+      barM: document.getElementById('fillMood'),
+      barS: document.getElementById('fillSleepy'),
+      gaugeH: document.getElementById('gaugeHunger'),
+      gaugeM: document.getElementById('gaugeMood'),
+      gaugeS: document.getElementById('gaugeSleepy'),
+      actionBtnNeed: document.getElementById('actionBtnNeed'),
+      actionBtnIcon: document.getElementById('actionBtnIcon'),
+      actionBtnLabel: document.getElementById('actionBtnLabel'),
+      actionBtnLearn: document.getElementById('actionBtnLearn'),
+      petHint: document.querySelector('.pet-hint'),
+    };
+  }
+  return _domCache;
+}
+
+// showScreen tracks currentScreen state
 function showScreen(name) {
   currentScreen = name;
   var screens = document.querySelectorAll('.screen');
@@ -113,44 +145,65 @@ function showScreen(name) {
 }
 
 function updateHome(st) {
-  var nameEl = document.getElementById('petNameLabel');
-  var stageEl = document.getElementById('petStageLabel');
-  if (nameEl) nameEl.textContent = st.name;
-  if (stageEl) {
+  var d = _getDom();
+  if (d.nameEl) d.nameEl.textContent = st.name;
+  if (d.stageEl) {
     var evo = EVOLUTION[st.stage] || EVOLUTION[0];
-    stageEl.textContent = evo.name;
+    d.stageEl.textContent = evo.name;
   }
 
-  var barH = document.getElementById('fillHunger');
-  var barM = document.getElementById('fillMood');
-  var barS = document.getElementById('fillSleepy');
-  if (barH) barH.style.width = Math.max(0, Math.min(100, st.hunger)) + '%';
-  if (barM) barM.style.width = Math.max(0, Math.min(100, st.mood)) + '%';
-  if (barS) barS.style.width = Math.max(0, Math.min(100, st.sleepy)) + '%';
+  // Update circular gauge fill (SVG stroke-dashoffset)
+  var circumference = 125.66; // 2 * PI * 20, pre-computed
+  if (d.barH) d.barH.style.strokeDashoffset = circumference * (1 - Math.max(0, Math.min(100, st.hunger)) / 100);
+  if (d.barM) d.barM.style.strokeDashoffset = circumference * (1 - Math.max(0, Math.min(100, st.mood)) / 100);
+  if (d.barS) d.barS.style.strokeDashoffset = circumference * (1 - Math.max(0, Math.min(100, st.sleepy)) / 100);
+  if (d.gaugeH) d.gaugeH.classList.toggle('stat-low', st.hunger < 30);
+  if (d.gaugeM) d.gaugeM.classList.toggle('stat-low', st.mood < 40);
+  if (d.gaugeS) d.gaugeS.classList.toggle('stat-low', st.sleepy > 70);
 
-  var speechBubble = document.getElementById('speechBubble');
-  if (speechBubble) {
-    var text = Pet.getSpeechText(st);
-    if (text && text !== '~') {
-      speechBubble.textContent = text;
-      speechBubble.classList.remove('hidden');
-    } else {
-      speechBubble.classList.add('hidden');
+  // Use PixiJS bubble for speech (replaces DOM bubble)
+  var text = Pet.getSpeechText(st);
+  if (text) {
+    if (text !== Pet._lastSpeechText) {
+      Pet._lastSpeechText = text;
+      if (typeof PetRenderer !== 'undefined' && PetRenderer.showPixiBubble) {
+        var dur = text === 'zzz' ? 300 : 240;
+        PetRenderer.showPixiBubble(text, dur);
+      }
+    }
+  } else if (Pet._lastSpeechText) {
+    Pet._lastSpeechText = null;
+    if (typeof PetRenderer !== 'undefined' && PetRenderer.hidePixiBubble) {
+      PetRenderer.hidePixiBubble();
     }
   }
 
-  // Show PixiJS need bubble on pet (not DOM)
-  var petHint = document.querySelector('.pet-hint');
+  // Show PixiJS need bubble on pet AND update DOM action buttons
   if (typeof PetRenderer !== 'undefined' && PetRenderer.showNeed) {
     var btn = Pet.getActionButton(st);
     if (btn) {
       var needMap = { 'feed': 'hungry', 'play': 'bored', 'sleep': 'sleepy', 'wake': 'sleepy', 'hatch': null };
       PetRenderer.showNeed(needMap[btn.action] || null);
-      if (petHint) petHint.classList.add('hidden');
+      if (d.petHint) d.petHint.classList.add('hidden');
+
+      if (d.actionBtnNeed) {
+        var iconMap = { 'feed': '\uD83C\uDF5A', 'play': '\uD83C\uDFB2', 'sleep': '\uD83D\uDCA4', 'wake': '\u2600\uFE0F', 'hatch': '\uD83D\uDC4B' };
+        var classMap = { 'feed': '', 'play': '', 'sleep': 'action-btn-sleep', 'wake': 'action-btn-wake', 'hatch': '' };
+        d.actionBtnNeed.classList.remove('hidden', 'action-btn-sleep', 'action-btn-wake');
+        if (classMap[btn.action]) d.actionBtnNeed.classList.add(classMap[btn.action]);
+        if (d.actionBtnIcon) d.actionBtnIcon.textContent = iconMap[btn.action] || '';
+        if (d.actionBtnLabel) d.actionBtnLabel.textContent = btn.label;
+      }
     } else {
       PetRenderer.hideNeed();
-      if (petHint) petHint.classList.remove('hidden');
+      if (d.petHint) d.petHint.classList.remove('hidden');
+      if (d.actionBtnNeed) d.actionBtnNeed.classList.add('hidden');
     }
+  }
+
+  // Hide learn button during sleep or egg stage
+  if (d.actionBtnLearn) {
+    d.actionBtnLearn.style.display = (st.sleeping || st.stage === 0) ? 'none' : '';
   }
 
   if (typeof PetRenderer !== 'undefined' && PetRenderer.update) {
@@ -161,25 +214,44 @@ function updateHome(st) {
 function handleAction(action) {
   if (action === 'hatch') {
     hatchTaps++;
-    if (typeof PetRenderer !== 'undefined' && PetRenderer.wiggle) {
+    if (typeof PetRenderer !== 'undefined') {
       PetRenderer.wiggle();
+      // Progressive crack effect
+      if (PetRenderer.addCrack) PetRenderer.addCrack(hatchTaps);
     }
-    if (hatchTaps >= 3) {
-      st.stage = 1;
-      // Learning starts at stage 1 (consonants) — no currentWord needed
-      st.learning.stage = 1;
-      st.learning.consonantIndex = 0;
-      if (typeof PetRenderer !== 'undefined' && PetRenderer.celebrate) {
-        PetRenderer.celebrate();
+    playSound('click');
+    if (hatchTaps >= 5) {
+      // Shell burst particles
+      if (typeof PetRenderer !== 'undefined' && PetRenderer.eggBurst) {
+        PetRenderer.eggBurst();
       }
-      playSound('evolve');
-      saveState(st);
-      updateHome(st);
+      setTimeout(function() {
+        st.stage = 1;
+        st.learning.stage = 1;
+        st.learning.consonantIndex = 0;
+        if (typeof PetRenderer !== 'undefined') {
+          PetRenderer.buildPet(1);
+          PetRenderer.celebrate();
+          PetRenderer.emitParticles('star', 8);
+          PetRenderer.showPixiBubble('안녕!', 180);
+        }
+        if (typeof flashScreen === 'function') flashScreen();
+        playSound('evolve');
+        saveState(st);
+        updateHome(st);
+      }, 600);
     }
     return;
   }
 
-  if (action === 'feed' || action === 'play') {
+  if (action === 'feed') {
+    if (typeof CareActivity !== 'undefined') {
+      CareActivity.startFeed(st);
+    }
+    return;
+  }
+
+  if (action === 'play' || action === 'learn') {
     if (typeof Learning !== 'undefined') {
       Learning.startLearning(st);
     }
@@ -187,16 +259,16 @@ function handleAction(action) {
   }
 
   if (action === 'sleep') {
-    st.sleeping = true;
-    saveState(st);
-    updateHome(st);
+    if (typeof CareActivity !== 'undefined') {
+      CareActivity.startSleep(st);
+    }
     return;
   }
 
   if (action === 'wake') {
-    st.sleeping = false;
-    saveState(st);
-    updateHome(st);
+    if (typeof CareActivity !== 'undefined') {
+      CareActivity.startWake(st);
+    }
     return;
   }
 
@@ -205,74 +277,15 @@ function handleAction(action) {
     if (typeof PetRenderer !== 'undefined' && PetRenderer.petted) {
       PetRenderer.petted();
     }
+    // Show greeting via PixiJS bubble
+    if (typeof PetRenderer !== 'undefined' && PetRenderer.showPixiBubble && st.stage > 0) {
+      var greeting = Pet.getGreeting(st);
+      PetRenderer.showPixiBubble(greeting, 150);
+      PetRenderer.emitParticles('heart', 3);
+    }
     saveState(st);
     updateHome(st);
   }
-}
-
-function onLearningComplete(result) {
-  if (result.fed) st.hunger = Math.min(100, st.hunger + 25);
-  if (result.played) st.mood = Math.min(100, st.mood + 15);
-  st.daily.activitiesDone++;
-  if (st.daily.activitiesDone >= 3 && !st.daily.bonusUnlocked) {
-    st.daily.bonusUnlocked = true;
-  }
-  saveState(st);
-  var allKnown = (st.learning.knownConsonants || []).concat(st.learning.knownVowels || []);
-  if (typeof World !== 'undefined') {
-    World.syncLetterFlowers(allKnown);
-  }
-  // Feeding animation when hunger was restored
-  if (result.fed && typeof PetRenderer !== 'undefined' && PetRenderer.feedAnim) {
-    PetRenderer.feedAnim();
-  }
-  updateHome(st);
-}
-
-function showReward(word) {
-  showScreen('reward');
-  var content = document.getElementById('rewardContent');
-  if (!content) return;
-
-  content.innerHTML = '';
-
-  var petDiv = document.createElement('div');
-  petDiv.className = 'reward-pet';
-  petDiv.innerHTML = '<div class="reward-pet-bounce"></div>';
-  content.appendChild(petDiv);
-
-  var wordDiv = document.createElement('div');
-  wordDiv.className = 'reward-word';
-  wordDiv.textContent = word + '!';
-  content.appendChild(wordDiv);
-
-  var msgDiv = document.createElement('div');
-  msgDiv.className = 'reward-message';
-  msgDiv.textContent = st.name + '가 새로운 말을 배웠어!';
-  content.appendChild(msgDiv);
-
-  var btn = document.createElement('button');
-  btn.className = 'btn-action reward-btn';
-  btn.textContent = '돌아가기';
-  btn.onclick = function() {
-    showScreen('home');
-    updateHome(st);
-    if (typeof World !== 'undefined') {
-      var allKnown = (st.learning.knownConsonants || []).concat(st.learning.knownVowels || []);
-      World.syncLetterFlowers(allKnown);
-    }
-  };
-  content.appendChild(btn);
-
-  speakText(word);
-
-  setTimeout(function() {
-    if (typeof World !== 'undefined' && World.app) {
-      var W = World.app.screen.width;
-      var H = World.app.screen.height;
-      showStarParticles(W / 2, H / 2, 20);
-    }
-  }, 300);
 }
 
 function getState() {

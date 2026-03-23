@@ -14,6 +14,10 @@ var World = {
   _frame: 0,
   _weather: 'clear',
   _rainDrops: [],
+  _ambientParticles: [],
+  _isNight: false,
+  _grassBlades: [],
+  _touchRipples: [],
 
   init: function(container) {
     var self = this;
@@ -49,6 +53,24 @@ var World = {
       self._buildClouds();
       self.updateTimeOfDay();
       self._addDecorations();
+
+      // Interactive grass blades layer
+      self._grassBladesGfx = new PIXI.Graphics();
+      app.stage.addChild(self._grassBladesGfx);
+      self._buildGrassBlades();
+
+      // Ambient particles layer (above grass, below pet)
+      self._ambientContainer = new PIXI.Container();
+      app.stage.addChild(self._ambientContainer);
+
+      // Touch ripple handling
+      app.canvas.addEventListener('pointerdown', function(e) {
+        var rect = app.canvas.getBoundingClientRect();
+        var x = (e.clientX - rect.left) * (app.screen.width / rect.width);
+        var y = (e.clientY - rect.top) * (app.screen.height / rect.height);
+        self._addTouchRipple(x, y);
+        self._swayGrassNear(x, y);
+      });
 
       app.ticker.add(function() { self.animate(); });
 
@@ -117,24 +139,29 @@ var World = {
       self.app.stage.addChild(tuft);
     }
 
-    // Small flowers (circle + stem)
-    var flowerColors = [0xf4a8a8, 0xf8d870, 0xc8a8e8, 0xf0b888];
-    for (var fi = 0; fi < 4; fi++) {
+    // Small decorative flowers (5-petal shapes)
+    var flowerColors = [0xf4a8a8, 0xf8d870, 0xc8a8e8, 0xf0b888, 0xa8d8b0];
+    for (var fi = 0; fi < 6; fi++) {
       var flower = new PIXI.Graphics();
-      var fx = 30 + Math.random() * (W - 60);
-      var fy = H * 0.54 + Math.random() * (H * 0.22);
+      var fx = 25 + (fi / 5) * (W - 50) + (Math.random() - 0.5) * 30;
+      var fy = H * 0.56 + Math.random() * (H * 0.20);
       var fc = flowerColors[fi % flowerColors.length];
       // Stem
-      flower.rect(fx - 1, fy - 10, 2, 10);
+      flower.rect(fx - 1, fy - 8, 2, 12);
       flower.fill({ color: 0x68a870 });
-      // Petals (4 small circles around center)
-      for (var p = 0; p < 4; p++) {
-        var angle = p * Math.PI / 2;
-        flower.circle(fx + Math.cos(angle) * 4, fy - 10 + Math.sin(angle) * 4, 3);
+      // Leaf
+      flower.ellipse(fx + 3, fy - 2, 4, 2);
+      flower.fill({ color: 0x88b888 });
+      // Petals (5 around center)
+      for (var p = 0; p < 5; p++) {
+        var angle = (p / 5) * Math.PI * 2 - Math.PI / 2;
+        var petalX = fx + Math.cos(angle) * 5;
+        var petalY = fy - 8 + Math.sin(angle) * 5;
+        flower.ellipse(petalX, petalY, 4, 3);
         flower.fill({ color: fc });
       }
       // Center
-      flower.circle(fx, fy - 10, 3);
+      flower.circle(fx, fy - 8, 2.5);
       flower.fill({ color: 0xf8f0a0 });
       self.app.stage.addChild(flower);
     }
@@ -205,6 +232,8 @@ var World = {
       isNight = true;
       isSunset = false;
     }
+
+    this._isNight = isNight;
 
     // Draw sky as horizontal gradient strips
     var gfx = this._skyGfx;
@@ -293,37 +322,108 @@ var World = {
     }
   },
 
+  // Flower color palettes by type
+  _flowerColors: {
+    consonant: [0xf08080, 0xf4a8a8, 0xe88888, 0xf09090, 0xd87878],
+    vowel:     [0x88b8e8, 0xa0c8f0, 0x78a8d8, 0x90b0e0, 0x80a0d0],
+    word:      [0xc8a0d8, 0xd8b0e8, 0xb890c8, 0xe0b8f0, 0xb080c0],
+  },
+
+  _getFlowerColor: function(letter) {
+    var isConsonant = 'ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎ'.indexOf(letter) !== -1;
+    var isVowel = 'ㅏㅓㅗㅜㅡㅣㅐㅔ'.indexOf(letter) !== -1;
+    var palette = isConsonant ? this._flowerColors.consonant :
+                  isVowel ? this._flowerColors.vowel :
+                  this._flowerColors.word;
+    return palette[Math.floor(Math.random() * palette.length)];
+  },
+
+  _drawFlowerShape: function(gfx, cx, cy, petalColor, centerColor, size, petalCount) {
+    var n = petalCount || 5;
+    var petalR = size * 0.45;
+    var centerR = size * 0.32;
+    // Draw petals
+    for (var i = 0; i < n; i++) {
+      var angle = (i / n) * Math.PI * 2 - Math.PI / 2;
+      var px = cx + Math.cos(angle) * (size * 0.35);
+      var py = cy + Math.sin(angle) * (size * 0.35);
+      gfx.ellipse(px, py, petalR, petalR * 0.75);
+      gfx.fill({ color: petalColor, alpha: 0.9 });
+    }
+    // Center
+    gfx.circle(cx, cy, centerR);
+    gfx.fill({ color: centerColor });
+  },
+
+  _getFlowerSlot: function(index) {
+    var W = this.app.screen.width;
+    var H = this.app.screen.height;
+    var grassTop = H * 0.62;
+    var grassBot = H * 0.92;
+    var cols = Math.max(3, Math.floor(W / 130));
+    var row = Math.floor(index / cols);
+    var col = index % cols;
+    var cellW = (W - 30) / cols;
+    var maxRows = Math.floor((grassBot - grassTop) / 60);
+    var rowH = Math.min(60, (grassBot - grassTop) / Math.max(maxRows, 3));
+    var px = 15 + col * cellW + cellW / 2 + (row % 2 ? cellW * 0.25 : 0);
+    var py = grassTop + row * rowH + rowH / 2;
+    // Keep flowers away from pet center (W/2, H*0.52)
+    var petCx = W / 2;
+    var petCy = H * 0.52;
+    var dx = px - petCx;
+    var dy = py - petCy;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 80) {
+      // Push flower outward from pet
+      var angle = Math.atan2(dy, dx);
+      px = petCx + Math.cos(angle) * 85;
+      py = petCy + Math.sin(angle) * 85;
+    }
+    // Clamp
+    if (px < 20) px = 20;
+    if (px > W - 20) px = W - 20;
+    if (py > grassBot) py = grassBot - 10;
+    if (py < grassTop) py = grassTop + 10;
+    return { x: px, y: py };
+  },
+
   addLetterFlower: function(letter) {
     var self = this;
-    // Skip if already exists
     for (var fi = 0; fi < this.letterFlowers.length; fi++) {
       if (this.letterFlowers[fi]._letter === letter) return;
     }
 
-    var W = this.app.screen.width;
-    var H = this.app.screen.height;
-    var grassLineY = H * 0.60;
+    var flowerIndex = this.letterFlowers.length;
+    var pos = this._getFlowerSlot(flowerIndex);
+    var petalColor = this._getFlowerColor(letter);
+    var isWord = letter.length > 1;
+    var flowerSize = isWord ? 42 : 36;
 
     var container = new PIXI.Container();
     container._letter = letter;
 
-    // White circle background
-    var bg = new PIXI.Graphics();
-    bg.circle(0, 0, 20);
-    bg.fill({ color: 0xffffff, alpha: 0.9 });
-    bg.stroke({ color: 0xa8d8b0, width: 2 });
-    container.addChild(bg);
-
     // Stem
     var stem = new PIXI.Graphics();
-    stem.rect(-1.5, 0, 3, 18);
+    var stemH = 22 + Math.random() * 10;
+    stem.rect(-2, 4, 4, stemH);
     stem.fill({ color: 0x68a870 });
+    // Leaf
+    stem.ellipse(5, stemH * 0.5, 8, 4);
+    stem.fill({ color: 0x88b888 });
     container.addChild(stem);
 
-    // Letter text
+    // Flower head
+    var head = new PIXI.Graphics();
+    var petalCount = isWord ? 6 : 5;
+    self._drawFlowerShape(head, 0, 0, petalColor, 0xf8f0a0, flowerSize, petalCount);
+    container.addChild(head);
+
+    // Letter text on center
+    var fontSize = isWord ? 18 : 22;
     var style = new PIXI.TextStyle({
       fontFamily: '"Noto Sans KR", sans-serif',
-      fontSize: 16,
+      fontSize: fontSize,
       fontWeight: 'bold',
       fill: '#3a3028',
     });
@@ -331,23 +431,28 @@ var World = {
     txt.anchor.set(0.5, 0.5);
     container.addChild(txt);
 
-    // Random position in grass area
-    var px = W * 0.08 + Math.random() * W * 0.84;
-    var py = grassLineY - 30 - Math.random() * H * 0.08;
-    container.x = px;
-    container.y = py;
-    container._baseY = py;
+    container.x = pos.x;
+    container.y = pos.y;
+    container._baseY = pos.y;
 
-    // Pointer interaction: tap to hear the letter sound
+    // Tap to hear letter name
     container.eventMode = 'static';
     container.cursor = 'pointer';
     container.on('pointerdown', function() {
       var letterData = typeof LETTERS !== 'undefined' ? LETTERS[letter] : null;
-      var sound = letterData ? letterData.sound : letter;
-      if (typeof speakText === 'function') speakText(sound);
-      // Small bounce
+      if (letterData) {
+        // Speak the letter name (e.g. "기역") then sound
+        if (typeof speakText === 'function') speakText(letterData.name, 0.8);
+      } else {
+        // Word: speak the word
+        if (typeof speakText === 'function') speakText(letter, 0.8);
+      }
       container._bumpTimer = 12;
     });
+
+    // Entrance animation
+    container.scale.set(0);
+    container._growTimer = 20;
 
     this.app.stage.addChild(container);
     this.letterFlowers.push(container);
@@ -361,60 +466,7 @@ var World = {
   },
 
   addWordFlower: function(word) {
-    var self = this;
-    // Skip if already exists
-    for (var fi = 0; fi < this.letterFlowers.length; fi++) {
-      if (this.letterFlowers[fi]._letter === word) return;
-    }
-
-    var W = this.app.screen.width;
-    var H = this.app.screen.height;
-    var grassLineY = H * 0.60;
-
-    var container = new PIXI.Container();
-    container._letter = word;
-
-    // White circle background (larger for word)
-    var bg = new PIXI.Graphics();
-    bg.circle(0, 0, 28);
-    bg.fill({ color: 0xffffff, alpha: 0.9 });
-    bg.stroke({ color: 0xa8d8b0, width: 2 });
-    container.addChild(bg);
-
-    // Stem
-    var stem = new PIXI.Graphics();
-    stem.rect(-1.5, 0, 3, 18);
-    stem.fill({ color: 0x68a870 });
-    container.addChild(stem);
-
-    // Word text
-    var style = new PIXI.TextStyle({
-      fontFamily: '"Noto Sans KR", sans-serif',
-      fontSize: 13,
-      fontWeight: 'bold',
-      fill: '#3a3028',
-    });
-    var txt = new PIXI.Text({ text: word, style: style });
-    txt.anchor.set(0.5, 0.5);
-    container.addChild(txt);
-
-    // Random position in grass area
-    var px = W * 0.08 + Math.random() * W * 0.84;
-    var py = grassLineY - 30 - Math.random() * H * 0.08;
-    container.x = px;
-    container.y = py;
-    container._baseY = py;
-
-    // Tap to hear the word spoken
-    container.eventMode = 'static';
-    container.cursor = 'pointer';
-    container.on('pointerdown', function() {
-      if (typeof speakText === 'function') speakText(word);
-      container._bumpTimer = 12;
-    });
-
-    this.app.stage.addChild(container);
-    this.letterFlowers.push(container);
+    this.addLetterFlower(word);
   },
 
   animate: function() {
@@ -441,12 +493,22 @@ var World = {
         c.x = -c.rx;
       }
     }
-    self._drawClouds();
+    // Redraw clouds every 2nd frame (they move slowly)
+    if (self._frame % 2 === 0) self._drawClouds();
 
-    // Bob letter flowers up and down
+    // Bob letter flowers and handle grow-in animation
     for (var fi = 0; fi < self.letterFlowers.length; fi++) {
       var flower = self.letterFlowers[fi];
-      var bob = Math.sin(self._frame * 0.04 + fi * 1.2) * 4;
+      // Grow-in animation for newly added flowers
+      if (flower._growTimer && flower._growTimer > 0) {
+        flower._growTimer--;
+        var gt = 1 - (flower._growTimer / 20);
+        var eased = gt < 0.5 ? 2 * gt * gt : -1 + (4 - 2 * gt) * gt;
+        var overshoot = eased > 0.8 ? 1 + (1 - eased) * 0.5 : eased;
+        flower.scale.set(Math.min(overshoot, 1.1));
+        if (flower._growTimer <= 0) flower.scale.set(1);
+      }
+      var bob = Math.sin(self._frame * 0.04 + fi * 1.2) * 3;
       if (flower._bumpTimer && flower._bumpTimer > 0) {
         flower._bumpTimer--;
         bob += Math.sin(flower._bumpTimer / 12 * Math.PI) * -8;
@@ -472,9 +534,14 @@ var World = {
 
     // Twinkle stars at night: subtle alpha oscillation on the starsGfx
     if (self._starsGfx && self._starsGfx.children && self._starsGfx.children.length === 0) {
-      // stars are drawn directly on the graphics, vary overall alpha
       self._starsGfx.alpha = 0.7 + 0.3 * Math.abs(Math.sin(self._frame * 0.025));
     }
+
+    // Animated grass blades
+    self._drawGrassBlades();
+
+    // Ambient particles (fireflies / dandelion seeds)
+    self._updateAmbientParticles();
 
     // Update time of day every ~5 minutes (18000 frames at 60fps)
     if (self._frame % 18000 === 0) {
@@ -482,21 +549,194 @@ var World = {
     }
   },
 
-  resize: function() {
-    this._buildClouds();
-    this.updateTimeOfDay();
-    // Reposition existing letter flowers
+  // === Interactive grass blades ===
+  _buildGrassBlades: function() {
     var W = this.app.screen.width;
     var H = this.app.screen.height;
-    var grassLineY = H * 0.60;
-    for (var fi = 0; fi < this.letterFlowers.length; fi++) {
-      var flower = this.letterFlowers[fi];
-      var px = W * 0.08 + Math.random() * W * 0.84;
-      var py = grassLineY - 30 - Math.random() * H * 0.08;
-      flower.x = px;
-      flower.y = py;
-      flower._baseY = py;
+    var grassTop = H * 0.54;
+    this._grassBlades = [];
+    var count = Math.floor(W / 28);
+    for (var i = 0; i < count; i++) {
+      this._grassBlades.push({
+        x: (i / count) * W + Math.random() * 10,
+        y: grassTop + Math.random() * (H * 0.15),
+        h: 10 + Math.random() * 14,
+        sway: 0,
+        swayTarget: 0,
+        color: Math.random() > 0.5 ? 0x78a878 : 0x88b888,
+        phase: Math.random() * Math.PI * 2,
+      });
     }
+  },
+
+  _drawGrassBlades: function() {
+    var gfx = this._grassBladesGfx;
+    if (!gfx) return;
+    // Throttle: redraw every 3rd frame for performance
+    if (this._frame % 3 !== 0) return;
+    gfx.clear();
+    for (var i = 0; i < this._grassBlades.length; i++) {
+      var b = this._grassBlades[i];
+      var windSway = Math.sin(this._frame * 0.02 + b.phase) * 2;
+      var totalSway = windSway + b.sway;
+      gfx.moveTo(b.x, b.y);
+      gfx.lineTo(b.x + totalSway, b.y - b.h);
+      gfx.stroke({ color: b.color, width: 2, cap: 'round' });
+      b.sway *= 0.92;
+    }
+  },
+
+  _swayGrassNear: function(tx, ty) {
+    for (var i = 0; i < this._grassBlades.length; i++) {
+      var b = this._grassBlades[i];
+      var dx = b.x - tx;
+      var dy = b.y - ty;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 80) {
+        var strength = (1 - dist / 80) * 12;
+        b.sway = dx > 0 ? strength : -strength;
+      }
+    }
+  },
+
+  // === Touch ripples ===
+  _addTouchRipple: function(x, y) {
+    var H = this.app.screen.height;
+    if (y < H * 0.50) return; // Only on grass area
+    var ripple = new PIXI.Graphics();
+    ripple.circle(0, 0, 5);
+    ripple.stroke({ color: 0xffffff, width: 2, alpha: 0.4 });
+    ripple.x = x;
+    ripple.y = y;
+    ripple._life = 25;
+    ripple._maxLife = 25;
+    this._ambientContainer.addChild(ripple);
+    this._touchRipples.push(ripple);
+  },
+
+  // === Ambient particles ===
+  _spawnAmbientParticle: function() {
+    var W = this.app.screen.width;
+    var H = this.app.screen.height;
+    var p;
+    if (this._isNight) {
+      // Firefly: tiny glowing dot
+      p = new PIXI.Graphics();
+      p.circle(0, 0, 2);
+      p.fill({ color: 0xf0e870, alpha: 0.8 });
+      // Glow halo
+      p.circle(0, 0, 6);
+      p.fill({ color: 0xf0e870, alpha: 0.15 });
+      p.x = Math.random() * W;
+      p.y = H * 0.25 + Math.random() * H * 0.45;
+      p._type = 'firefly';
+      p._vx = (Math.random() - 0.5) * 0.6;
+      p._vy = (Math.random() - 0.5) * 0.3;
+      p._life = 200 + Math.random() * 200;
+      p._phase = Math.random() * Math.PI * 2;
+    } else {
+      // Dandelion seed: small white puff
+      p = new PIXI.Graphics();
+      // Seed body
+      p.circle(0, 0, 1.5);
+      p.fill({ color: 0xffffff, alpha: 0.7 });
+      // Fluffy lines
+      for (var a = 0; a < 5; a++) {
+        var angle = (a / 5) * Math.PI * 2;
+        p.moveTo(0, 0);
+        p.lineTo(Math.cos(angle) * 5, Math.sin(angle) * 5);
+        p.stroke({ color: 0xffffff, width: 0.5, alpha: 0.5 });
+      }
+      p.x = -10;
+      p.y = H * 0.15 + Math.random() * H * 0.35;
+      p._type = 'seed';
+      p._vx = 0.3 + Math.random() * 0.4;
+      p._vy = (Math.random() - 0.5) * 0.15;
+      p._life = 300 + Math.random() * 200;
+      p._phase = Math.random() * Math.PI * 2;
+    }
+    p.alpha = 0;
+    p._maxLife = p._life;
+    this._ambientContainer.addChild(p);
+    this._ambientParticles.push(p);
+  },
+
+  _updateAmbientParticles: function() {
+    var W = this.app.screen.width;
+    // Spawn new particles periodically
+    var spawnRate = this._isNight ? 120 : 180;
+    if (this._frame % spawnRate === 0 && this._ambientParticles.length < 15) {
+      this._spawnAmbientParticle();
+    }
+
+    for (var i = this._ambientParticles.length - 1; i >= 0; i--) {
+      var p = this._ambientParticles[i];
+      p._life--;
+
+      // Fade in/out
+      var lifeRatio = p._life / p._maxLife;
+      if (lifeRatio > 0.9) {
+        p.alpha = (1 - lifeRatio) * 10; // fade in
+      } else if (lifeRatio < 0.1) {
+        p.alpha = lifeRatio * 10; // fade out
+      } else {
+        p.alpha = p._type === 'firefly' ?
+          0.4 + 0.6 * Math.abs(Math.sin(this._frame * 0.06 + p._phase)) :
+          0.6;
+      }
+
+      if (p._type === 'firefly') {
+        // Fireflies drift in gentle curves
+        p.x += p._vx + Math.sin(this._frame * 0.03 + p._phase) * 0.3;
+        p.y += p._vy + Math.cos(this._frame * 0.025 + p._phase) * 0.2;
+        // Reverse direction at edges
+        if (p.x < 0 || p.x > W) p._vx *= -1;
+      } else {
+        // Dandelion seeds float right with gentle wave
+        p.x += p._vx;
+        p.y += p._vy + Math.sin(this._frame * 0.02 + p._phase) * 0.15;
+        p.rotation = Math.sin(this._frame * 0.03 + p._phase) * 0.3;
+      }
+
+      if (p._life <= 0) {
+        this._ambientContainer.removeChild(p);
+        p.destroy();
+        this._ambientParticles.splice(i, 1);
+      }
+    }
+
+    // Update touch ripples
+    for (var r = this._touchRipples.length - 1; r >= 0; r--) {
+      var rp = this._touchRipples[r];
+      rp._life--;
+      var t = 1 - (rp._life / rp._maxLife);
+      rp.scale.set(1 + t * 3);
+      rp.alpha = (1 - t) * 0.4;
+      if (rp._life <= 0) {
+        this._ambientContainer.removeChild(rp);
+        rp.destroy();
+        this._touchRipples.splice(r, 1);
+      }
+    }
+  },
+
+  resize: function() {
+    this._buildClouds();
+    this._buildGrassBlades();
+    this.updateTimeOfDay();
+    // Reposition flowers using grid layout
+    for (var fi = 0; fi < this.letterFlowers.length; fi++) {
+      var pos = this._getFlowerSlot(fi);
+      this.letterFlowers[fi].x = pos.x;
+      this.letterFlowers[fi].y = pos.y;
+      this.letterFlowers[fi]._baseY = pos.y;
+    }
+    // Clear ambient particles on resize
+    for (var ai = this._ambientParticles.length - 1; ai >= 0; ai--) {
+      this._ambientContainer.removeChild(this._ambientParticles[ai]);
+      this._ambientParticles[ai].destroy();
+    }
+    this._ambientParticles = [];
   },
 };
 

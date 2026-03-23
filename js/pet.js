@@ -13,31 +13,32 @@ var Pet = {
     else this.request = null;
   },
 
+  _speechTimer: 0,       // countdown to hide speech
+  _lastSpeechText: null,  // prevent repeat
+
   getSpeechText: function(st) {
+    // Only show speech for specific states — never random words
     if (st.sleeping) return 'zzz';
-    if (st.stage === 0) return '...';
+    if (st.stage === 0) return null;
 
+    // Need-based speech only
+    if (this.request === 'hungry') return '배고파...';
+    if (this.request === 'sleepy') return '졸려...';
+    if (this.request === 'bored') return '심심해~';
+
+    // No need = no speech (quiet pet is a happy pet)
+    return null;
+  },
+
+  // Get a greeting for when pet is just interacted with
+  getGreeting: function(st) {
+    var greetings = ['반가워!', '안녕~', '헤헤~'];
     var words = st.learning.completedWords;
-    if (words.length === 0) return '...';
-
-    if (this.request === 'hungry') {
-      if (words.indexOf('맘마') !== -1) return '맘마...';
-      if (words.indexOf('물') !== -1) return '물...';
-      return '...';
+    if (words.length > 0 && Math.random() > 0.5) {
+      // Occasionally use a learned word as greeting
+      return words[Math.floor(Math.random() * words.length)] + '~';
     }
-    if (this.request === 'sleepy') {
-      if (words.indexOf('자다') !== -1) return '자...';
-      return 'zzz';
-    }
-    if (this.request === 'bored') {
-      if (words.indexOf('우리') !== -1) return '우리 놀자~';
-      if (words.indexOf('나') !== -1) return '나!';
-      return '...?';
-    }
-    if (words.length > 0) {
-      return words[Math.floor(Math.random() * words.length)] + '!';
-    }
-    return '~';
+    return greetings[Math.floor(Math.random() * greetings.length)];
   },
 
   getMood: function(st) {

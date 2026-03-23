@@ -170,6 +170,35 @@ var CURRICULUM = {
       syllables: [
         { char: '사', type: 'lr', cho: 'ㅅ', jung: 'ㅏ' },
         { char: '람', type: 'lrb', cho: 'ㄹ', jung: 'ㅏ', jong: 'ㅁ' }
+      ] },
+    { word: '눈', meaning: '눈', illustration: 'eye',
+      syllables: [{ char: '눈', type: 'tmb', cho: 'ㄴ', jung: 'ㅜ', jong: 'ㄴ' }] },
+    { word: '귀', meaning: '귀', illustration: 'ear',
+      syllables: [{ char: '귀', type: 'tb', cho: 'ㄱ', jung: 'ㅜ' }] },
+    { word: '구름', meaning: '구름', illustration: 'cloud',
+      syllables: [
+        { char: '구', type: 'tb', cho: 'ㄱ', jung: 'ㅜ' },
+        { char: '름', type: 'tmb', cho: 'ㄹ', jung: 'ㅡ', jong: 'ㅁ' }
+      ] },
+    { word: '바다', meaning: '바다', illustration: 'sea',
+      syllables: [
+        { char: '바', type: 'lr', cho: 'ㅂ', jung: 'ㅏ' },
+        { char: '다', type: 'lr', cho: 'ㄷ', jung: 'ㅏ' }
+      ] },
+    { word: '사자', meaning: '사자', illustration: 'lion',
+      syllables: [
+        { char: '사', type: 'lr', cho: 'ㅅ', jung: 'ㅏ' },
+        { char: '자', type: 'lr', cho: 'ㅈ', jung: 'ㅏ' }
+      ] },
+    { word: '나비', meaning: '나비', illustration: 'butterfly',
+      syllables: [
+        { char: '나', type: 'lr', cho: 'ㄴ', jung: 'ㅏ' },
+        { char: '비', type: 'lr', cho: 'ㅂ', jung: 'ㅣ' }
+      ] },
+    { word: '하나', meaning: '하나(1)', illustration: 'one',
+      syllables: [
+        { char: '하', type: 'lr', cho: 'ㅎ', jung: 'ㅏ' },
+        { char: '나', type: 'lr', cho: 'ㄴ', jung: 'ㅏ' }
       ] }
   ],
   extConsonants: [

@@ -8,7 +8,7 @@ function renderReport(st) {
 
   var r = st.reports;
   var known = (st.learning.knownConsonants || []).concat(st.learning.knownVowels || []);
-  var completed = st.learning.completedWords;
+  var completed = st.learning.completedWords || [];
 
   // 요약 카드
   var summary = document.createElement('div');
@@ -21,19 +21,24 @@ function renderReport(st) {
     '</div>';
   content.appendChild(summary);
 
-  // 현재 학습 중
-  if (st.learning.currentWord) {
+  // 현재 학습 단계
+  var stageNames = ['알', '자음 학습', '모음 학습', '낱말 학습'];
+  var currentStage = st.learning.stage;
+  if (currentStage >= 1 && currentStage <= 3) {
     var current = document.createElement('div');
     current.className = 'report-section';
-    var phaseNames = ['', '만남', '발견', '놀이', '재회'];
-    current.innerHTML = '<h3>현재 학습 중</h3>' +
-      '<p class="report-current-word">' + st.learning.currentWord.word + '</p>' +
-      '<p class="report-current-phase">' + phaseNames[st.learning.currentWord.phase] + ' 단계</p>';
+    var progress = '';
+    if (currentStage === 1) progress = st.learning.consonantIndex + '/' + CURRICULUM.consonants.length + ' 자음';
+    else if (currentStage === 2) progress = st.learning.vowelIndex + '/' + CURRICULUM.vowels.length + ' 모음';
+    else if (currentStage === 3) progress = st.learning.wordIndex + '/' + CURRICULUM.words.length + ' 낱말';
+    current.innerHTML = '<h3>현재 학습 단계</h3>' +
+      '<p class="report-current-word">' + stageNames[currentStage] + '</p>' +
+      '<p class="report-current-phase">' + progress + '</p>';
     content.appendChild(current);
   }
 
   // 자음 진행
-  var consonants = ['ㅁ','ㄴ','ㄷ','ㄹ','ㅂ','ㅅ','ㅇ','ㅈ'];
+  var consonants = ['ㄱ','ㄴ','ㄷ','ㄹ','ㅁ','ㅂ','ㅅ','ㅇ','ㅈ'];
   var consonantCount = 0;
   for (var i = 0; i < consonants.length; i++) {
     if (known.indexOf(consonants[i]) !== -1) consonantCount++;

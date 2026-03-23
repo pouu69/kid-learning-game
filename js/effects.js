@@ -5,10 +5,30 @@ function speakText(text, rate) {
   if (!('speechSynthesis' in window)) return;
   var u = new SpeechSynthesisUtterance(text);
   u.lang = 'ko-KR';
-  u.rate = rate || 0.8;
-  u.pitch = 1.1;
+  u.rate = rate || 0.75;
+  u.pitch = 1.15;
+  u.volume = 0.9;
+  // Try to select a Korean voice for better quality
+  var voices = speechSynthesis.getVoices();
+  for (var i = 0; i < voices.length; i++) {
+    if (voices[i].lang === 'ko-KR' || voices[i].lang === 'ko_KR') {
+      u.voice = voices[i];
+      break;
+    }
+  }
   speechSynthesis.cancel();
   speechSynthesis.speak(u);
+}
+
+// Speak letter with its name first, then the sound
+// e.g., "기역... 그" for ㄱ
+function speakLetterFull(letter) {
+  var letterData = typeof LETTERS !== 'undefined' ? LETTERS[letter] : null;
+  if (letterData) {
+    speakText(letterData.name, 0.75);
+  } else {
+    speakText(letter, 0.75);
+  }
 }
 
 var _audioCtx = null;
@@ -57,6 +77,14 @@ function playSound(type) {
       gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
       osc.start();
       osc.stop(ctx.currentTime + 0.08);
+      osc.onended = function() { osc.disconnect(); gain.disconnect(); };
+    } else if (type === 'wrong') {
+      osc.frequency.value = 200;
+      osc.type = 'square';
+      gain.gain.setValueAtTime(0.10, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.2);
       osc.onended = function() { osc.disconnect(); gain.disconnect(); };
     } else if (type === 'evolve') {
       osc.frequency.value = 440;

@@ -45,37 +45,49 @@
                 <span class="pet-name" id="petNameLabel"></span>
                 <span class="pet-stage" id="petStageLabel"></span>
             </div>
-            <div class="stat-icons" id="statIcons">
-                <div class="stat-icon glass">
-                    <span style="color:#f08080;font-size:0.85rem;">&#9829;</span>
-                    <div class="stat-minibar">
-                        <div class="stat-fill" id="fillHunger" style="background:#f08080;width:100%;"></div>
-                    </div>
-                </div>
-                <div class="stat-icon glass">
-                    <span style="color:#f4b870;font-size:0.85rem;">&#9786;</span>
-                    <div class="stat-minibar">
-                        <div class="stat-fill" id="fillMood" style="background:#f4b870;width:100%;"></div>
-                    </div>
-                </div>
-                <div class="stat-icon glass">
-                    <span style="color:#c8a0d8;font-size:0.85rem;">&#9789;</span>
-                    <div class="stat-minibar">
-                        <div class="stat-fill" id="fillSleepy" style="background:#c8a0d8;width:100%;"></div>
-                    </div>
-                </div>
+        </div>
+
+        <!-- Game-style stat gauges -->
+        <div class="stat-gauges" id="statGauges">
+            <div class="stat-gauge" id="gaugeHunger">
+                <svg class="gauge-ring" viewBox="0 0 48 48">
+                    <circle class="gauge-bg" cx="24" cy="24" r="20" />
+                    <circle class="gauge-fill gauge-fill-hunger" id="fillHunger" cx="24" cy="24" r="20" />
+                </svg>
+                <span class="gauge-icon">&#127835;</span>
+            </div>
+            <div class="stat-gauge" id="gaugeMood">
+                <svg class="gauge-ring" viewBox="0 0 48 48">
+                    <circle class="gauge-bg" cx="24" cy="24" r="20" />
+                    <circle class="gauge-fill gauge-fill-mood" id="fillMood" cx="24" cy="24" r="20" />
+                </svg>
+                <span class="gauge-icon">&#128150;</span>
+            </div>
+            <div class="stat-gauge" id="gaugeSleepy">
+                <svg class="gauge-ring" viewBox="0 0 48 48">
+                    <circle class="gauge-bg" cx="24" cy="24" r="20" />
+                    <circle class="gauge-fill gauge-fill-sleepy" id="fillSleepy" cx="24" cy="24" r="20" />
+                </svg>
+                <span class="gauge-icon">&#128164;</span>
             </div>
         </div>
 
         <!-- World canvas (PixiJS renders here) -->
         <div class="world-canvas" id="worldCanvas"></div>
 
-        <!-- Speech bubble -->
-        <div class="speech-bubble hidden" id="speechBubble"></div>
+        <!-- Speech bubble (PixiJS renders this now, DOM fallback hidden) -->
+        <div class="speech-bubble hidden" id="speechBubble" style="display:none"></div>
 
-        <!-- Pet hint finger (shows when idle, PixiJS handles need bubbles) -->
-        <div class="pet-hint" id="petHint">
-            <div class="pet-hint-finger"></div>
+        <!-- Action buttons bar at bottom -->
+        <div class="home-actions" id="homeActions">
+            <button class="action-btn action-btn-need hidden" id="actionBtnNeed" onclick="handleActionClick()">
+                <span class="action-btn-icon" id="actionBtnIcon"></span>
+                <span class="action-btn-label" id="actionBtnLabel"></span>
+            </button>
+            <button class="action-btn action-btn-learn" id="actionBtnLearn" onclick="handleAction('learn')">
+                <span class="action-btn-icon">&#9998;</span>
+                <span class="action-btn-label">공부하기</span>
+            </button>
         </div>
     </div>
 
@@ -120,9 +132,8 @@
     <script src="js/sprites.js"></script>
     <script src="js/learning.js"></script>
     <script src="js/activities/meet.js"></script>
-    <script src="js/activities/discover.js"></script>
     <script src="js/activities/play.js"></script>
-    <script src="js/activities/reunite.js"></script>
+    <script src="js/activities/care.js"></script>
     <script src="js/report.js"></script>
     <script src="js/game.js"></script>
     <script>
