@@ -1053,24 +1053,328 @@ button,
     }
 }
 
-/* Larger tablets / desktop */
+/* ══════════════════════════════════════════
+   iPad / Tablet Optimization (≥768px)
+══════════════════════════════════════════ */
 @media (min-width: 768px) {
+
+    /* ── Naming Screen ── */
     .naming-inner,
     .reward-inner {
-        max-width: 480px;
+        max-width: 560px;
+        gap: 2rem;
+    }
+    .naming-title {
+        font-size: clamp(2.5rem, 6vw, 4rem);
+    }
+    .naming-subtitle {
+        font-size: 1.4rem;
+    }
+    .naming-egg {
+        width: 160px;
+        height: 192px;
+    }
+    .naming-input {
+        font-size: 2.8rem;
+        padding: 1.2rem 2.5rem;
+        max-width: 420px;
     }
 
-    .btn-primary,
+    /* ── Shared Buttons ── */
+    .btn-primary {
+        font-size: 1.6rem;
+        padding: 1.6rem;
+        min-height: 76px;
+        max-width: 420px;
+        border-radius: 26px;
+    }
     .btn-action {
-        font-size: 1.25rem;
+        font-size: 1.5rem;
+        padding: 1.4rem;
+        min-height: 68px;
+    }
+    .btn-back {
+        font-size: 1.1rem;
+        padding: 0.6rem 1.4rem;
+        min-height: 48px;
     }
 
+    /* ── Home Screen: Pet Info ── */
+    .home-header {
+        top: max(20px, env(safe-area-inset-top, 20px));
+        left: 24px;
+        right: 24px;
+    }
+    .pet-info {
+        gap: 10px;
+        padding: 0.6rem 1.4rem;
+        border-radius: 24px;
+    }
+    .pet-name {
+        font-size: 1.8rem;
+    }
+    .pet-stage {
+        font-size: 1.3rem;
+    }
+
+    /* ── Home Screen: Stat Gauges ── */
+    .stat-gauges {
+        top: max(20px, env(safe-area-inset-top, 20px));
+        right: 24px;
+        gap: 12px;
+    }
+    .stat-gauge {
+        width: 96px;
+        height: 96px;
+    }
+    .gauge-bg,
+    .gauge-fill {
+        stroke-width: 6;
+    }
+    .gauge-icon {
+        font-size: 2.2rem;
+    }
+
+    /* ── Home Screen: Action Buttons ── */
+    .home-actions {
+        padding-bottom: max(2rem, calc(env(safe-area-inset-bottom, 0px) + 2rem));
+    }
+    .action-btn {
+        padding: 1.2rem 2.8rem;
+        font-size: 1.6rem;
+        min-height: 72px;
+        border-radius: 50px;
+        gap: 14px;
+    }
+    .action-btn-icon {
+        font-size: 2rem;
+    }
+    .action-btn-label {
+        font-size: 1.5rem;
+    }
+
+    /* ── Learning Screen ── */
+    .learning-header {
+        padding: max(16px, env(safe-area-inset-top)) 24px 12px;
+    }
+    .learning-content {
+        padding: 2rem;
+    }
+    .progress-dot {
+        width: 14px;
+        height: 14px;
+    }
+
+    /* ── Meet Activity ── */
     .meet-word {
+        font-size: 4.5rem;
+    }
+    .meet-bubble {
+        font-size: 1.4rem;
+        padding: 1rem 2rem;
+    }
+    .meet-sound-btn {
+        width: 80px;
+        height: 80px;
+        font-size: 2rem;
+    }
+
+    /* ── Letter Activity ── */
+    .letter-activity {
+        gap: 2rem;
+    }
+    .phase-label {
+        font-size: 1.8rem;
+    }
+    .letter-name-label {
+        font-size: 1.6rem;
+    }
+    .sound-hint-text {
+        font-size: 1.5rem;
+    }
+    .letter-big {
+        font-size: 14rem;
+    }
+    .letter-ref {
         font-size: 4rem;
     }
+    .sound-btn {
+        width: 88px;
+        height: 88px;
+    }
+    .sound-btn-big {
+        width: 104px;
+        height: 104px;
+    }
+    .guide-next-btn {
+        width: 80px;
+        height: 80px;
+    }
 
-    .discover-letter-big {
-        font-size: 6.5rem;
+    /* ── Trace Canvas ── */
+    .trace-canvas-wrap {
+        max-width: 500px;
+    }
+    .trace-check-btn,
+    .trace-retry-btn {
+        font-size: 1.5rem;
+        padding: 1.1rem 2.8rem;
+        min-height: 64px;
+        min-width: 150px;
+    }
+
+    /* ── Distinguish Grid ── */
+    .distinguish-grid {
+        max-width: 540px;
+        gap: 1.6rem;
+    }
+    .distinguish-choice {
+        font-size: 4.5rem;
+        min-height: 130px;
+        border-radius: 28px;
+    }
+
+    /* ── Puzzle Activity ── */
+    .puzzle-activity {
+        gap: 2rem;
+    }
+    .syllable-block {
+        border-radius: 20px;
+    }
+    .block-lr,
+    .block-tb,
+    .block-lrb {
+        width: 200px;
+        height: 200px;
+    }
+    .block-tmb {
+        width: 200px;
+        height: 240px;
+    }
+    .puzzle-slot {
+        font-size: 3.5rem;
+    }
+    .puzzle-progress {
+        font-size: 1.6rem;
+    }
+    .puzzle-progress-count {
+        font-size: 2rem;
+    }
+    .puzzle-pieces-area {
+        gap: 16px;
+        padding: 1.5rem;
+    }
+    .puzzle-piece {
+        width: 100px;
+        height: 100px;
+        min-width: 100px;
+        min-height: 100px;
+        font-size: 2.6rem;
+        border-radius: 22px;
+    }
+    .puzzle-meaning {
+        font-size: 1.3rem;
+    }
+
+    /* ── Sound Choice ── */
+    .sound-choice {
+        min-width: 80px;
+        min-height: 80px;
+        font-size: 2rem;
+        border-radius: 20px;
+    }
+
+    /* ── Care Mini-Games ── */
+    .care-food-btn {
+        padding: 1.5rem 2rem;
+        min-width: 130px;
+        border-radius: 28px;
+    }
+    .care-food-emoji {
+        font-size: 4rem;
+    }
+    .care-food-name {
+        font-size: 1.5rem;
+    }
+    .care-food-fall {
+        font-size: 6rem;
+    }
+    .care-pet-mouth {
+        font-size: 3rem;
+    }
+    .care-star-field {
+        height: 400px;
+        border-radius: 28px;
+    }
+    .care-star {
+        font-size: 4.5rem;
+    }
+    .care-moon {
+        font-size: 4.5rem;
+    }
+
+    /* ── Reward Screen ── */
+    .reward-inner {
+        gap: 1.8rem;
+        padding: 3rem 2rem;
+    }
+    .reward-pet-bounce {
+        width: 130px;
+        height: 130px;
+    }
+    .reward-word {
+        font-size: 3.5rem;
+    }
+    .reward-message {
+        font-size: 1.4rem;
+    }
+
+    /* ── Review Badge ── */
+    .review-badge {
+        font-size: 1rem;
+        padding: 4px 14px;
+    }
+
+    /* ── Report Screen ── */
+    .report-header {
+        padding: max(1.5rem, env(safe-area-inset-top)) 24px 12px;
+    }
+    .report-title {
+        font-size: 1.5rem;
+    }
+
+    /* ── Mini Pet ── */
+    .mini-pet {
+        height: 100px;
+    }
+
+    /* ── Learning Popup ── */
+    .learning-popup {
+        max-width: 720px;
+        padding: 3rem 2.5rem 4rem;
+        gap: 1.5rem;
+    }
+    .popup-close-btn {
+        width: 44px;
+        height: 44px;
+        font-size: 1.3rem;
+    }
+    .popup-pet-peek {
+        width: 80px;
+        height: 52px;
+    }
+    .learning-progress .progress-dot {
+        width: 14px;
+        height: 14px;
+    }
+    .learning-progress .progress-word-count {
+        font-size: 1.1rem;
+    }
+
+    /* ── Glass utility on iPad ── */
+    .glass {
+        padding: 0.6rem 1.4rem;
+        border-radius: 24px;
     }
 }
 

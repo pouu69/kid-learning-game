@@ -32,6 +32,21 @@ var PetRenderer = {
   _feedAnimTimer: 0,   // feeding animation countdown
   _chewCount: 0,       // chew cycles remaining
 
+  // Physics / drag-drop system
+  _isDragging: false,
+  _physicsMode: false,  // true when pet is in freefall after drag release
+  _velX: 0,
+  _velY: 0,
+  _physX: 0,            // absolute X position during physics
+  _physY: 0,            // absolute Y position during physics
+  _lastPointerX: 0,
+  _lastPointerY: 0,
+  _prevPointerX: 0,
+  _prevPointerY: 0,
+  _groundY: 0,          // computed ground level
+  _bounceCount: 0,
+  _squashTimer: 0,      // squash-stretch on landing
+
   init: function(app, st) {
     var self = this;
     self._app = app;
@@ -71,11 +86,113 @@ var PetRenderer = {
     container.addChild(zzz);
     self._zzz = zzz;
 
-    // Pointer interaction: tap pet to pet it
+    // Pointer interaction: drag pet or tap to pet
     container.eventMode = 'static';
     container.cursor = 'pointer';
-    container.on('pointerdown', function() {
-      if (typeof handleAction === 'function') handleAction('pet');
+    self._groundY = H * 0.52;
+
+    // Drag state
+    var dragStartTime = 0;
+    var dragMoved = false;
+
+    container.on('pointerdown', function(e) {
+      if (self._stage === 0) {
+        // Egg: just wiggle, no drag
+        if (typeof handleAction === 'function') handleAction('pet');
+        return;
+      }
+      self._isDragging = true;
+      self._physicsMode = false;
+      dragMoved = false;
+      dragStartTime = Date.now();
+
+      var px = e.global.x;
+      var py = e.global.y;
+      self._lastPointerX = px;
+      self._lastPointerY = py;
+      self._prevPointerX = px;
+      self._prevPointerY = py;
+      self._physX = self.container.x;
+      self._physY = self.container.y;
+      self._velX = 0;
+      self._velY = 0;
+
+      // Excited reaction: eyes go wide
+      self._pettedTimer = 60;
+      self.setExpression('happy');
+    });
+
+    // Stage-level move and up handlers
+    app.stage.eventMode = 'static';
+    app.stage.hitArea = app.screen;
+
+    app.stage.on('pointermove', function(e) {
+      if (!self._isDragging) return;
+      var px = e.global.x;
+      var py = e.global.y;
+
+      var dx = px - self._lastPointerX;
+      var dy = py - self._lastPointerY;
+      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) dragMoved = true;
+
+      self._prevPointerX = self._lastPointerX;
+      self._prevPointerY = self._lastPointerY;
+      self._lastPointerX = px;
+      self._lastPointerY = py;
+
+      // Move pet to pointer position
+      self._physX = px;
+      self._physY = py;
+      self.container.x = px;
+      self.container.y = py;
+
+      // Tilt pet based on horizontal drag direction
+      self.container.rotation = Math.max(-0.3, Math.min(0.3, dx * 0.03));
+    });
+
+    app.stage.on('pointerup', function() {
+      if (!self._isDragging) return;
+      self._isDragging = false;
+
+      var elapsed = Date.now() - dragStartTime;
+
+      if (!dragMoved && elapsed < 300) {
+        // Short tap without drag: pet action
+        self._physicsMode = false;
+        if (typeof handleAction === 'function') handleAction('pet');
+        return;
+      }
+
+      // Calculate throw velocity from last pointer movement
+      self._velX = (self._lastPointerX - self._prevPointerX) * 0.8;
+      self._velY = (self._lastPointerY - self._prevPointerY) * 0.8;
+
+      // Cap velocity
+      var maxVel = 18;
+      self._velX = Math.max(-maxVel, Math.min(maxVel, self._velX));
+      self._velY = Math.max(-maxVel, Math.min(maxVel, self._velY));
+
+      // Enter physics mode: gravity pulls pet down
+      self._physicsMode = true;
+      self._bounceCount = 0;
+      self._physX = self.container.x;
+      self._physY = self.container.y;
+
+      // Surprised face during freefall
+      if (self._physY < self._groundY - 20) {
+        self.setExpression('sad'); // wide-eyed surprise
+      }
+    });
+
+    app.stage.on('pointerupoutside', function() {
+      if (!self._isDragging) return;
+      self._isDragging = false;
+      self._physicsMode = true;
+      self._bounceCount = 0;
+      self._physX = self.container.x;
+      self._physY = self.container.y;
+      self._velX = 0;
+      self._velY = 0;
     });
 
     // Set random initial blink interval (180–300 frames)
@@ -342,6 +459,9 @@ var PetRenderer = {
     var self = this;
     if (!self.container || !self._app) return;
 
+    // Don't override mood/expression during drag or physics freefall
+    if (self._isDragging || self._physicsMode) return;
+
     // Track sleeping transitions
     var wasSleeping = self._mood === 'sleeping';
     var isSleeping = (st && st.sleeping);
@@ -391,24 +511,178 @@ var PetRenderer = {
     if (!self.container) return;
     self._frame++;
 
-    // Idle bob
-    var bob = Math.sin(self._frame * 0.055) * 5;
-    self.container.y = (self._app ? self._app.screen.height * 0.52 : 300) + self._jumpY + bob;
-
-    // Smooth wander left/right
-    var spd = self._wanderSpeed || 0.03;
-    if (self._mood === 'sleeping') {
-      self._wanderX *= 0.97;
-    } else {
-      self._wanderX += (self._wanderTargetX - self._wanderX) * spd;
-    }
     var W = self._app ? self._app.screen.width : 600;
-    self.container.x = W / 2 + self._wanderX;
+    var H = self._app ? self._app.screen.height : 600;
+    self._groundY = H * 0.52;
 
-    // Shadow follows pet but stays grounded
-    if (self._shadow) {
-      self._shadow.y = 80 - self._jumpY * 0.3;
-      self._shadow.scale.x = 1 - Math.abs(self._jumpY) * 0.005;
+    // === Physics / Drag mode ===
+    if (self._isDragging) {
+      // Position is set directly by pointermove handler
+      // Add squash-stretch effect while held
+      if (self.body) {
+        self.body.scale.set(1.05, 0.95);
+      }
+      // Shadow stretches based on height above ground
+      if (self._shadow) {
+        var heightAbove = self._groundY - self.container.y;
+        var shadowScale = Math.max(0.3, 1 - heightAbove * 0.003);
+        self._shadow.y = self._groundY - self.container.y + 80;
+        self._shadow.scale.set(shadowScale, shadowScale * 0.6);
+        self._shadow.alpha = Math.max(0.03, 0.12 * shadowScale);
+      }
+    } else if (self._physicsMode) {
+      // Apply gravity
+      var gravity = 0.6;
+      self._velY += gravity;
+
+      // Air resistance
+      self._velX *= 0.995;
+
+      // Update position
+      self._physX += self._velX;
+      self._physY += self._velY;
+
+      // Wall bouncing
+      var margin = 40;
+      if (self._physX < margin) {
+        self._physX = margin;
+        self._velX = Math.abs(self._velX) * 0.6;
+      } else if (self._physX > W - margin) {
+        self._physX = W - margin;
+        self._velX = -Math.abs(self._velX) * 0.6;
+      }
+
+      // Ground collision
+      if (self._physY >= self._groundY) {
+        self._physY = self._groundY;
+        self._bounceCount++;
+
+        if (Math.abs(self._velY) > 2) {
+          // Bounce! Dampen velocity
+          self._velY = -self._velY * 0.45;
+          self._velX *= 0.7;
+
+          // Squash on impact
+          self._squashTimer = 8;
+
+          // Landing particles (dust puffs)
+          if (self._app) {
+            for (var di = 0; di < 4; di++) {
+              var dust = new PIXI.Graphics();
+              dust.circle(0, 0, 3 + Math.random() * 4);
+              dust.fill({ color: 0xd0c8b0, alpha: 0.5 });
+              dust.x = self._physX + (Math.random() - 0.5) * 30;
+              dust.y = self._groundY + 80;
+              dust._vx = (Math.random() - 0.5) * 3;
+              dust._vy = -1 - Math.random() * 2;
+              dust._life = 20;
+              self._app.stage.addChild(dust);
+              (function(d) {
+                var t = function() {
+                  d.x += d._vx;
+                  d.y += d._vy;
+                  d._vy += 0.05;
+                  d._life--;
+                  d.alpha = d._life / 20 * 0.5;
+                  d.scale.set(1 + (20 - d._life) * 0.05);
+                  if (d._life <= 0) {
+                    self._app.stage.removeChild(d);
+                    self._app.ticker.remove(t);
+                    d.destroy();
+                  }
+                };
+                self._app.ticker.add(t);
+              })(dust);
+            }
+          }
+
+          // Sound on bounce
+          if (self._bounceCount <= 3 && typeof playSound === 'function') {
+            playSound('click');
+          }
+        } else {
+          // Velocity too small, settle on ground
+          self._velY = 0;
+          self._velX *= 0.8;
+
+          if (Math.abs(self._velX) < 0.5) {
+            // Done bouncing — return to normal mode
+            self._physicsMode = false;
+            self._wanderX = self._physX - W / 2;
+            self._wanderTargetX = self._wanderX;
+            self.setExpression('happy');
+            self._pettedTimer = 60;
+            // Restore body scale
+            if (self.body) self.body.scale.set(1, 1);
+          }
+        }
+      }
+
+      self.container.x = self._physX;
+      self.container.y = self._physY;
+
+      // Rotation based on velocity (tilt in direction of movement)
+      self.container.rotation = Math.max(-0.4, Math.min(0.4, self._velX * 0.03));
+
+      // Squash-stretch during freefall
+      if (self.body) {
+        if (self._squashTimer > 0) {
+          self._squashTimer--;
+          var sq = self._squashTimer / 8;
+          self.body.scale.set(1 + sq * 0.25, 1 - sq * 0.15);
+        } else if (self._velY < -1) {
+          // Stretching upward
+          self.body.scale.set(0.92, 1.08);
+        } else if (self._velY > 3) {
+          // Squishing downward
+          self.body.scale.set(1.08, 0.92);
+        } else {
+          self.body.scale.set(1, 1);
+        }
+      }
+
+      // Shadow follows horizontally, stays at ground
+      if (self._shadow) {
+        var heightAbove = self._groundY - self._physY;
+        var shadowScale = Math.max(0.3, 1 - heightAbove * 0.003);
+        self._shadow.y = self._groundY - self._physY + 80;
+        self._shadow.scale.set(shadowScale, shadowScale * 0.6);
+        self._shadow.alpha = Math.max(0.03, 0.12 * shadowScale);
+      }
+
+      // Change expression based on velocity
+      if (self._velY < -3 && self._mood !== 'happy') {
+        self.setExpression('happy'); // wheee going up
+      } else if (self._velY > 5 && self._mood !== 'sad') {
+        self.setExpression('sad'); // falling fast - scared
+      }
+
+    } else {
+      // === Normal idle mode ===
+      // Idle bob
+      var bob = Math.sin(self._frame * 0.055) * 5;
+      self.container.y = self._groundY + self._jumpY + bob;
+
+      // Smooth wander left/right
+      var spd = self._wanderSpeed || 0.03;
+      if (self._mood === 'sleeping') {
+        self._wanderX *= 0.97;
+      } else {
+        self._wanderX += (self._wanderTargetX - self._wanderX) * spd;
+      }
+      self.container.x = W / 2 + self._wanderX;
+
+      // Restore body scale gently
+      if (self.body && !self._isDragging) {
+        // Breathing handled below in idle behaviors
+      }
+
+      // Shadow follows pet but stays grounded
+      if (self._shadow) {
+        self._shadow.y = 80 - self._jumpY * 0.3;
+        self._shadow.scale.set(1 - Math.abs(self._jumpY) * 0.005, 0.6);
+        self._shadow.alpha = 0.12;
+      }
     }
 
     // Blink logic (skip when sleeping — eyes are already closed)

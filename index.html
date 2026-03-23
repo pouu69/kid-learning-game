@@ -216,6 +216,8 @@
             worldCanvas.addEventListener('click', function(e) {
                 // Don't trigger if clicking a button
                 if (e.target.tagName === 'BUTTON') return;
+                // Skip if pet was just dragged (physics mode handles it)
+                if (typeof PetRenderer !== 'undefined' && (PetRenderer._isDragging || PetRenderer._physicsMode)) return;
                 if (typeof handleAction === 'function') {
                     handleAction('pet');
                 }
