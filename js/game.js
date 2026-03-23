@@ -28,6 +28,26 @@ function startTicking() {
   _tickInterval = setInterval(tick, 1000);
 }
 
+// Pause game when tab/app goes to background
+document.addEventListener('visibilitychange', function() {
+  if (!st || !st.name) return;
+  if (document.hidden) {
+    // Tab hidden → stop ticking, save state
+    if (_tickInterval) {
+      clearInterval(_tickInterval);
+      _tickInterval = null;
+    }
+    saveState(st);
+  } else {
+    // Tab visible → apply offline decay, resume
+    applyOfflineDecay(st);
+    updateDaily(st);
+    saveState(st);
+    startTicking();
+    if (currentScreen === 'home') updateHome(st);
+  }
+});
+
 function initWorld() {
   var container = document.getElementById('worldCanvas');
   if (container && typeof World !== 'undefined') {
@@ -122,7 +142,6 @@ function _getDom() {
       actionBtnNeed: document.getElementById('actionBtnNeed'),
       actionBtnIcon: document.getElementById('actionBtnIcon'),
       actionBtnLabel: document.getElementById('actionBtnLabel'),
-      actionBtnLearn: document.getElementById('actionBtnLearn'),
       petHint: document.querySelector('.pet-hint'),
     };
   }
@@ -201,9 +220,30 @@ function updateHome(st) {
     }
   }
 
-  // Hide learn button during sleep or egg stage
-  if (d.actionBtnLearn) {
-    d.actionBtnLearn.style.display = (st.sleeping || st.stage === 0) ? 'none' : '';
+  // Update care bar: hide during egg stage, toggle sleep/wake
+  var careBar = document.getElementById('careBar');
+  if (careBar) {
+    careBar.style.display = (st.stage === 0) ? 'none' : '';
+    // Disable feed/wash/learn while sleeping
+    var otherBtns = careBar.querySelectorAll('.care-btn-feed,.care-btn-wash,.care-btn-learn');
+    for (var bi = 0; bi < otherBtns.length; bi++) {
+      otherBtns[bi].disabled = st.sleeping;
+      otherBtns[bi].style.opacity = st.sleeping ? '0.4' : '';
+    }
+  }
+  var careSleepIcon = document.getElementById('careSleepIcon');
+  var careSleepLabel = document.getElementById('careSleepLabel');
+  var careBtnSleep = document.getElementById('careBtnSleep');
+  if (careSleepIcon && careSleepLabel && careBtnSleep) {
+    if (st.sleeping) {
+      careSleepIcon.innerHTML = '&#9728;&#65039;';
+      careSleepLabel.textContent = '깨우기';
+      careBtnSleep.onclick = function() { handleAction('wake'); };
+    } else {
+      careSleepIcon.innerHTML = '&#128164;';
+      careSleepLabel.textContent = '잠자기';
+      careBtnSleep.onclick = function() { handleAction('sleep'); };
+    }
   }
 
   if (typeof PetRenderer !== 'undefined' && PetRenderer.update) {
@@ -268,6 +308,13 @@ function handleAction(action) {
   if (action === 'wake') {
     if (typeof CareActivity !== 'undefined') {
       CareActivity.startWake(st);
+    }
+    return;
+  }
+
+  if (action === 'wash') {
+    if (typeof CareActivity !== 'undefined') {
+      CareActivity.startWash(st);
     }
     return;
   }

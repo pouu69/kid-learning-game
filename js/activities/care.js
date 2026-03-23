@@ -294,5 +294,74 @@ var CareActivity = {
 
     Learning.openPopup(container);
     speakText('해를 눌러봐!', 0.75);
+  },
+
+  // === WASH: Tap bubbles to scrub pet clean ===
+  startWash: function(st) {
+    var container = document.createElement('div');
+    container.className = 'letter-activity';
+
+    var label = document.createElement('div');
+    label.className = 'phase-label';
+    label.textContent = '거품을 눌러서 씻겨주자!';
+    container.appendChild(label);
+
+    var bubbleField = document.createElement('div');
+    bubbleField.className = 'care-star-field';
+
+    var tappedCount = 0;
+    var totalBubbles = 6;
+
+    for (var i = 0; i < totalBubbles; i++) {
+      var bubble = document.createElement('div');
+      bubble.className = 'care-star care-bubble';
+      bubble.textContent = '\uD83D\uDCA7'; // water drop
+      bubble.style.left = (5 + Math.random() * 75) + '%';
+      bubble.style.top = (5 + Math.random() * 65) + '%';
+      bubble.style.animationDelay = (i * 0.25) + 's';
+
+      (function(bubbleEl) {
+        bubbleEl.onclick = function() {
+          if (bubbleEl.classList.contains('care-star-tapped')) return;
+          bubbleEl.classList.add('care-star-tapped');
+          bubbleEl.textContent = '\u2728'; // sparkle
+          playSound('click');
+          tappedCount++;
+
+          if (tappedCount >= totalBubbles) {
+            setTimeout(function() {
+              container.innerHTML = '';
+              var doneEl = document.createElement('div');
+              doneEl.style.cssText = 'text-align:center;';
+              doneEl.innerHTML = '<div style="font-size:4rem;animation:popIn 0.4s ease">\u2728</div>' +
+                '<div style="font-size:1.5rem;color:#88c8e8;margin-top:1rem;font-family:var(--font-display);animation:popIn 0.6s ease">깨끗해졌다!</div>';
+              container.appendChild(doneEl);
+
+              speakText('깨끗해졌다!', 0.75);
+              st.mood = Math.min(100, st.mood + 15);
+              saveState(st);
+
+              if (typeof PetRenderer !== 'undefined') {
+                if (PetRenderer.celebrate) PetRenderer.celebrate();
+                if (PetRenderer.emitParticles) PetRenderer.emitParticles('star', 5);
+                if (PetRenderer.showPixiBubble) PetRenderer.showPixiBubble('깨끗!', 150);
+              }
+
+              playSound('correct');
+              setTimeout(function() {
+                Learning.closePopup();
+                updateHome(st);
+              }, 1800);
+            }, 500);
+          }
+        };
+      })(bubble);
+
+      bubbleField.appendChild(bubble);
+    }
+    container.appendChild(bubbleField);
+
+    Learning.openPopup(container);
+    speakText('거품을 눌러봐!', 0.75);
   }
 };

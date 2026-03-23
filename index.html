@@ -78,15 +78,31 @@
         <!-- Speech bubble (PixiJS renders this now, DOM fallback hidden) -->
         <div class="speech-bubble hidden" id="speechBubble" style="display:none"></div>
 
-        <!-- Action buttons bar at bottom -->
+        <!-- Need action (dynamic, shown when pet has urgent need) -->
         <div class="home-actions" id="homeActions">
             <button class="action-btn action-btn-need hidden" id="actionBtnNeed" onclick="handleActionClick()">
                 <span class="action-btn-icon" id="actionBtnIcon"></span>
                 <span class="action-btn-label" id="actionBtnLabel"></span>
             </button>
-            <button class="action-btn action-btn-learn" id="actionBtnLearn" onclick="handleAction('learn')">
-                <span class="action-btn-icon">&#9998;</span>
-                <span class="action-btn-label">공부하기</span>
+        </div>
+
+        <!-- Care buttons bar (always visible) -->
+        <div class="care-bar" id="careBar">
+            <button class="care-btn care-btn-feed" onclick="handleAction('feed')">
+                <span class="care-btn-icon">&#127835;</span>
+                <span class="care-btn-label">밥주기</span>
+            </button>
+            <button class="care-btn care-btn-sleep" id="careBtnSleep" onclick="handleAction('sleep')">
+                <span class="care-btn-icon" id="careSleepIcon">&#128164;</span>
+                <span class="care-btn-label" id="careSleepLabel">잠자기</span>
+            </button>
+            <button class="care-btn care-btn-wash" onclick="handleAction('wash')">
+                <span class="care-btn-icon">&#128167;</span>
+                <span class="care-btn-label">씻기</span>
+            </button>
+            <button class="care-btn care-btn-learn" onclick="handleAction('learn')">
+                <span class="care-btn-icon">&#9998;</span>
+                <span class="care-btn-label">공부하기</span>
             </button>
         </div>
     </div>

@@ -404,16 +404,15 @@ body {
 /* === Home Action Buttons === */
 .home-actions {
     position: absolute;
-    bottom: 0;
+    bottom: 80px;
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
     left: 0;
     right: 0;
-    padding: 1rem 1.2rem;
-    padding-bottom: max(1.5rem, calc(env(safe-area-inset-bottom, 0px) + 1rem));
+    padding: 0.5rem 1rem;
     z-index: 20;
     display: flex;
     gap: 10px;
     justify-content: center;
-    background: linear-gradient(transparent 0%, rgba(152, 200, 160, 0.6) 40%);
     pointer-events: none;
 }
 .action-btn {
@@ -468,6 +467,59 @@ body {
     0%, 100% { box-shadow: 0 4px 16px rgba(244,184,112,0.3); }
     50% { box-shadow: 0 4px 24px rgba(244,184,112,0.6); }
 }
+
+/* === Care Button Bar (always visible) === */
+.care-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 0.6rem 0.8rem;
+    padding-bottom: max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.6rem));
+    z-index: 19;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    background: linear-gradient(transparent 0%, rgba(152, 200, 160, 0.6) 40%);
+    pointer-events: none;
+}
+.care-btn {
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 0.6rem 1rem;
+    border: none;
+    border-radius: 16px;
+    font-family: var(--font-body);
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.12s, box-shadow 0.12s;
+    min-width: 64px;
+    background: rgba(255,255,255,0.85);
+    color: var(--chocolate);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+.care-btn:active {
+    transform: scale(0.92);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.care-btn-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+}
+.care-btn-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.care-btn-feed  { border-bottom: 3px solid var(--tangerine); }
+.care-btn-sleep { border-bottom: 3px solid var(--grape); }
+.care-btn-wash  { border-bottom: 3px solid var(--sky); }
+.care-btn-learn { border-bottom: 3px solid var(--grass); }
 
 /* Floating need icon — replaces text buttons */
 .need-icon {
@@ -1137,7 +1189,8 @@ button,
 
     /* ── Home Screen: Action Buttons ── */
     .home-actions {
-        padding-bottom: max(2rem, calc(env(safe-area-inset-bottom, 0px) + 2rem));
+        bottom: 100px;
+        bottom: calc(100px + env(safe-area-inset-bottom, 0px));
     }
     .action-btn {
         padding: 1.2rem 2.8rem;
@@ -1151,6 +1204,24 @@ button,
     }
     .action-btn-label {
         font-size: 1.5rem;
+    }
+
+    /* ── Care Bar ── */
+    .care-bar {
+        padding: 0.8rem 1.2rem;
+        padding-bottom: max(1.2rem, calc(env(safe-area-inset-bottom, 0px) + 0.8rem));
+        gap: 12px;
+    }
+    .care-btn {
+        padding: 0.8rem 1.4rem;
+        min-width: 80px;
+        border-radius: 20px;
+    }
+    .care-btn-icon {
+        font-size: 1.8rem;
+    }
+    .care-btn-label {
+        font-size: 0.9rem;
     }
 
     /* ── Learning Screen ── */
