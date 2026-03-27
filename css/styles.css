@@ -1,20 +1,47 @@
-/* ===== TAMAGOJI - Picture Book Style ===== */
+/* ===== TAMAGOJI - Pixel Art Style ===== */
 
 /* ── Design tokens ── */
 :root {
-    --cream:       #fdf8f0;
-    --grass:       #a8d8b0;
-    --sky:         #88c8e8;
-    --tangerine:   #f4b870;
-    --strawberry:  #f08080;
-    --grape:       #c8a0d8;
-    --star:        #f0d060;
-    --cookie:      #e8c8a0;
-    --chocolate:   #3a3028;
+    /* Pixel art palette — Day */
+    --sky-deep:    #3878c0;
+    --sky-light:   #88c8f8;
+    --grass-light: #68c048;
+    --grass-deep:  #489030;
+
+    /* Pixel art palette — Night */
+    --sky-deep-n:    #0a0820;
+    --sky-light-n:   #282858;
+    --grass-light-n: #1a3818;
+    --grass-deep-n:  #0c2008;
+
+    /* UI chrome */
+    --ui-bg:       #1a1830;
+    --ui-border:   #6a4c9c;
+    --ui-bg-n:     #0a0820;
+    --ui-border-n: #383858;
+
+    /* Accent colors */
+    --gold:        #f8d848;
+    --red:         #f86868;
+    --purple:      #a888d0;
+    --orange:      #f8c848;
+    --blue:        #58b8f8;
+    --text-light:  #f0e8ff;
+    --text-dark:   #1a1830;
+
+    /* Legacy compat (referenced elsewhere) */
+    --cream:       #1a1830;
+    --chocolate:   #f0e8ff;
+    --strawberry:  #f86868;
+    --grape:       #a888d0;
+    --tangerine:   #f8c848;
+    --star:        #f8d848;
     --milk:        #ffffff;
 
-    --font-display: 'Gaegu', cursive;
-    --font-body:    'Noto Sans KR', sans-serif;
+    /* Fonts */
+    --font-pixel:  'DungGeunMo', monospace;
+    --font-display: 'DungGeunMo', monospace;
+    --font-body:   'Noto Sans KR', sans-serif;
 
     /* Viewport height fix for mobile browsers */
     --vh: 1vh;
@@ -40,9 +67,9 @@ body {
     height: calc(var(--vh, 1vh) * 100);
     margin: 0;
     overflow: hidden;
-    font-family: var(--font-body);
-    background: var(--cream);
-    color: var(--chocolate);
+    font-family: var(--font-pixel);
+    background: var(--ui-bg);
+    color: var(--text-light);
     touch-action: manipulation;
     position: fixed;
     top: 0;
