@@ -1006,7 +1006,8 @@ var PetRenderer = {
     // === Dynamic idle behaviors ===
     if (self._mood !== 'sleeping' && self._stage > 0 && !self._stateAction) {
       if (self._frame % 120 === 0) {
-        self._wanderTargetX = (Math.random() - 0.5) * 100;
+        var W = self._app ? self._app.screen.width : 800;
+        self._wanderTargetX = (Math.random() - 0.5) * W * 0.6;
       }
 
       if (self._frame % 180 === 0 && self._pettedTimer <= 0) {
@@ -1084,7 +1085,8 @@ var PetRenderer = {
           }
         } else if (self._needType === 'bored') {
           self._jumpTimer = 6;
-          self._wanderTargetX = (Math.random() - 0.5) * 120;
+          var Wb = self._app ? self._app.screen.width : 800;
+          self._wanderTargetX = (Math.random() - 0.5) * Wb * 0.7;
         }
       }
     }

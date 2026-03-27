@@ -446,22 +446,29 @@ var World = {
     var container = new PIXI.Container();
     container._letter = letter;
 
-    // Pixel stem: green rect (2px wide, ~16px tall)
+    // Pixel stem: green rect
     var stem = new PIXI.Graphics();
-    var stemH = 16;
-    stem.rect(-1, 4, 2, stemH);
+    var stemH = 22;
+    stem.rect(-2, 6, 4, stemH);
     stem.fill({ color: 0x48a030 });
     container.addChild(stem);
 
-    // Pixel flower head: colored square (14x14px)
-    var headSize = 14;
+    // Pixel flower head: colored square (24x24px)
+    var headSize = isWord ? 28 : 24;
     var head = new PIXI.Graphics();
+    // Border
+    head.rect(-headSize / 2 - 2, -headSize / 2 - 2, headSize + 4, headSize + 4);
+    head.fill({ color: petalColor & 0x808080 | 0x404040 });
+    // Inner
     head.rect(-headSize / 2, -headSize / 2, headSize, headSize);
     head.fill({ color: petalColor });
+    // Highlight
+    head.rect(-headSize / 2 + 2, -headSize / 2 + 2, headSize * 0.4, 3);
+    head.fill({ color: 0xffffff, alpha: 0.35 });
     container.addChild(head);
 
     // Letter text on center using DungGeunMo font
-    var fontSize = isWord ? 10 : 12;
+    var fontSize = isWord ? 14 : 16;
     var style = new PIXI.TextStyle({
       fontFamily: '"DungGeunMo", monospace',
       fontSize: fontSize,

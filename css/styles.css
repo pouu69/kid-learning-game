@@ -1170,9 +1170,10 @@ button,
     box-shadow: 0 4px 0 #0a0818;
     width: 90%;
     max-width: 500px;
-    max-height: 85vh;
-    padding: 16px;
-    overflow-y: auto;
+    max-height: none;
+    height: auto;
+    padding: 12px;
+    overflow-y: hidden;
     display: flex;
     flex-direction: column;
     align-items: center;

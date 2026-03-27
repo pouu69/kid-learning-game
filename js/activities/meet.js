@@ -111,7 +111,7 @@ var LetterActivity = {
     function drawGuide() {
       ctx.clearRect(0, 0, 400, 400);
       ctx.setLineDash([6, 6]);
-      ctx.strokeStyle = '#c8c0b0';
+      ctx.strokeStyle = '#6a4c9c';
       ctx.lineWidth = 8;
       ctx.lineCap = 'round';
       for (var s = 0; s < letterData.strokes.length; s++) {
@@ -130,7 +130,7 @@ var LetterActivity = {
         }
         // Show stroke number at start of each stroke
         ctx.setLineDash([]);
-        ctx.fillStyle = '#b0a898';
+        ctx.fillStyle = '#a888d0';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -175,7 +175,7 @@ var LetterActivity = {
       isDrawing = true;
       ctx.setLineDash([]);
       ctx.globalAlpha = 1.0;
-      ctx.strokeStyle = '#3a3028';
+      ctx.strokeStyle = '#f8d848';
       ctx.lineWidth = 10;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
@@ -195,7 +195,7 @@ var LetterActivity = {
       e.preventDefault();
       ctx.setLineDash([]);
       ctx.globalAlpha = 1.0;
-      ctx.strokeStyle = '#3a3028';
+      ctx.strokeStyle = '#f8d848';
       ctx.lineWidth = 10;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
