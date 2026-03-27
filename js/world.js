@@ -1,5 +1,5 @@
 // js/world.js
-// World rendering: sky, grass, clouds, sun/moon, letter flowers
+// World rendering: pixel art sky, grass, clouds, sun/moon, letter flowers
 
 var World = {
   app: null,
@@ -18,6 +18,7 @@ var World = {
   _isNight: false,
   _grassBlades: [],
   _touchRipples: [],
+  _quizOverlay: null,
 
   init: function(container) {
     var self = this;
@@ -27,7 +28,7 @@ var World = {
     return app.init({
       resizeTo: container,
       backgroundAlpha: 0,
-      antialias: true,
+      antialias: false,
       resolution: window.devicePixelRatio || 1,
       autoDensity: true,
     }).then(function() {
@@ -97,7 +98,7 @@ var World = {
     var H = self.app.screen.height;
     for (var i = 0; i < 20; i++) {
       var drop = new PIXI.Graphics();
-      drop.rect(0, 0, 1.5, 8).fill({ color: 0x88aacc, alpha: 0.4 });
+      drop.rect(0, 0, 2, 8).fill({ color: 0x88aacc, alpha: 0.4 });
       drop.x = Math.random() * W;
       drop.y = Math.random() * H * 0.5;
       drop._speed = 3 + Math.random() * 2;
@@ -119,87 +120,118 @@ var World = {
     var W = self.app.screen.width;
     var H = self.app.screen.height;
 
-    // Grass tufts scattered on the hill area
-    for (var i = 0; i < 5; i++) {
-      var tuft = new PIXI.Graphics();
-      var tx = 20 + Math.random() * (W - 40);
-      var ty = H * 0.52 + Math.random() * (H * 0.28);
-      // Left blade
-      tuft.fill({ color: 0x88b888 });
-      tuft.moveTo(tx, ty);
-      tuft.lineTo(tx - 3, ty - 8 - Math.random() * 6);
-      tuft.lineTo(tx + 3, ty);
-      tuft.fill();
-      // Right blade
-      tuft.fill({ color: 0x78a878 });
-      tuft.moveTo(tx + 4, ty);
-      tuft.lineTo(tx + 6, ty - 10 - Math.random() * 5);
-      tuft.lineTo(tx + 8, ty);
-      tuft.fill();
-      self.app.stage.addChild(tuft);
+    // Remove old decorations container if it exists
+    if (self._decoContainer) {
+      self.app.stage.removeChild(self._decoContainer);
+      self._decoContainer.destroy({ children: true });
     }
+    self._decoContainer = new PIXI.Container();
+    self.app.stage.addChild(self._decoContainer);
 
-    // Small decorative flowers (5-petal shapes)
-    var flowerColors = [0xf4a8a8, 0xf8d870, 0xc8a8e8, 0xf0b888, 0xa8d8b0];
-    for (var fi = 0; fi < 6; fi++) {
+    // Pixel tree (left side) - brown rect trunk + 3 stacked green rects
+    var tree = new PIXI.Graphics();
+    var treeX = W * 0.12;
+    var treeBaseY = H * 0.55;
+    // Trunk
+    tree.rect(treeX - 4, treeBaseY - 40, 8, 40);
+    tree.fill({ color: 0x8b5e3c });
+    // Foliage: 3 stacked green rects decreasing in width
+    tree.rect(treeX - 20, treeBaseY - 56, 40, 16);
+    tree.fill({ color: 0x48a030 });
+    tree.rect(treeX - 16, treeBaseY - 70, 32, 16);
+    tree.fill({ color: 0x58b838 });
+    tree.rect(treeX - 10, treeBaseY - 82, 20, 14);
+    tree.fill({ color: 0x68c048 });
+    self._decoContainer.addChild(tree);
+
+    // Pixel flowers: small colored rects on green rect stems
+    var flowerColors = [0xf08080, 0xf8d870, 0xc8a8e8, 0xa8d8b0];
+    for (var fi = 0; fi < 4; fi++) {
       var flower = new PIXI.Graphics();
-      var fx = 25 + (fi / 5) * (W - 50) + (Math.random() - 0.5) * 30;
-      var fy = H * 0.56 + Math.random() * (H * 0.20);
-      var fc = flowerColors[fi % flowerColors.length];
+      var fx = W * 0.25 + fi * (W * 0.12);
+      var fy = H * 0.55 + Math.random() * (H * 0.08);
       // Stem
-      flower.rect(fx - 1, fy - 8, 2, 12);
-      flower.fill({ color: 0x68a870 });
-      // Leaf
-      flower.ellipse(fx + 3, fy - 2, 4, 2);
-      flower.fill({ color: 0x88b888 });
-      // Petals (5 around center)
-      for (var p = 0; p < 5; p++) {
-        var angle = (p / 5) * Math.PI * 2 - Math.PI / 2;
-        var petalX = fx + Math.cos(angle) * 5;
-        var petalY = fy - 8 + Math.sin(angle) * 5;
-        flower.ellipse(petalX, petalY, 4, 3);
-        flower.fill({ color: fc });
-      }
-      // Center
-      flower.circle(fx, fy - 8, 2.5);
-      flower.fill({ color: 0xf8f0a0 });
-      self.app.stage.addChild(flower);
+      flower.rect(fx - 1, fy - 14, 2, 14);
+      flower.fill({ color: 0x48a030 });
+      // Head: small colored rect
+      flower.rect(fx - 3, fy - 20, 6, 6);
+      flower.fill({ color: flowerColors[fi] });
+      self._decoContainer.addChild(flower);
     }
 
-    // Butterfly: a small shape that drifts across in a sine wave
-    self._butterfly = new PIXI.Graphics();
-    // Left wing
-    self._butterfly.ellipse(-6, 0, 7, 5);
-    self._butterfly.fill({ color: 0xf0a0d0, alpha: 0.85 });
-    // Right wing
-    self._butterfly.ellipse(6, 0, 7, 5);
-    self._butterfly.fill({ color: 0xd0a0f0, alpha: 0.85 });
-    // Body
-    self._butterfly.rect(-1, -4, 2, 8);
-    self._butterfly.fill({ color: 0x806060 });
+    // Pixel fence (right side): brown rect posts + horizontal bars
+    var fence = new PIXI.Graphics();
+    var fenceStartX = W * 0.78;
+    var fenceY = H * 0.55;
+    for (var pi = 0; pi < 4; pi++) {
+      var postX = fenceStartX + pi * 18;
+      // Post
+      fence.rect(postX, fenceY - 28, 4, 28);
+      fence.fill({ color: 0x8b5e3c });
+    }
+    // Horizontal bars
+    fence.rect(fenceStartX, fenceY - 22, 54, 4);
+    fence.fill({ color: 0xa0724a });
+    fence.rect(fenceStartX, fenceY - 12, 54, 4);
+    fence.fill({ color: 0xa0724a });
+    self._decoContainer.addChild(fence);
 
-    self._butterfly.x = -30;
-    self._butterfly.y = H * 0.25;
-    self._butterflyBaseY = H * 0.25;
-    self._butterflyFrame = 0;
-    self.app.stage.addChild(self._butterfly);
+    // Pixel mushroom: red cap with white dots + beige stem
+    var mush = new PIXI.Graphics();
+    var mx = W * 0.70;
+    var my = H * 0.56;
+    // Stem
+    mush.rect(mx - 3, my - 8, 6, 8);
+    mush.fill({ color: 0xe8d8b0 });
+    // Cap
+    mush.rect(mx - 7, my - 14, 14, 6);
+    mush.fill({ color: 0xd83030 });
+    // White dots on cap
+    mush.rect(mx - 4, my - 12, 2, 2);
+    mush.fill({ color: 0xffffff });
+    mush.rect(mx + 2, my - 12, 2, 2);
+    mush.fill({ color: 0xffffff });
+    self._decoContainer.addChild(mush);
+
+    // Pixel birds (V-shaped rects) replacing butterfly
+    self._birds = [];
+    for (var bi = 0; bi < 3; bi++) {
+      var bird = new PIXI.Graphics();
+      // V-shape: two small angled rects
+      bird.rect(-4, 0, 3, 2);
+      bird.fill({ color: 0x303030 });
+      bird.rect(1, 0, 3, 2);
+      bird.fill({ color: 0x303030 });
+      bird.rect(-5, 2, 2, 1);
+      bird.fill({ color: 0x303030 });
+      bird.rect(3, 2, 2, 1);
+      bird.fill({ color: 0x303030 });
+      bird.x = -20 - bi * 40;
+      bird.y = H * 0.15 + bi * 20;
+      bird._baseY = bird.y;
+      bird._speed = 0.4 + bi * 0.15;
+      bird._phase = bi * 1.5;
+      self._decoContainer.addChild(bird);
+      self._birds.push(bird);
+    }
   },
 
   _buildClouds: function() {
     var W = this.app.screen.width;
     var H = this.app.screen.height;
     this.clouds = [];
+    // Pixel clouds: groups of rects at different heights
     var configs = [
-      { rx: 55, ry: 22, alpha: 0.65 },
-      { rx: 44, ry: 18, alpha: 0.55 },
-      { rx: 62, ry: 20, alpha: 0.50 },
+      { w: 48, h: 12, alpha: 0.7 },
+      { w: 36, h: 10, alpha: 0.6 },
+      { w: 56, h: 14, alpha: 0.55 },
     ];
     for (var i = 0; i < configs.length; i++) {
       this.clouds.push({
         x: (W * 0.15) + i * (W * 0.3) + Math.random() * W * 0.1,
         y: H * (0.08 + i * 0.05),
-        rx: configs[i].rx,
-        ry: configs[i].ry,
+        w: configs[i].w,
+        h: configs[i].h,
         alpha: configs[i].alpha,
         speed: 0.18 + i * 0.08,
       });
@@ -211,34 +243,24 @@ var World = {
     var W = this.app.screen.width;
     var H = this.app.screen.height;
 
-    // Determine palette
-    var skyTop, skyBot, isNight, isSunset;
-    if (hour >= 6 && hour < 18) {
-      // Day
-      skyTop = 0x88c8e8;
-      skyBot = 0xb8ddf0;
+    // 2-phase: day (7-19) and night
+    var skyTop, skyBot, isNight;
+    if (hour >= 7 && hour < 19) {
+      skyTop = 0x3878c0;
+      skyBot = 0x88c8f8;
       isNight = false;
-      isSunset = false;
-    } else if (hour >= 18 && hour < 21) {
-      // Sunset
-      skyTop = 0xf0a870;
-      skyBot = 0xd88860;
-      isNight = false;
-      isSunset = true;
     } else {
-      // Night
-      skyTop = 0x2a2848;
-      skyBot = 0x3a3868;
+      skyTop = 0x0a0820;
+      skyBot = 0x282858;
       isNight = true;
-      isSunset = false;
     }
 
     this._isNight = isNight;
 
-    // Draw sky as horizontal gradient strips
+    // Draw sky as blocky gradient with fewer steps for pixel look
     var gfx = this._skyGfx;
     gfx.clear();
-    var steps = 50;
+    var steps = 12;
     for (var i = 0; i < steps; i++) {
       var t = i / (steps - 1);
       var r = Math.round(_lerpChannel(skyTop >> 16 & 0xff, skyBot >> 16 & 0xff, t));
@@ -252,8 +274,6 @@ var World = {
     }
 
     // Sun or moon
-    var sunR = 22;
-    var moonR = 16;
     var celestialX = W * 0.82;
     var celestialY = H * 0.12;
 
@@ -261,22 +281,41 @@ var World = {
     this._moonGfx.clear();
     this._starsGfx.clear();
 
-    if (!isNight && !isSunset) {
-      this._sunGfx.circle(celestialX, celestialY, sunR);
-      this._sunGfx.fill({ color: 0xf0d060 });
-    } else if (isSunset) {
-      // Deeper sun near horizon
-      this._sunGfx.circle(celestialX, H * 0.20, sunR + 4);
-      this._sunGfx.fill({ color: 0xf07830 });
+    if (!isNight) {
+      // Pixel sun: square rect with 4 cross-ray rects
+      var sunSize = 16;
+      var sunGfx = this._sunGfx;
+      // Main square body
+      sunGfx.rect(celestialX - sunSize / 2, celestialY - sunSize / 2, sunSize, sunSize);
+      sunGfx.fill({ color: 0xf0d060 });
+      // Cross rays (4 directions)
+      var rayLen = 10;
+      var rayW = 4;
+      // Top ray
+      sunGfx.rect(celestialX - rayW / 2, celestialY - sunSize / 2 - rayLen, rayW, rayLen);
+      sunGfx.fill({ color: 0xf0d060 });
+      // Bottom ray
+      sunGfx.rect(celestialX - rayW / 2, celestialY + sunSize / 2, rayW, rayLen);
+      sunGfx.fill({ color: 0xf0d060 });
+      // Left ray
+      sunGfx.rect(celestialX - sunSize / 2 - rayLen, celestialY - rayW / 2, rayLen, rayW);
+      sunGfx.fill({ color: 0xf0d060 });
+      // Right ray
+      sunGfx.rect(celestialX + sunSize / 2, celestialY - rayW / 2, rayLen, rayW);
+      sunGfx.fill({ color: 0xf0d060 });
     } else {
-      // Night: moon + stars
-      this._moonGfx.circle(celestialX, celestialY, moonR);
-      this._moonGfx.fill({ color: 0xf0e8c0 });
-      // Crescent shadow
-      this._moonGfx.circle(celestialX + moonR * 0.35, celestialY - moonR * 0.15, moonR * 0.75);
-      this._moonGfx.fill({ color: 0x3a3868 });
+      // Pixel crescent moon: overlapping rects
+      var moonGfx = this._moonGfx;
+      var moonW = 16;
+      var moonH = 18;
+      // Main moon body
+      moonGfx.rect(celestialX - moonW / 2, celestialY - moonH / 2, moonW, moonH);
+      moonGfx.fill({ color: 0xf0e8c0 });
+      // Crescent shadow: overlapping rect to cut out right portion
+      moonGfx.rect(celestialX - moonW / 2 + 6, celestialY - moonH / 2 - 2, moonW, moonH + 4);
+      moonGfx.fill({ color: 0x282858 });
 
-      // Stars
+      // Stars: small white rects
       var starPositions = [
         [0.12, 0.07], [0.28, 0.04], [0.45, 0.09], [0.60, 0.05],
         [0.20, 0.15], [0.50, 0.18], [0.70, 0.12], [0.35, 0.22],
@@ -285,44 +324,58 @@ var World = {
       for (var si = 0; si < starPositions.length; si++) {
         var sx = starPositions[si][0] * W;
         var sy = starPositions[si][1] * H;
-        var sr = 1 + Math.random() * 1.5;
-        this._starsGfx.circle(sx, sy, sr);
+        var starSize = 2 + Math.floor(Math.random() * 2);
+        this._starsGfx.rect(sx, sy, starSize, starSize);
         this._starsGfx.fill({ color: 0xffffff, alpha: 0.6 + Math.random() * 0.4 });
       }
     }
 
-    // Grass: two overlapping ellipses at bottom
+    // Grass: flat horizontal rects with pixel tufts along top edge
     this._grassGfx.clear();
-    var grassLineY = H * 0.55;
-    // Back hill (slightly higher)
-    this._grassGfx.ellipse(W * 0.35, grassLineY + H * 0.08, W * 0.65, H * 0.22);
-    this._grassGfx.fill({ color: 0xa8d8b0 });
-    // Front hill
-    this._grassGfx.ellipse(W * 0.62, grassLineY + H * 0.10, W * 0.70, H * 0.20);
-    this._grassGfx.fill({ color: 0x98c8a0 });
-    // Fill bottom area below hills
-    this._grassGfx.rect(0, grassLineY + H * 0.18, W, H - (grassLineY + H * 0.18));
-    this._grassGfx.fill({ color: 0x98c8a0 });
+    var grassY = H * 0.55;
+    var grassTopColor = isNight ? 0x1a3818 : 0x68c048;
+    var grassBotColor = isNight ? 0x0c2008 : 0x489030;
+
+    // Top half of grass
+    this._grassGfx.rect(0, grassY, W, (H - grassY) / 2);
+    this._grassGfx.fill({ color: grassTopColor });
+    // Bottom half of grass
+    this._grassGfx.rect(0, grassY + (H - grassY) / 2, W, (H - grassY) / 2);
+    this._grassGfx.fill({ color: grassBotColor });
+
+    // Pixel tufts along the grass line: lighter colored rects of varying height
+    var tuftColor = isNight ? 0x284828 : 0x78d858;
+    var tuftCount = Math.floor(W / 16);
+    for (var ti = 0; ti < tuftCount; ti++) {
+      var tx = ti * 16 + Math.floor(Math.random() * 6);
+      var th = 4 + Math.floor(Math.random() * 8);
+      var tw = 2 + Math.floor(Math.random() * 3);
+      this._grassGfx.rect(tx, grassY - th, tw, th);
+      this._grassGfx.fill({ color: tuftColor });
+    }
   },
 
   _drawClouds: function() {
     var gfx = this._cloudGfx;
     gfx.clear();
+    // No clouds at night
+    if (this._isNight) return;
     for (var i = 0; i < this.clouds.length; i++) {
       var c = this.clouds[i];
-      // Main cloud body
-      gfx.ellipse(c.x, c.y, c.rx, c.ry);
+      // Pixel cloud: group of white rects
+      // Main body
+      gfx.rect(c.x - c.w / 2, c.y - c.h / 2, c.w, c.h);
       gfx.fill({ color: 0xffffff, alpha: c.alpha });
-      // Puff on top-left
-      gfx.ellipse(c.x - c.rx * 0.3, c.y - c.ry * 0.4, c.rx * 0.55, c.ry * 0.75);
+      // Top bump left
+      gfx.rect(c.x - c.w * 0.3, c.y - c.h, c.w * 0.35, c.h * 0.7);
       gfx.fill({ color: 0xffffff, alpha: c.alpha });
-      // Puff on top-right
-      gfx.ellipse(c.x + c.rx * 0.25, c.y - c.ry * 0.3, c.rx * 0.45, c.ry * 0.65);
+      // Top bump right
+      gfx.rect(c.x + c.w * 0.05, c.y - c.h * 0.8, c.w * 0.25, c.h * 0.5);
       gfx.fill({ color: 0xffffff, alpha: c.alpha });
     }
   },
 
-  // Flower color palettes by type
+  // Flower color by type - single color per type for pixel style
   _flowerColors: {
     consonant: [0xf08080, 0xf4a8a8, 0xe88888, 0xf09090, 0xd87878],
     vowel:     [0x88b8e8, 0xa0c8f0, 0x78a8d8, 0x90b0e0, 0x80a0d0],
@@ -335,24 +388,15 @@ var World = {
     var palette = isConsonant ? this._flowerColors.consonant :
                   isVowel ? this._flowerColors.vowel :
                   this._flowerColors.word;
-    return palette[Math.floor(Math.random() * palette.length)];
+    // Return a single deterministic color based on letter charCode
+    var idx = letter.charCodeAt(0) % palette.length;
+    return palette[idx];
   },
 
-  _drawFlowerShape: function(gfx, cx, cy, petalColor, centerColor, size, petalCount) {
-    var n = petalCount || 5;
-    var petalR = size * 0.45;
-    var centerR = size * 0.32;
-    // Draw petals
-    for (var i = 0; i < n; i++) {
-      var angle = (i / n) * Math.PI * 2 - Math.PI / 2;
-      var px = cx + Math.cos(angle) * (size * 0.35);
-      var py = cy + Math.sin(angle) * (size * 0.35);
-      gfx.ellipse(px, py, petalR, petalR * 0.75);
-      gfx.fill({ color: petalColor, alpha: 0.9 });
-    }
-    // Center
-    gfx.circle(cx, cy, centerR);
-    gfx.fill({ color: centerColor });
+  _drawFlowerShape: function(gfx, cx, cy, petalColor, size) {
+    // Pixel style: simple colored square
+    gfx.rect(cx - size / 2, cy - size / 2, size, size);
+    gfx.fill({ color: petalColor });
   },
 
   _getFlowerSlot: function(index) {
@@ -375,7 +419,6 @@ var World = {
     var dy = py - petCy;
     var dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < 80) {
-      // Push flower outward from pet
       var angle = Math.atan2(dy, dx);
       px = petCx + Math.cos(angle) * 85;
       py = petCy + Math.sin(angle) * 85;
@@ -398,34 +441,31 @@ var World = {
     var pos = this._getFlowerSlot(flowerIndex);
     var petalColor = this._getFlowerColor(letter);
     var isWord = letter.length > 1;
-    var flowerSize = isWord ? 42 : 36;
 
     var container = new PIXI.Container();
     container._letter = letter;
 
-    // Stem
+    // Pixel stem: green rect (2px wide, ~16px tall)
     var stem = new PIXI.Graphics();
-    var stemH = 22 + Math.random() * 10;
-    stem.rect(-2, 4, 4, stemH);
-    stem.fill({ color: 0x68a870 });
-    // Leaf
-    stem.ellipse(5, stemH * 0.5, 8, 4);
-    stem.fill({ color: 0x88b888 });
+    var stemH = 16;
+    stem.rect(-1, 4, 2, stemH);
+    stem.fill({ color: 0x48a030 });
     container.addChild(stem);
 
-    // Flower head
+    // Pixel flower head: colored square (14x14px)
+    var headSize = 14;
     var head = new PIXI.Graphics();
-    var petalCount = isWord ? 6 : 5;
-    self._drawFlowerShape(head, 0, 0, petalColor, 0xf8f0a0, flowerSize, petalCount);
+    head.rect(-headSize / 2, -headSize / 2, headSize, headSize);
+    head.fill({ color: petalColor });
     container.addChild(head);
 
-    // Letter text on center
-    var fontSize = isWord ? 18 : 22;
+    // Letter text on center using DungGeunMo font
+    var fontSize = isWord ? 10 : 12;
     var style = new PIXI.TextStyle({
-      fontFamily: '"Noto Sans KR", sans-serif',
+      fontFamily: '"DungGeunMo", monospace',
       fontSize: fontSize,
       fontWeight: 'bold',
-      fill: '#3a3028',
+      fill: '#ffffff',
     });
     var txt = new PIXI.Text({ text: letter, style: style });
     txt.anchor.set(0.5, 0.5);
@@ -435,19 +475,24 @@ var World = {
     container.y = pos.y;
     container._baseY = pos.y;
 
-    // Tap to hear letter name
+    // Tap handler with quiz interaction
     container.eventMode = 'static';
     container.cursor = 'pointer';
     container.on('pointerdown', function() {
-      var letterData = typeof LETTERS !== 'undefined' ? LETTERS[letter] : null;
-      if (letterData) {
-        // Speak the letter name (e.g. "기역") then sound
-        if (typeof speakText === 'function') speakText(letterData.name, 0.8);
-      } else {
-        // Word: speak the word
-        if (typeof speakText === 'function') speakText(letter, 0.8);
+      // If fewer than 3 known letters, just play TTS
+      if (self.letterFlowers.length < 3) {
+        var letterData = typeof LETTERS !== 'undefined' ? LETTERS[letter] : null;
+        if (letterData) {
+          if (typeof speakText === 'function') speakText(letterData.name, 0.8);
+        } else {
+          if (typeof speakText === 'function') speakText(letter, 0.8);
+        }
+        container._bumpTimer = 12;
+        return;
       }
-      container._bumpTimer = 12;
+
+      // 3+ known letters: show quiz overlay
+      self._showQuiz(letter, container);
     });
 
     // Entrance animation
@@ -456,6 +501,171 @@ var World = {
 
     this.app.stage.addChild(container);
     this.letterFlowers.push(container);
+  },
+
+  _showQuiz: function(correctLetter, flowerContainer) {
+    var self = this;
+    var W = self.app.screen.width;
+    var H = self.app.screen.height;
+
+    // Dismiss any existing quiz
+    self._dismissQuiz();
+
+    // Play TTS for the correct letter
+    var letterData = typeof LETTERS !== 'undefined' ? LETTERS[correctLetter] : null;
+    if (letterData) {
+      if (typeof speakText === 'function') speakText(letterData.name, 0.8);
+    } else {
+      if (typeof speakText === 'function') speakText(correctLetter, 0.8);
+    }
+
+    // Collect 2 random wrong answers from other flowers
+    var others = [];
+    for (var i = 0; i < self.letterFlowers.length; i++) {
+      var fl = self.letterFlowers[i]._letter;
+      if (fl !== correctLetter) others.push(fl);
+    }
+    // Shuffle and pick 2
+    for (var si = others.length - 1; si > 0; si--) {
+      var j = Math.floor(Math.random() * (si + 1));
+      var tmp = others[si];
+      others[si] = others[j];
+      others[j] = tmp;
+    }
+    var wrongAnswers = others.slice(0, 2);
+    var choices = [correctLetter].concat(wrongAnswers);
+    // Shuffle choices
+    for (var ci = choices.length - 1; ci > 0; ci--) {
+      var cj = Math.floor(Math.random() * (ci + 1));
+      var ctmp = choices[ci];
+      choices[ci] = choices[cj];
+      choices[cj] = ctmp;
+    }
+
+    // Create overlay container
+    var overlay = new PIXI.Container();
+    overlay.eventMode = 'static';
+
+    // Semi-transparent background
+    var bg = new PIXI.Graphics();
+    bg.rect(0, 0, W, H);
+    bg.fill({ color: 0x000000, alpha: 0.4 });
+    bg.eventMode = 'static';
+    overlay.addChild(bg);
+
+    // Quiz buttons
+    var btnSize = 56;
+    var gap = 16;
+    var totalW = choices.length * btnSize + (choices.length - 1) * gap;
+    var startX = (W - totalW) / 2;
+    var btnY = H * 0.45;
+
+    for (var bi = 0; bi < choices.length; bi++) {
+      (function(choiceLetter, idx) {
+        var btn = new PIXI.Container();
+        btn.eventMode = 'static';
+        btn.cursor = 'pointer';
+
+        var btnGfx = new PIXI.Graphics();
+        var btnColor = self._getFlowerColor(choiceLetter);
+        btnGfx.rect(0, 0, btnSize, btnSize);
+        btnGfx.fill({ color: btnColor });
+        btn.addChild(btnGfx);
+
+        var btnTxt = new PIXI.Text({
+          text: choiceLetter,
+          style: new PIXI.TextStyle({
+            fontFamily: '"DungGeunMo", monospace',
+            fontSize: 22,
+            fontWeight: 'bold',
+            fill: '#ffffff',
+          }),
+        });
+        btnTxt.anchor.set(0.5, 0.5);
+        btnTxt.x = btnSize / 2;
+        btnTxt.y = btnSize / 2;
+        btn.addChild(btnTxt);
+
+        btn.x = startX + idx * (btnSize + gap);
+        btn.y = btnY;
+
+        btn.on('pointerdown', function(e) {
+          e.stopPropagation();
+          if (choiceLetter === correctLetter) {
+            // Correct: flower grows briefly + sparkle particles
+            flowerContainer._bumpTimer = 12;
+            flowerContainer.scale.set(1.3);
+            setTimeout(function() {
+              flowerContainer.scale.set(1);
+            }, 400);
+            // Emit sparkle rects
+            self._emitSparkles(flowerContainer.x, flowerContainer.y);
+            self._dismissQuiz();
+          } else {
+            // Wrong: flower dims + show correct answer large for 2 seconds
+            flowerContainer.alpha = 0.4;
+            self._showCorrectAnswer(correctLetter);
+            setTimeout(function() {
+              flowerContainer.alpha = 1;
+              self._dismissQuiz();
+            }, 2000);
+          }
+        });
+
+        overlay.addChild(btn);
+      })(choices[bi], bi);
+    }
+
+    self._quizOverlay = overlay;
+    self.app.stage.addChild(overlay);
+  },
+
+  _showCorrectAnswer: function(letter) {
+    var self = this;
+    var W = self.app.screen.width;
+    var H = self.app.screen.height;
+
+    if (!self._quizOverlay) return;
+
+    var correctTxt = new PIXI.Text({
+      text: letter,
+      style: new PIXI.TextStyle({
+        fontFamily: '"DungGeunMo", monospace',
+        fontSize: 64,
+        fontWeight: 'bold',
+        fill: '#ffffff',
+      }),
+    });
+    correctTxt.anchor.set(0.5, 0.5);
+    correctTxt.x = W / 2;
+    correctTxt.y = H * 0.3;
+    self._quizOverlay.addChild(correctTxt);
+  },
+
+  _emitSparkles: function(x, y) {
+    var self = this;
+    for (var i = 0; i < 8; i++) {
+      var sparkle = new PIXI.Graphics();
+      var sz = 2 + Math.floor(Math.random() * 3);
+      sparkle.rect(-sz / 2, -sz / 2, sz, sz);
+      sparkle.fill({ color: 0xf8f080 });
+      sparkle.x = x;
+      sparkle.y = y;
+      sparkle._vx = (Math.random() - 0.5) * 4;
+      sparkle._vy = -1 - Math.random() * 3;
+      sparkle._life = 20 + Math.floor(Math.random() * 15);
+      sparkle._maxLife = sparkle._life;
+      self._ambientContainer.addChild(sparkle);
+      self._ambientParticles.push(sparkle);
+    }
+  },
+
+  _dismissQuiz: function() {
+    if (this._quizOverlay) {
+      this.app.stage.removeChild(this._quizOverlay);
+      this._quizOverlay.destroy({ children: true });
+      this._quizOverlay = null;
+    }
   },
 
   syncLetterFlowers: function(knownLetters) {
@@ -489,17 +699,16 @@ var World = {
     for (var i = 0; i < self.clouds.length; i++) {
       var c = self.clouds[i];
       c.x += c.speed;
-      if (c.x - c.rx > W) {
-        c.x = -c.rx;
+      if (c.x - (c.w || 60) > W) {
+        c.x = -(c.w || 60);
       }
     }
-    // Redraw clouds every 2nd frame (they move slowly)
+    // Redraw clouds every 2nd frame
     if (self._frame % 2 === 0) self._drawClouds();
 
     // Bob letter flowers and handle grow-in animation
     for (var fi = 0; fi < self.letterFlowers.length; fi++) {
       var flower = self.letterFlowers[fi];
-      // Grow-in animation for newly added flowers
       if (flower._growTimer && flower._growTimer > 0) {
         flower._growTimer--;
         var gt = 1 - (flower._growTimer / 20);
@@ -516,34 +725,32 @@ var World = {
       flower.y = flower._baseY + bob;
     }
 
-    // Butterfly drift
-    if (self._butterfly) {
-      self._butterflyFrame = (self._butterflyFrame || 0) + 1;
-      self._butterfly.x += 0.55;
-      self._butterfly.y = self._butterflyBaseY + Math.sin(self._butterflyFrame * 0.04) * 22;
-      // Wing flap: scale y alternates
-      self._butterfly.scale.y = 0.7 + 0.3 * Math.abs(Math.sin(self._butterflyFrame * 0.18));
-      // Wrap around when off-screen
-      if (self._butterfly.x > W + 30) {
-        self._butterfly.x = -30;
-        self._butterflyBaseY = self.app.screen.height * (0.18 + Math.random() * 0.20);
-        self._butterfly.y = self._butterflyBaseY;
-        self._butterflyFrame = 0;
+    // Pixel birds drift
+    if (self._birds) {
+      for (var bi = 0; bi < self._birds.length; bi++) {
+        var bird = self._birds[bi];
+        bird.x += bird._speed;
+        bird.y = bird._baseY + Math.sin(self._frame * 0.03 + bird._phase) * 8;
+        if (bird.x > W + 30) {
+          bird.x = -30 - bi * 40;
+          bird._baseY = self.app.screen.height * (0.12 + Math.random() * 0.18);
+          bird.y = bird._baseY;
+        }
       }
     }
 
-    // Twinkle stars at night: subtle alpha oscillation on the starsGfx
-    if (self._starsGfx && self._starsGfx.children && self._starsGfx.children.length === 0) {
+    // Twinkle stars at night
+    if (self._starsGfx && self._isNight) {
       self._starsGfx.alpha = 0.7 + 0.3 * Math.abs(Math.sin(self._frame * 0.025));
     }
 
     // Animated grass blades
     self._drawGrassBlades();
 
-    // Ambient particles (fireflies / dandelion seeds)
+    // Ambient particles (fireflies / particles)
     self._updateAmbientParticles();
 
-    // Update time of day every ~5 minutes (18000 frames at 60fps)
+    // Update time of day every ~5 minutes
     if (self._frame % 18000 === 0) {
       self.updateTimeOfDay();
     }
@@ -572,16 +779,15 @@ var World = {
   _drawGrassBlades: function() {
     var gfx = this._grassBladesGfx;
     if (!gfx) return;
-    // Throttle: redraw every 3rd frame for performance
     if (this._frame % 3 !== 0) return;
     gfx.clear();
     for (var i = 0; i < this._grassBlades.length; i++) {
       var b = this._grassBlades[i];
       var windSway = Math.sin(this._frame * 0.02 + b.phase) * 2;
       var totalSway = windSway + b.sway;
-      gfx.moveTo(b.x, b.y);
-      gfx.lineTo(b.x + totalSway, b.y - b.h);
-      gfx.stroke({ color: b.color, width: 2, cap: 'round' });
+      // Pixel style: draw as small rects instead of lines
+      gfx.rect(b.x + totalSway, b.y - b.h, 2, b.h);
+      gfx.fill({ color: b.color });
       b.sway *= 0.92;
     }
   },
@@ -602,9 +808,10 @@ var World = {
   // === Touch ripples ===
   _addTouchRipple: function(x, y) {
     var H = this.app.screen.height;
-    if (y < H * 0.50) return; // Only on grass area
+    if (y < H * 0.50) return;
     var ripple = new PIXI.Graphics();
-    ripple.circle(0, 0, 5);
+    // Pixel ripple: expanding rect outline
+    ripple.rect(-4, -4, 8, 8);
     ripple.stroke({ color: 0xffffff, width: 2, alpha: 0.4 });
     ripple.x = x;
     ripple.y = y;
@@ -620,13 +827,14 @@ var World = {
     var H = this.app.screen.height;
     var p;
     if (this._isNight) {
-      // Firefly: tiny glowing dot
+      // Firefly: small green-yellow rect with glow effect
       p = new PIXI.Graphics();
-      p.circle(0, 0, 2);
-      p.fill({ color: 0xf0e870, alpha: 0.8 });
-      // Glow halo
-      p.circle(0, 0, 6);
-      p.fill({ color: 0xf0e870, alpha: 0.15 });
+      // Core rect
+      p.rect(-1, -1, 3, 3);
+      p.fill({ color: 0xc8e830, alpha: 0.9 });
+      // Glow halo rect
+      p.rect(-3, -3, 7, 7);
+      p.fill({ color: 0xc8e830, alpha: 0.12 });
       p.x = Math.random() * W;
       p.y = H * 0.25 + Math.random() * H * 0.45;
       p._type = 'firefly';
@@ -635,18 +843,10 @@ var World = {
       p._life = 200 + Math.random() * 200;
       p._phase = Math.random() * Math.PI * 2;
     } else {
-      // Dandelion seed: small white puff
+      // Day: small white rect particles drifting
       p = new PIXI.Graphics();
-      // Seed body
-      p.circle(0, 0, 1.5);
-      p.fill({ color: 0xffffff, alpha: 0.7 });
-      // Fluffy lines
-      for (var a = 0; a < 5; a++) {
-        var angle = (a / 5) * Math.PI * 2;
-        p.moveTo(0, 0);
-        p.lineTo(Math.cos(angle) * 5, Math.sin(angle) * 5);
-        p.stroke({ color: 0xffffff, width: 0.5, alpha: 0.5 });
-      }
+      p.rect(-1, -1, 2, 2);
+      p.fill({ color: 0xffffff, alpha: 0.6 });
       p.x = -10;
       p.y = H * 0.15 + Math.random() * H * 0.35;
       p._type = 'seed';
@@ -663,7 +863,6 @@ var World = {
 
   _updateAmbientParticles: function() {
     var W = this.app.screen.width;
-    // Spawn new particles periodically
     var spawnRate = this._isNight ? 120 : 180;
     if (this._frame % spawnRate === 0 && this._ambientParticles.length < 15) {
       this._spawnAmbientParticle();
@@ -673,12 +872,11 @@ var World = {
       var p = this._ambientParticles[i];
       p._life--;
 
-      // Fade in/out
       var lifeRatio = p._life / p._maxLife;
       if (lifeRatio > 0.9) {
-        p.alpha = (1 - lifeRatio) * 10; // fade in
+        p.alpha = (1 - lifeRatio) * 10;
       } else if (lifeRatio < 0.1) {
-        p.alpha = lifeRatio * 10; // fade out
+        p.alpha = lifeRatio * 10;
       } else {
         p.alpha = p._type === 'firefly' ?
           0.4 + 0.6 * Math.abs(Math.sin(this._frame * 0.06 + p._phase)) :
@@ -686,16 +884,12 @@ var World = {
       }
 
       if (p._type === 'firefly') {
-        // Fireflies drift in gentle curves
         p.x += p._vx + Math.sin(this._frame * 0.03 + p._phase) * 0.3;
         p.y += p._vy + Math.cos(this._frame * 0.025 + p._phase) * 0.2;
-        // Reverse direction at edges
         if (p.x < 0 || p.x > W) p._vx *= -1;
       } else {
-        // Dandelion seeds float right with gentle wave
         p.x += p._vx;
         p.y += p._vy + Math.sin(this._frame * 0.02 + p._phase) * 0.15;
-        p.rotation = Math.sin(this._frame * 0.03 + p._phase) * 0.3;
       }
 
       if (p._life <= 0) {
@@ -724,6 +918,7 @@ var World = {
     this._buildClouds();
     this._buildGrassBlades();
     this.updateTimeOfDay();
+    this._addDecorations();
     // Reposition flowers using grid layout
     for (var fi = 0; fi < this.letterFlowers.length; fi++) {
       var pos = this._getFlowerSlot(fi);
