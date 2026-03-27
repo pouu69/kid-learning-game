@@ -162,8 +162,8 @@ function showScreen(name) {
     }
   }
 
-  // Use pixel wipe for major screen changes (naming→home, home→learning, etc.)
-  var majorChange = (prevScreen !== name) && (prevScreen === 'naming' || name === 'learning' || (prevScreen === 'learning' && name === 'home'));
+  // Use pixel wipe only for naming→home (learning transitions handled by handleAction)
+  var majorChange = (prevScreen !== name) && (prevScreen === 'naming');
   if (majorChange && typeof pixelWipeTransition === 'function') {
     pixelWipeTransition(doSwitch);
   } else {
