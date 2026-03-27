@@ -317,11 +317,17 @@ var Learning = {
     var container = document.createElement('div');
     container.className = 'letter-activity';
 
-    // Checkmark celebration icon
-    var check = document.createElement('div');
-    check.style.cssText = 'width:60px;height:60px;border-radius:50%;background:#48a868;display:flex;align-items:center;justify-content:center;font-size:2rem;color:white;animation:popIn 0.5s ease;margin-bottom:0.5rem';
-    check.textContent = '\u2713';
-    container.appendChild(check);
+    // Title message
+    var title = document.createElement('div');
+    title.style.cssText = 'font-family:var(--font-pixel);font-size:1.4rem;color:var(--gold);text-align:center;animation:popIn 0.4s ease;margin-bottom:0.3rem';
+    title.textContent = type === 'consonant' ? '자음 완료!' : '모음 완료!';
+    container.appendChild(title);
+
+    // Subtitle
+    var subtitle = document.createElement('div');
+    subtitle.style.cssText = 'font-family:var(--font-pixel);font-size:0.85rem;color:var(--text-light);text-align:center;opacity:0.7;margin-bottom:0.5rem';
+    subtitle.textContent = '배운 글자를 눌러보세요';
+    container.appendChild(subtitle);
 
     // Letter grid — tappable to hear sounds
     var grid = document.createElement('div');
