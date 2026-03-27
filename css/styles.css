@@ -577,158 +577,6 @@ body.night .pet-name { color: #c8b8e0; }
     padding-bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
 }
 
-/* ── Meet activity ── */
-.meet-word {
-    font-family: var(--font-pixel);
-    font-size: 3rem;
-    font-weight: 900;
-    color: var(--chocolate);
-    cursor: pointer;
-    transition: transform 0.2s;
-    text-align: center;
-    user-select: none;
-    line-height: 1.1;
-}
-
-.meet-word:active {
-    transform: scale(1.08);
-}
-
-.meet-word-fly {
-    animation: flyUp 1s ease-out forwards;
-}
-
-.meet-bubble {
-    background: var(--milk);
-    border-radius: 16px;
-    padding: 0.8rem 1.5rem;
-    font-family: var(--font-pixel);
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--chocolate);
-    box-shadow: 0 2px 12px rgba(58, 48, 40, 0.10);
-    text-align: center;
-    margin-top: 0.5rem;
-}
-
-.meet-sound-btn {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    border: none;
-    background: var(--tangerine);
-    color: var(--milk);
-    font-size: 1.6rem;
-    cursor: pointer;
-    box-shadow: 0 4px 16px rgba(244, 184, 112, 0.45);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.12s;
-    user-select: none;
-}
-
-.meet-sound-btn:active {
-    transform: scale(0.94);
-}
-
-.meet-hint {
-    font-size: 0.85rem;
-    color: #8a7e72;
-    text-align: center;
-    margin-top: 0.5rem;
-}
-
-/* ── Discover activity ── */
-.discover-letter-big {
-    font-family: var(--font-pixel);
-    font-size: 5rem;
-    font-weight: 900;
-    color: var(--chocolate);
-    text-align: center;
-    line-height: 1;
-    user-select: none;
-}
-
-.trace-canvas {
-    border-radius: 16px;
-    border: 2px solid var(--cookie);
-    background: var(--milk);
-    box-shadow: 0 2px 12px rgba(58, 48, 40, 0.08);
-    touch-action: none;
-    cursor: crosshair;
-    display: block;
-}
-
-/* ── Play activity ── */
-.puzzle-piece {
-    min-width: 60px;
-    min-height: 60px;
-    border-radius: 12px;
-    background: var(--milk);
-    border: 2px solid var(--cookie);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-pixel);
-    font-size: 1.8rem;
-    font-weight: 700;
-    cursor: grab;
-    box-shadow: 0 2px 8px rgba(58, 48, 40, 0.10);
-    user-select: none;
-    touch-action: none;
-    transition: transform 0.1s, box-shadow 0.1s;
-}
-
-.puzzle-piece:active,
-.puzzle-piece.dragging {
-    cursor: grabbing;
-    transform: scale(1.08);
-    box-shadow: 0 6px 20px rgba(58, 48, 40, 0.18);
-}
-
-.coloring-canvas {
-    border-radius: 16px;
-    border: 2px solid var(--cookie);
-    background: var(--milk);
-    touch-action: none;
-    cursor: crosshair;
-    display: block;
-}
-
-.sound-choice {
-    min-width: 60px;
-    min-height: 60px;
-    border-radius: 16px;
-    background: var(--milk);
-    border: 2px solid var(--cookie);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-pixel);
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--chocolate);
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(58, 48, 40, 0.08);
-    transition: transform 0.12s, background 0.15s;
-    user-select: none;
-}
-
-.sound-choice:active {
-    transform: scale(0.95);
-    background: var(--cream);
-}
-
-.sound-choice.correct {
-    background: var(--grass);
-    border-color: #6ab878;
-}
-
-.sound-choice.wrong {
-    background: #fce0e0;
-    border-color: var(--strawberry);
-}
 
 /* ══════════════════════════════════════════
    REWARD SCREEN
@@ -945,12 +793,6 @@ body.night .pet-name { color: #c8b8e0; }
 /* ══════════════════════════════════════════
    ANIMATIONS
 ══════════════════════════════════════════ */
-@keyframes flyUp {
-    0%   { opacity: 1; transform: translateY(0) scale(1); }
-    60%  { opacity: 1; transform: translateY(-40px) scale(1.15); }
-    100% { opacity: 0; transform: translateY(-80px) scale(0.8); }
-}
-
 @keyframes bounce {
     0%   { transform: translateY(0);    }
     100% { transform: translateY(-16px); }
@@ -979,10 +821,7 @@ body.night .pet-name { color: #c8b8e0; }
    TOUCH OPTIMIZATIONS
 ══════════════════════════════════════════ */
 button,
-.puzzle-piece,
-.sound-choice,
-.meet-word,
-.meet-sound-btn {
+.puzzle-piece {
     user-select: none;
     -webkit-user-select: none;
 }
@@ -1004,14 +843,6 @@ button,
 
     .learning-content {
         padding: 0.75rem 1.5rem;
-    }
-
-    .meet-word {
-        font-size: 2rem;
-    }
-
-    .discover-letter-big {
-        font-size: 3.5rem;
     }
 
     .reward-pet-bounce {
@@ -1124,20 +955,6 @@ button,
         height: 14px;
     }
 
-    /* ── Meet Activity ── */
-    .meet-word {
-        font-size: 4.5rem;
-    }
-    .meet-bubble {
-        font-size: 1.4rem;
-        padding: 1rem 2rem;
-    }
-    .meet-sound-btn {
-        width: 80px;
-        height: 80px;
-        font-size: 2rem;
-    }
-
     /* ── Letter Activity ── */
     .letter-activity {
         gap: 2rem;
@@ -1165,11 +982,6 @@ button,
         width: 104px;
         height: 104px;
     }
-    .guide-next-btn {
-        width: 80px;
-        height: 80px;
-    }
-
     /* ── Trace Canvas ── */
     .trace-canvas-wrap {
         max-width: 500px;
@@ -1233,14 +1045,6 @@ button,
     }
     .puzzle-meaning {
         font-size: 1.3rem;
-    }
-
-    /* ── Sound Choice ── */
-    .sound-choice {
-        min-width: 80px;
-        min-height: 80px;
-        font-size: 2rem;
-        border-radius: 20px;
     }
 
     /* ── Care Mini-Games ── */
@@ -1648,21 +1452,6 @@ button,
     width: 88px;
     height: 88px;
 }
-.guide-next-btn {
-    width: 64px;
-    height: 64px;
-    border-radius: 6px;
-    border: 3px solid #48a868;
-    background: linear-gradient(180deg, #48a060 0%, #308050 100%);
-    color: white;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 3px 0 #1a4828;
-    animation: popIn 0.3s ease;
-}
-
 /* ── Trace Canvas ── */
 .trace-canvas-wrap {
     width: 100%;
@@ -1777,10 +1566,10 @@ button,
 }
 .syllable-block {
     display: grid;
-    border: 3px solid #c8c0b0;
-    border-radius: 12px;
+    border: 3px solid var(--ui-border);
+    border-radius: 6px;
     overflow: hidden;
-    background: #f8f4ee;
+    box-shadow: 0 3px 0 #0a0818;
 }
 .block-lr {
     grid-template-columns: 1fr 1fr;
@@ -1805,11 +1594,6 @@ button,
     grid-template-rows: 1fr 1fr 1fr;
     width: 160px;
     height: 190px;
-}
-.syllable-block {
-    border: 3px solid var(--ui-border);
-    border-radius: 6px;
-    box-shadow: 0 3px 0 #0a0818;
 }
 .puzzle-slot {
     display: flex;

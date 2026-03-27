@@ -919,7 +919,7 @@ var PetRenderer = {
           var arrow = new PIXI.Graphics();
           var arrowColor = 0xf4b870; // default hungry color
           if (self._stateAction === 'sleepy_nod') arrowColor = 0xa888d0;
-          if (self._stateAction === 'sad_crouch') arrowColor = 0xa8d8b0;
+          if (self._stateAction === 'sad_crouch') arrowColor = 0x68c048;
           // Down-pointing arrow using pixel rects
           arrow.rect(-6, 0, 12, 4).fill({ color: arrowColor });
           arrow.rect(-4, 4, 8, 4).fill({ color: arrowColor });
@@ -1391,7 +1391,7 @@ var PetRenderer = {
       bubble.addChild(zz2);
     } else if (needType === 'bored') {
       // Pixel play ball — rect-based
-      icon.rect(-10, -10, 20, 20).fill({ color: 0xa8d8b0 });
+      icon.rect(-10, -10, 20, 20).fill({ color: 0x68c048 });
       icon.rect(-10 - 2, -10 - 2, 24, 24).stroke({ color: 0x88b890, width: 2 });
       // Star on ball — small rect cross
       icon.rect(-2, -6, 4, 12).fill({ color: 0xf0d060 });

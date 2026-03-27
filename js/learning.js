@@ -319,7 +319,7 @@ var Learning = {
 
     // Checkmark celebration icon
     var check = document.createElement('div');
-    check.style.cssText = 'width:60px;height:60px;border-radius:50%;background:#a8d8b0;display:flex;align-items:center;justify-content:center;font-size:2rem;color:white;animation:popIn 0.5s ease;margin-bottom:0.5rem';
+    check.style.cssText = 'width:60px;height:60px;border-radius:50%;background:#48a868;display:flex;align-items:center;justify-content:center;font-size:2rem;color:white;animation:popIn 0.5s ease;margin-bottom:0.5rem';
     check.textContent = '\u2713';
     container.appendChild(check);
 

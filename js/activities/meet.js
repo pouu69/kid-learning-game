@@ -238,8 +238,8 @@ var LetterActivity = {
 
       if (coverage >= 0.5) {
         // Success — flash canvas green briefly
-        canvas.style.borderColor = '#a8d8b0';
-        canvas.style.boxShadow = '0 0 16px rgba(168,216,176,0.6)';
+        canvas.style.borderColor = '#48a868';
+        canvas.style.boxShadow = '0 0 16px rgba(72,168,104,0.6)';
         playSound('correct');
         speakText(target.data.sound, 0.7);
         setTimeout(function() { self._distinguishLetter(st, target); }, 1000);

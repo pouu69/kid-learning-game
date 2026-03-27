@@ -103,7 +103,7 @@ function playSound(type) {
 function showCelebration(x, y) {
   showStarParticles(x, y, 25);
   if (typeof World === 'undefined' || !World.app) return;
-  var colors = [0xf4b870, 0xf08080, 0xa8d8b0, 0x88c8e8, 0xc8a0d8, 0xf0d060];
+  var colors = [0xf4b870, 0xf08080, 0x68c048, 0x58b8f8, 0xa888d0, 0xf0d060];
   for (var i = 0; i < 12; i++) {
     var particle = new PIXI.Graphics();
     var color = colors[Math.floor(Math.random() * colors.length)];

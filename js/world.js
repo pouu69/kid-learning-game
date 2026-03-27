@@ -145,7 +145,7 @@ var World = {
     self._decoContainer.addChild(tree);
 
     // Pixel flowers: small colored rects on green rect stems
-    var flowerColors = [0xf08080, 0xf8d870, 0xc8a8e8, 0xa8d8b0];
+    var flowerColors = [0xf08080, 0xf8d870, 0xa888d0, 0x68c048];
     for (var fi = 0; fi < 4; fi++) {
       var flower = new PIXI.Graphics();
       var fx = W * 0.25 + fi * (W * 0.12);
