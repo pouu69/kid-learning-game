@@ -255,6 +255,7 @@ var Learning = {
     }
 
     saveState(st);
+    if (typeof updateHome === 'function') updateHome(st);
 
     // Check if entire consonant stage is now complete → show recap
     if (target.type === 'consonant' && st.learning.consonantIndex >= CURRICULUM.consonants.length) {
@@ -401,6 +402,7 @@ var Learning = {
     }
 
     saveState(st);
+    if (typeof updateHome === 'function') updateHome(st);
 
     // Show reward in popup before closing
     if (self.popupEl) {
