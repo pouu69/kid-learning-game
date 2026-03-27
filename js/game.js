@@ -195,7 +195,20 @@ function updateHome(st) {
 
   // Urgent care button animations
   if (d.feedBtn) d.feedBtn.classList.toggle('urgent', st.hunger < 30);
-  if (d.sleepBtn) d.sleepBtn.classList.toggle('urgent', st.sleepy > 80);
+  if (d.sleepBtn) {
+    d.sleepBtn.classList.toggle('urgent', st.sleepy > 80);
+    // Toggle sleep/wake button based on sleeping state
+    if (st.sleeping) {
+      d.sleepBtn.setAttribute('onclick', "handleAction('wake')");
+      d.sleepBtn.querySelector('span').textContent = '깨우기';
+      d.sleepBtn.querySelector('.care-icon').textContent = '☀';
+      d.sleepBtn.classList.add('urgent');
+    } else {
+      d.sleepBtn.setAttribute('onclick', "handleAction('sleep')");
+      d.sleepBtn.querySelector('span').textContent = '잠';
+      d.sleepBtn.querySelector('.care-icon').textContent = '☾';
+    }
+  }
 
   // Use PixiJS bubble for speech (replaces DOM bubble)
   var text = Pet.getSpeechText(st);
