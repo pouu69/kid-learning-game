@@ -179,6 +179,43 @@ function updateHome(st) {
     d.stageEl.textContent = evo.name;
   }
 
+  // Evolution progress toward next stage
+  var evoBar = document.getElementById('evoProgressBar');
+  var evoNext = document.getElementById('evoNextLabel');
+  var evoProg = document.getElementById('evoProgress');
+  if (evoBar && evoNext) {
+    var cons = st.learning.knownConsonants.length;
+    var vow = st.learning.knownVowels.length;
+    var words = st.learning.completedWords.length;
+    var pct = 0;
+    var nextName = '';
+
+    if (st.stage >= 5) {
+      pct = 100;
+      nextName = '완료';
+      if (evoProg) evoProg.classList.add('maxed');
+    } else if (st.stage < 2) {
+      // Next: stage 2 at 9 consonants
+      pct = Math.min(100, Math.round(cons / 9 * 100));
+      nextName = '→ ' + (PET_STAGES[2] ? PET_STAGES[2].name : '');
+    } else if (st.stage < 3) {
+      // Next: stage 3 at 6 vowels
+      pct = Math.min(100, Math.round(vow / 6 * 100));
+      nextName = '→ ' + (PET_STAGES[3] ? PET_STAGES[3].name : '');
+    } else if (st.stage < 4) {
+      // Next: stage 4 at 10 words
+      pct = Math.min(100, Math.round(words / 10 * 100));
+      nextName = '→ ' + (PET_STAGES[4] ? PET_STAGES[4].name : '');
+    } else {
+      // Next: stage 5 at 15 words
+      pct = Math.min(100, Math.round(words / 15 * 100));
+      nextName = '→ ' + (PET_STAGES[5] ? PET_STAGES[5].name : '');
+    }
+    evoBar.style.width = pct + '%';
+    evoNext.textContent = nextName;
+    if (evoProg && st.stage < 5) evoProg.classList.remove('maxed');
+  }
+
   // Update pixel stat bars (width-based)
   if (d.barH) {
     d.barH.style.width = st.hunger + '%';
