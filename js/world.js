@@ -256,6 +256,7 @@ var World = {
     }
 
     this._isNight = isNight;
+    document.body.classList.toggle('night', isNight);
 
     // Draw sky as blocky gradient with fewer steps for pixel look
     var gfx = this._skyGfx;

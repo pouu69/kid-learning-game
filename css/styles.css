@@ -37,12 +37,12 @@
     --tangerine:   #f8c848;
     --star:        #f8d848;
     --milk:        #ffffff;
+    --cookie:      #483868;
+    --grass:       #68c048;
+    --sky:         #88c8f8;
 
-    /* (Team C duplicates removed — using spec values above) */
-
-    --font-display: 'Gaegu', cursive;
+    --font-pixel:   'DungGeunMo', monospace;
     --font-body:    'Noto Sans KR', sans-serif;
-    --font-pixel:   'DungGeunMo', 'Noto Sans KR', sans-serif;
 
     /* Viewport height fix for mobile browsers */
     --vh: 1vh;
@@ -109,15 +109,6 @@ body {
     border-radius: 4px;
     box-shadow: 0 3px 0 #0a0818;
     padding: 6px 10px;
-}
-/* Legacy glass kept for report screen */
-.glass {
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border-radius: 20px;
-    padding: 0.4rem 0.9rem;
-    box-shadow: 0 2px 12px rgba(58, 48, 40, 0.10), 0 1px 3px rgba(58, 48, 40, 0.08);
 }
 
 /* ══════════════════════════════════════════
@@ -360,7 +351,7 @@ body {
     padding: 0.6rem 1.2rem;
     box-shadow: 0 4px 16px rgba(58, 48, 40, 0.12);
     z-index: 5;
-    font-family: var(--font-display);
+    font-family: var(--font-pixel);
     font-size: 1.3rem;
     font-weight: 700;
     color: var(--chocolate);
@@ -393,17 +384,6 @@ body {
     100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 }
 
-/* Footer with action button (legacy, unused) */
-.home-footer {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 1rem 1.5rem;
-    padding-bottom: max(2.5rem, calc(env(safe-area-inset-bottom, 0px) + 2rem));
-    z-index: 5;
-    background: linear-gradient(transparent, rgba(253,248,240,0.9) 30%);
-}
 
 /* === Pixel Care Bar === */
 .care-bar {
@@ -448,58 +428,13 @@ body {
 @keyframes btnBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 .care-btn.urgent { animation: btnBounce 0.8s ease infinite; }
 
-/* === Care Button Bar (always visible) === */
-.care-bar {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 0.6rem 0.8rem;
-    padding-bottom: max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.6rem));
-    z-index: 19;
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-    background: linear-gradient(transparent 0%, rgba(152, 200, 160, 0.6) 40%);
-    pointer-events: none;
-}
-.care-btn {
-    pointer-events: auto;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    padding: 0.6rem 1rem;
-    border: none;
-    border-radius: 16px;
-    font-family: var(--font-body);
-    cursor: pointer;
-    user-select: none;
-    transition: transform 0.12s, box-shadow 0.12s;
-    min-width: 64px;
-    background: rgba(255,255,255,0.85);
-    color: var(--chocolate);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-}
-.care-btn:active {
-    transform: scale(0.92);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-}
-.care-btn-icon {
-    font-size: 1.5rem;
-    line-height: 1;
-}
-.care-btn-label {
-    font-size: 0.75rem;
-    font-weight: 700;
-    white-space: nowrap;
-}
-.care-btn-feed  { border-bottom: 3px solid var(--tangerine); }
-.care-btn-sleep { border-bottom: 3px solid var(--grape); }
-.care-btn-wash  { border-bottom: 3px solid var(--sky); }
-.care-btn-learn { border-bottom: 3px solid var(--grass); }
+/* === Night Mode === */
+body.night .pixel-panel { background: var(--ui-bg-n); border-color: var(--ui-border-n); }
+body.night .care-bar { background: var(--ui-bg-n); border-color: var(--ui-border-n); }
+body.night .care-btn { background: linear-gradient(180deg, #282048, #181038); border-color: #483868; box-shadow: 0 3px 0 #080018; }
+body.night .care-btn-learn { background: linear-gradient(180deg, #483868, #382858); border-color: #6848a0; }
+body.night .stat-bar-track { background: #000010; }
+body.night .pet-name { color: #c8b8e0; }
 
 /* Floating need icon — replaces text buttons */
 .need-icon {
@@ -644,7 +579,7 @@ body {
 
 /* ── Meet activity ── */
 .meet-word {
-    font-family: var(--font-display);
+    font-family: var(--font-pixel);
     font-size: 3rem;
     font-weight: 900;
     color: var(--chocolate);
@@ -667,7 +602,7 @@ body {
     background: var(--milk);
     border-radius: 16px;
     padding: 0.8rem 1.5rem;
-    font-family: var(--font-display);
+    font-family: var(--font-pixel);
     font-size: 1.1rem;
     font-weight: 700;
     color: var(--chocolate);
@@ -706,7 +641,7 @@ body {
 
 /* ── Discover activity ── */
 .discover-letter-big {
-    font-family: var(--font-display);
+    font-family: var(--font-pixel);
     font-size: 5rem;
     font-weight: 900;
     color: var(--chocolate);
@@ -735,7 +670,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: var(--font-display);
+    font-family: var(--font-pixel);
     font-size: 1.8rem;
     font-weight: 700;
     cursor: grab;
@@ -770,7 +705,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: var(--font-display);
+    font-family: var(--font-pixel);
     font-size: 1.5rem;
     font-weight: 700;
     color: var(--chocolate);
@@ -799,7 +734,7 @@ body {
    REWARD SCREEN
 ══════════════════════════════════════════ */
 #rewardScreen {
-    background: linear-gradient(160deg, #fdf8f0 0%, #fef4e0 100%);
+    background: var(--ui-bg);
     align-items: center;
     justify-content: center;
 }
@@ -825,7 +760,7 @@ body {
 }
 
 .reward-word {
-    font-family: var(--font-display);
+    font-family: var(--font-pixel);
     font-size: 2.5rem;
     font-weight: 900;
     color: var(--chocolate);
@@ -882,7 +817,7 @@ body {
 .report-summary { margin-bottom: 1.5rem; }
 .report-summary h3,
 .report-section h3 {
-    font-family: var(--font-display);
+    font-family: var(--font-pixel);
     font-size: 1.2rem;
     font-weight: 700;
     color: var(--chocolate);
@@ -1067,10 +1002,6 @@ button,
         padding: 1rem 1.5rem;
     }
 
-    .home-footer {
-        padding-bottom: max(1rem, env(safe-area-inset-bottom, 0.5rem));
-    }
-
     .learning-content {
         padding: 0.75rem 1.5rem;
     }
@@ -1180,23 +1111,6 @@ button,
     }
     .care-icon { width: 32px; height: 32px; }
 
-    /* ── Care Bar ── */
-    .care-bar {
-        padding: 0.8rem 1.2rem;
-        padding-bottom: max(1.2rem, calc(env(safe-area-inset-bottom, 0px) + 0.8rem));
-        gap: 12px;
-    }
-    .care-btn {
-        padding: 0.8rem 1.4rem;
-        min-width: 80px;
-        border-radius: 20px;
-    }
-    .care-btn-icon {
-        font-size: 1.8rem;
-    }
-    .care-btn-label {
-        font-size: 0.9rem;
-    }
 
     /* ── Learning Screen ── */
     .learning-header {
@@ -1416,19 +1330,10 @@ button,
         font-size: 1.1rem;
     }
 
-    /* ── Glass utility on iPad ── */
-    .glass {
-        padding: 0.6rem 1.4rem;
-        border-radius: 24px;
-    }
 }
 
 /* Safe area extras for notched phones */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
-    .home-footer {
-        padding-bottom: max(2rem, calc(env(safe-area-inset-bottom) + 1.5rem));
-    }
-
     .learning-header {
         padding-top: max(12px, env(safe-area-inset-top));
     }

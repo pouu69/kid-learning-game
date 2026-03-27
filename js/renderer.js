@@ -1584,7 +1584,7 @@ var PetRenderer = {
       fontFamily: '"DungGeunMo", monospace',
       fontSize: 18,
       fontWeight: '700',
-      fill: '#3a3028',
+      fill: '#1a1830',
     });
     var txt = new PIXI.Text({ text: text, style: style });
     txt.anchor.set(0.5, 0.5);
@@ -1597,7 +1597,7 @@ var PetRenderer = {
     // Pixel-art bubble background — rect with border
     var bg = new PIXI.Graphics();
     bg.rect(-bw / 2 - 2, -bh / 2 - 2, bw + 4, bh + 4);
-    bg.fill({ color: 0xe8d8c8 });
+    bg.fill({ color: 0x6a4c9c });
     bg.rect(-bw / 2, -bh / 2, bw, bh);
     bg.fill({ color: 0xffffff, alpha: 0.95 });
     // Tail — pixel triangle using rects

@@ -274,7 +274,7 @@ var Learning = {
       var rewardEl = document.createElement('div');
       rewardEl.style.cssText = 'text-align:center;padding:2rem;';
       rewardEl.innerHTML = '<div style="font-size:4rem;animation:popIn 0.4s ease">' + letter + '</div>' +
-        '<div style="font-size:1.4rem;color:#6a8a5a;margin-top:1rem;font-family:var(--font-display);animation:popIn 0.6s ease">' + praise + '</div>';
+        '<div style="font-size:1.4rem;color:var(--gold);margin-top:1rem;font-family:var(--font-pixel);animation:popIn 0.6s ease">' + praise + '</div>';
       self.popupEl.innerHTML = '';
       self.popupEl.appendChild(rewardEl);
     }
@@ -403,7 +403,7 @@ var Learning = {
       var rewardEl = document.createElement('div');
       rewardEl.style.cssText = 'text-align:center;padding:2rem;';
       rewardEl.innerHTML = '<div style="font-size:3.5rem;animation:popIn 0.4s ease">' + wordData.word + '</div>' +
-        '<div style="font-size:1.2rem;color:#6a8a5a;margin-top:1rem;font-family:var(--font-display);animation:popIn 0.6s ease">' + wPraise + '</div>';
+        '<div style="font-size:1.2rem;color:var(--gold);margin-top:1rem;font-family:var(--font-pixel);animation:popIn 0.6s ease">' + wPraise + '</div>';
       self.popupEl.innerHTML = '';
       self.popupEl.appendChild(rewardEl);
     }

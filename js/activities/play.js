@@ -129,7 +129,7 @@ var PuzzleActivity = {
           var resultArea = document.createElement('div');
           resultArea.style.cssText = 'text-align:center;margin:1rem 0;animation:popIn 0.5s ease;';
           var bigWord = document.createElement('div');
-          bigWord.style.cssText = 'font-size:4rem;font-weight:900;color:#3a3028;font-family:var(--font-display);';
+          bigWord.style.cssText = 'font-size:4rem;font-weight:900;color:var(--text-light);font-family:var(--font-pixel);';
           bigWord.textContent = wordData.word;
           resultArea.appendChild(bigWord);
 
@@ -147,7 +147,7 @@ var PuzzleActivity = {
 
           var praises = ['완벽해!', '대단해!', '잘했어!', '멋져!'];
           var praiseEl = document.createElement('div');
-          praiseEl.style.cssText = 'font-size:1.4rem;color:#6a8a5a;font-family:var(--font-display);animation:popIn 0.7s ease;';
+          praiseEl.style.cssText = 'font-size:1.4rem;color:var(--gold);font-family:var(--font-pixel);animation:popIn 0.7s ease;';
           praiseEl.textContent = praises[Math.floor(Math.random() * praises.length)];
           resultArea.appendChild(praiseEl);
 

@@ -86,7 +86,7 @@ var CareActivity = {
             var doneEl = document.createElement('div');
             doneEl.style.cssText = 'text-align:center;';
             doneEl.innerHTML = '<div style="font-size:4rem;animation:popIn 0.4s ease">' + food.emoji + '</div>' +
-              '<div style="font-size:1.5rem;color:#6a8a5a;margin-top:1rem;font-family:var(--font-display);animation:popIn 0.6s ease">맛있다!</div>';
+              '<div style="font-size:1.5rem;color:var(--gold);margin-top:1rem;font-family:var(--font-pixel);animation:popIn 0.6s ease">맛있다!</div>';
             container.appendChild(doneEl);
 
             playSound('correct');
@@ -176,7 +176,7 @@ var CareActivity = {
               var sleepEl = document.createElement('div');
               sleepEl.style.cssText = 'text-align:center;';
               sleepEl.innerHTML = '<div style="font-size:4rem;animation:popIn 0.4s ease">\uD83C\uDF19</div>' +
-                '<div style="font-size:1.5rem;color:#8a7ea0;margin-top:1rem;font-family:var(--font-display);animation:popIn 0.6s ease">잘 자~</div>';
+                '<div style="font-size:1.5rem;color:var(--purple);margin-top:1rem;font-family:var(--font-pixel);animation:popIn 0.6s ease">잘 자~</div>';
               container.appendChild(sleepEl);
 
               speakText('잘 자', 0.7);
@@ -260,7 +260,7 @@ var CareActivity = {
               var wakeEl = document.createElement('div');
               wakeEl.style.cssText = 'text-align:center;';
               wakeEl.innerHTML = '<div style="font-size:4rem;animation:popIn 0.4s ease">\u2600\uFE0F</div>' +
-                '<div style="font-size:1.5rem;color:#d8a030;margin-top:1rem;font-family:var(--font-display);animation:popIn 0.6s ease">좋은 아침!</div>';
+                '<div style="font-size:1.5rem;color:var(--gold);margin-top:1rem;font-family:var(--font-pixel);animation:popIn 0.6s ease">좋은 아침!</div>';
               container.appendChild(wakeEl);
 
               speakText('좋은 아침!', 0.75);
@@ -334,7 +334,7 @@ var CareActivity = {
               var doneEl = document.createElement('div');
               doneEl.style.cssText = 'text-align:center;';
               doneEl.innerHTML = '<div style="font-size:4rem;animation:popIn 0.4s ease">\u2728</div>' +
-                '<div style="font-size:1.5rem;color:#88c8e8;margin-top:1rem;font-family:var(--font-display);animation:popIn 0.6s ease">깨끗해졌다!</div>';
+                '<div style="font-size:1.5rem;color:var(--blue);margin-top:1rem;font-family:var(--font-pixel);animation:popIn 0.6s ease">깨끗해졌다!</div>';
               container.appendChild(doneEl);
 
               speakText('깨끗해졌다!', 0.75);
