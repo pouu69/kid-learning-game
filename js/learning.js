@@ -132,6 +132,10 @@ var Learning = {
     if (this.overlayEl) {
       this.overlayEl.classList.remove('active');
     }
+    // Always refresh HUD when popup closes
+    if (typeof st !== 'undefined' && typeof updateHome === 'function') {
+      updateHome(st);
+    }
   },
 
   // Spaced repetition learning system

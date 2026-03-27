@@ -101,7 +101,12 @@ var CURRICULUM = {
     { letter: 'ㅂ', sound: '비읍. 브', order: 6 },
     { letter: 'ㅅ', sound: '시옷. 스', order: 7 },
     { letter: 'ㅇ', sound: '이응', order: 8 },
-    { letter: 'ㅈ', sound: '지읒. 즈', order: 9 }
+    { letter: 'ㅈ', sound: '지읒. 즈', order: 9 },
+    { letter: 'ㅊ', sound: '치읓. 츠', order: 10 },
+    { letter: 'ㅋ', sound: '키읔. 크', order: 11 },
+    { letter: 'ㅌ', sound: '티읕. 트', order: 12 },
+    { letter: 'ㅍ', sound: '피읖. 프', order: 13 },
+    { letter: 'ㅎ', sound: '히읗. 흐', order: 14 }
   ],
   vowels: [
     { letter: 'ㅏ', sound: '아', order: 1 },
@@ -109,7 +114,9 @@ var CURRICULUM = {
     { letter: 'ㅗ', sound: '오', order: 3 },
     { letter: 'ㅜ', sound: '우', order: 4 },
     { letter: 'ㅡ', sound: '으', order: 5 },
-    { letter: 'ㅣ', sound: '이', order: 6 }
+    { letter: 'ㅣ', sound: '이', order: 6 },
+    { letter: 'ㅐ', sound: '애', order: 7 },
+    { letter: 'ㅔ', sound: '에', order: 8 }
   ],
   words: [
     { word: '나', meaning: '나', illustration: 'child',
