@@ -1305,6 +1305,135 @@ var PetRenderer = {
     if (typeof playSound === 'function') playSound('evolve');
   },
 
+  // Dramatic evolution animation
+  playEvolution: function(newStage) {
+    var self = this;
+    if (!self._app || !self.container) return;
+    var W = self._app.screen.width;
+    var H = self._app.screen.height;
+
+    // Phase 1: Freeze pet, screen dims, pet starts glowing
+    self._evolutionPlaying = true;
+    var origX = self.container.x;
+    var origY = self.container.y;
+
+    // Move pet to center
+    var centerX = W / 2;
+    var centerY = H * 0.45;
+
+    // Dim overlay
+    var dimOverlay = new PIXI.Graphics();
+    dimOverlay.rect(0, 0, W, H).fill({ color: 0x000000, alpha: 0 });
+    self._app.stage.addChild(dimOverlay);
+
+    // Glow ring around pet
+    var glowRing = new PIXI.Graphics();
+    self._app.stage.addChild(glowRing);
+
+    var frame = 0;
+    var phase = 0; // 0=center+dim, 1=spin+glow, 2=flash+rebuild, 3=celebrate
+    var totalFrames = 240; // ~4 seconds
+
+    var evoTicker = function() {
+      frame++;
+
+      if (phase === 0) {
+        // Move to center + dim (60 frames)
+        var t = Math.min(frame / 60, 1);
+        var ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+        self.container.x = origX + (centerX - origX) * ease;
+        self.container.y = origY + (centerY - origY) * ease;
+        dimOverlay.clear();
+        dimOverlay.rect(0, 0, W, H).fill({ color: 0x000000, alpha: ease * 0.5 });
+        if (frame >= 60) { phase = 1; frame = 0; }
+      }
+
+      else if (phase === 1) {
+        // Spin + glow + shrink (80 frames)
+        var t = frame / 80;
+        // Pet spins
+        self.container.rotation = t * Math.PI * 4;
+        // Pet shrinks then grows
+        var sc = t < 0.5 ? 1 - t * 1.2 : 0.4 + (t - 0.5) * 1.2;
+        self.container.scale.set(sc);
+        // Glow ring expands
+        glowRing.clear();
+        var ringR = 20 + t * 80;
+        var ringAlpha = 0.3 + Math.sin(frame * 0.3) * 0.2;
+        glowRing.circle(centerX, centerY, ringR);
+        glowRing.fill({ color: 0xf8d848, alpha: ringAlpha });
+        glowRing.circle(centerX, centerY, ringR * 0.7);
+        glowRing.fill({ color: 0xffffff, alpha: ringAlpha * 0.5 });
+
+        // Emit sparkle particles
+        if (frame % 8 === 0) {
+          self.emitPixelParticles('star', 2);
+        }
+
+        // Rebuild pet at midpoint
+        if (frame === 40) {
+          self.buildPet(newStage);
+        }
+
+        if (frame >= 80) { phase = 2; frame = 0; }
+      }
+
+      else if (phase === 2) {
+        // Flash + reveal (40 frames)
+        var t = frame / 40;
+        self.container.rotation = 0;
+        // Overshoot scale
+        var sc = t < 0.5 ? 0.4 + t * 2.4 : 1.2 - (t - 0.5) * 0.4;
+        self.container.scale.set(Math.min(sc, 1.2));
+
+        // White flash
+        glowRing.clear();
+        if (frame < 10) {
+          glowRing.rect(0, 0, W, H).fill({ color: 0xffffff, alpha: (10 - frame) / 10 * 0.8 });
+        }
+
+        // Undim
+        dimOverlay.clear();
+        dimOverlay.rect(0, 0, W, H).fill({ color: 0x000000, alpha: 0.5 * (1 - t) });
+
+        if (frame >= 40) { phase = 3; frame = 0; }
+      }
+
+      else if (phase === 3) {
+        // Celebrate + return (60 frames)
+        var t = Math.min(frame / 40, 1);
+        var ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+        self.container.x = centerX + (origX - centerX) * ease;
+        self.container.y = centerY + (origY - centerY) * ease;
+        self.container.scale.set(1);
+
+        // Bouncy jump
+        if (frame < 20) {
+          self.container.y -= Math.sin(frame / 20 * Math.PI) * 30;
+        }
+
+        if (frame === 1) {
+          self.emitPixelParticles('star', 15);
+          if (typeof playSound === 'function') playSound('evolve');
+        }
+
+        if (frame >= 60) {
+          // Cleanup
+          self._app.stage.removeChild(dimOverlay);
+          self._app.stage.removeChild(glowRing);
+          dimOverlay.destroy();
+          glowRing.destroy();
+          self._app.ticker.remove(evoTicker);
+          self._evolutionPlaying = false;
+          self.container.rotation = 0;
+          self.container.scale.set(1);
+          self.setExpression('happy');
+        }
+      }
+    };
+    self._app.ticker.add(evoTicker);
+  },
+
   petted: function() {
     var self = this;
     self._pettedTimer = 120;

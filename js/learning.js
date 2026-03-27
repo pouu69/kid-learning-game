@@ -457,40 +457,40 @@ var Learning = {
 
     if (newStage > st.stage) {
       st.stage = newStage;
-      playSound('evolve');
 
-      // Evolution celebration
-      if (typeof flashScreen === 'function') flashScreen();
+      // Dramatic evolution animation
+      if (typeof PetRenderer !== 'undefined' && PetRenderer.playEvolution) {
+        PetRenderer.playEvolution(newStage);
+      } else {
+        // Fallback
+        playSound('evolve');
+        if (typeof PetRenderer !== 'undefined') {
+          PetRenderer.buildPet(newStage);
+        }
+      }
 
-      if (typeof PetRenderer !== 'undefined') {
-        PetRenderer.buildPet(newStage);
-        PetRenderer._jumpTimer = 30;
-        PetRenderer.setExpression('happy');
-
-        // Show new stage name as floating text above pet
-        if (PetRenderer._app && PetRenderer.container && typeof PET_STAGES !== 'undefined') {
+      // Show new stage name as floating text after animation
+      setTimeout(function() {
+        if (typeof PetRenderer !== 'undefined' && PetRenderer._app && PetRenderer.container && typeof PET_STAGES !== 'undefined') {
           var stageData = PET_STAGES[Math.min(newStage, PET_STAGES.length - 1)];
           var stageName = stageData ? stageData.name : '';
           var nameStyle = new PIXI.TextStyle({
-            fontFamily: '"Noto Sans KR", sans-serif',
-            fontSize: 20,
+            fontFamily: '"DungGeunMo", monospace',
+            fontSize: 22,
             fontWeight: 'bold',
-            fill: '#f0c030',
-            stroke: { color: '#8a6010', width: 3 },
+            fill: '#f8d848',
           });
           var nameText = new PIXI.Text({ text: stageName + '!', style: nameStyle });
           nameText.anchor.set(0.5, 1);
           nameText.x = PetRenderer.container.x;
-          nameText.y = PetRenderer.container.y - 80;
+          nameText.y = PetRenderer.container.y - 70;
           nameText.alpha = 1;
-          nameText._life = 90;
+          nameText._life = 120;
           PetRenderer._app.stage.addChild(nameText);
           var nameTicker = function() {
-            nameText.y -= 0.5;
+            nameText.y -= 0.4;
             nameText._life--;
-            if (nameText._life < 30) {
-              nameText.alpha -= 0.033;
-            }
+            if (nameText._life < 30) nameText.alpha -= 0.033;
             if (nameText._life <= 0) {
               PetRenderer._app.stage.removeChild(nameText);
               PetRenderer._app.ticker.remove(nameTicker);
@@ -499,7 +499,7 @@ var Learning = {
           };
           PetRenderer._app.ticker.add(nameTicker);
         }
-      }
+      }, 3500); // Show name after evolution animation finishes
     }
   }
 };
