@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#1a1830">
+    <meta name="theme-color" content="#201838">
     <meta name="mobile-web-app-capable" content="yes">
     <title>타마고지</title>
     <link href="https://cdn.jsdelivr.net/npm/dunggeunmo-font/dunggeunmo.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>@font-face { font-family: 'DungGeunMo'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/DungGeunMo.woff') format('woff'); font-weight: normal; font-style: normal; font-display: swap; }</style>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>&#128049;</text></svg>">
@@ -42,34 +43,26 @@
     <div id="homeScreen" class="screen">
         <!-- Floating header -->
         <div class="home-header">
-            <div class="pet-info glass" id="petInfo">
+            <div class="pet-info pixel-panel" id="petInfo">
+                <span class="pixel-star">&#9733;</span>
                 <span class="pet-name" id="petNameLabel"></span>
-                <span class="pet-stage" id="petStageLabel"></span>
+                <span class="pet-level" id="petStageLabel"></span>
             </div>
         </div>
 
-        <!-- Game-style stat gauges -->
-        <div class="stat-gauges" id="statGauges">
-            <div class="stat-gauge" id="gaugeHunger">
-                <svg class="gauge-ring" viewBox="0 0 48 48">
-                    <circle class="gauge-bg" cx="24" cy="24" r="20" />
-                    <circle class="gauge-fill gauge-fill-hunger" id="fillHunger" cx="24" cy="24" r="20" />
-                </svg>
-                <span class="gauge-icon">&#127835;</span>
+        <!-- Pixel stat bars -->
+        <div class="stat-gauges pixel-panel" id="statGauges">
+            <div class="stat-bar">
+                <span class="stat-icon" style="color: var(--red);">&#9829;</span>
+                <div class="stat-bar-track"><div class="stat-bar-fill stat-fill-hunger" id="fillHunger"></div></div>
             </div>
-            <div class="stat-gauge" id="gaugeMood">
-                <svg class="gauge-ring" viewBox="0 0 48 48">
-                    <circle class="gauge-bg" cx="24" cy="24" r="20" />
-                    <circle class="gauge-fill gauge-fill-mood" id="fillMood" cx="24" cy="24" r="20" />
-                </svg>
-                <span class="gauge-icon">&#128150;</span>
+            <div class="stat-bar">
+                <span class="stat-icon" style="color: var(--orange);">&#9786;</span>
+                <div class="stat-bar-track"><div class="stat-bar-fill stat-fill-mood" id="fillMood"></div></div>
             </div>
-            <div class="stat-gauge" id="gaugeSleepy">
-                <svg class="gauge-ring" viewBox="0 0 48 48">
-                    <circle class="gauge-bg" cx="24" cy="24" r="20" />
-                    <circle class="gauge-fill gauge-fill-sleepy" id="fillSleepy" cx="24" cy="24" r="20" />
-                </svg>
-                <span class="gauge-icon">&#128164;</span>
+            <div class="stat-bar">
+                <span class="stat-icon" style="color: var(--purple);">&#9790;</span>
+                <div class="stat-bar-track"><div class="stat-bar-fill stat-fill-sleepy" id="fillSleepy"></div></div>
             </div>
         </div>
 
@@ -79,31 +72,23 @@
         <!-- Speech bubble (PixiJS renders this now, DOM fallback hidden) -->
         <div class="speech-bubble hidden" id="speechBubble" style="display:none"></div>
 
-        <!-- Need action (dynamic, shown when pet has urgent need) -->
-        <div class="home-actions" id="homeActions">
-            <button class="action-btn action-btn-need hidden" id="actionBtnNeed" onclick="handleActionClick()">
-                <span class="action-btn-icon" id="actionBtnIcon"></span>
-                <span class="action-btn-label" id="actionBtnLabel"></span>
+        <!-- Pixel care bar at bottom -->
+        <div class="care-bar" id="homeActions">
+            <button class="care-btn" data-action="feed" onclick="handleAction('feed')">
+                <div class="care-icon care-icon-feed"></div>
+                <span>밥</span>
             </button>
-        </div>
-
-        <!-- Care buttons bar (always visible) -->
-        <div class="care-bar" id="careBar">
-            <button class="care-btn care-btn-feed" onclick="handleAction('feed')">
-                <span class="care-btn-icon">&#127835;</span>
-                <span class="care-btn-label">밥주기</span>
+            <button class="care-btn" data-action="sleep" onclick="handleAction('sleep')">
+                <div class="care-icon care-icon-sleep"></div>
+                <span>잠</span>
             </button>
-            <button class="care-btn care-btn-sleep" id="careBtnSleep" onclick="handleAction('sleep')">
-                <span class="care-btn-icon" id="careSleepIcon">&#128164;</span>
-                <span class="care-btn-label" id="careSleepLabel">잠자기</span>
+            <button class="care-btn" data-action="wash" onclick="handleAction('wash')">
+                <div class="care-icon care-icon-wash"></div>
+                <span>씻기</span>
             </button>
-            <button class="care-btn care-btn-wash" onclick="handleAction('wash')">
-                <span class="care-btn-icon">&#128167;</span>
-                <span class="care-btn-label">씻기</span>
-            </button>
-            <button class="care-btn care-btn-learn" onclick="handleAction('learn')">
-                <span class="care-btn-icon">&#9998;</span>
-                <span class="care-btn-label">공부하기</span>
+            <button class="care-btn care-btn-learn" data-action="learn" onclick="handleAction('learn')">
+                <div class="care-icon care-icon-learn">ㄱ</div>
+                <span>배우기</span>
             </button>
         </div>
     </div>
@@ -111,7 +96,7 @@
     <!-- LEARNING SCREEN -->
     <div id="learningScreen" class="screen">
         <div class="learning-header">
-            <button class="btn-back glass" onclick="exitLearning()">&#8592; 돌아가기</button>
+            <button class="btn-back" onclick="exitLearning()">&#8592; 돌아가기</button>
             <div class="progress-dots" id="progressDots"></div>
         </div>
         <div class="learning-content" id="learningContent"></div>
@@ -133,10 +118,13 @@
     <div id="reportScreen" class="screen hidden">
         <div class="report-header glass">
             <span class="report-title">학습 리포트</span>
-            <button class="btn-back glass" onclick="showScreen('home')">&#8592; 닫기</button>
+            <button class="btn-back" onclick="showScreen('home')">&#8592; 닫기</button>
         </div>
         <div class="report-content" id="reportContent"></div>
     </div>
+
+    <!-- Pixel wipe transition overlay -->
+    <div id="pixelWipe" class="pixel-wipe"></div>
 
     <!-- Scripts: load order matters, no modules -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/8.6.6/pixi.min.js"></script>

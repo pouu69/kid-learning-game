@@ -136,30 +136,38 @@ function _getDom() {
       barH: document.getElementById('fillHunger'),
       barM: document.getElementById('fillMood'),
       barS: document.getElementById('fillSleepy'),
-      gaugeH: document.getElementById('gaugeHunger'),
-      gaugeM: document.getElementById('gaugeMood'),
-      gaugeS: document.getElementById('gaugeSleepy'),
-      actionBtnNeed: document.getElementById('actionBtnNeed'),
-      actionBtnIcon: document.getElementById('actionBtnIcon'),
-      actionBtnLabel: document.getElementById('actionBtnLabel'),
+      feedBtn: document.querySelector('[data-action="feed"]'),
+      sleepBtn: document.querySelector('[data-action="sleep"]'),
+      learnBtn: document.querySelector('[data-action="learn"]'),
       petHint: document.querySelector('.pet-hint'),
     };
   }
   return _domCache;
 }
 
-// showScreen tracks currentScreen state
+// showScreen tracks currentScreen state — uses pixel wipe for major transitions
 function showScreen(name) {
+  var prevScreen = currentScreen;
   currentScreen = name;
-  var screens = document.querySelectorAll('.screen');
-  for (var i = 0; i < screens.length; i++) {
-    screens[i].classList.remove('active');
+
+  function doSwitch() {
+    var screens = document.querySelectorAll('.screen');
+    for (var i = 0; i < screens.length; i++) {
+      screens[i].classList.remove('active');
+    }
+    var el = document.getElementById(name + 'Screen');
+    if (el) {
+      el.classList.remove('hidden');
+      el.classList.add('active');
+    }
   }
-  // HTML uses nameScreen pattern (e.g. homeScreen, learningScreen)
-  var el = document.getElementById(name + 'Screen');
-  if (el) {
-    el.classList.remove('hidden');
-    el.classList.add('active');
+
+  // Use pixel wipe for major screen changes (naming→home, home→learning, etc.)
+  var majorChange = (prevScreen !== name) && (prevScreen === 'naming' || name === 'learning' || (prevScreen === 'learning' && name === 'home'));
+  if (majorChange && typeof pixelWipeTransition === 'function') {
+    pixelWipeTransition(doSwitch);
+  } else {
+    doSwitch();
   }
 }
 
@@ -171,14 +179,23 @@ function updateHome(st) {
     d.stageEl.textContent = evo.name;
   }
 
-  // Update circular gauge fill (SVG stroke-dashoffset)
-  var circumference = 125.66; // 2 * PI * 20, pre-computed
-  if (d.barH) d.barH.style.strokeDashoffset = circumference * (1 - Math.max(0, Math.min(100, st.hunger)) / 100);
-  if (d.barM) d.barM.style.strokeDashoffset = circumference * (1 - Math.max(0, Math.min(100, st.mood)) / 100);
-  if (d.barS) d.barS.style.strokeDashoffset = circumference * (1 - Math.max(0, Math.min(100, st.sleepy)) / 100);
-  if (d.gaugeH) d.gaugeH.classList.toggle('stat-low', st.hunger < 30);
-  if (d.gaugeM) d.gaugeM.classList.toggle('stat-low', st.mood < 40);
-  if (d.gaugeS) d.gaugeS.classList.toggle('stat-low', st.sleepy > 70);
+  // Update pixel stat bars (width-based)
+  if (d.barH) {
+    d.barH.style.width = st.hunger + '%';
+    d.barH.classList.toggle('low', st.hunger < 30);
+  }
+  if (d.barM) {
+    d.barM.style.width = st.mood + '%';
+    d.barM.classList.toggle('low', st.mood < 40);
+  }
+  if (d.barS) {
+    d.barS.style.width = (100 - st.sleepy) + '%';
+    d.barS.classList.toggle('low', st.sleepy > 80);
+  }
+
+  // Urgent care button animations
+  if (d.feedBtn) d.feedBtn.classList.toggle('urgent', st.hunger < 30);
+  if (d.sleepBtn) d.sleepBtn.classList.toggle('urgent', st.sleepy > 80);
 
   // Use PixiJS bubble for speech (replaces DOM bubble)
   var text = Pet.getSpeechText(st);
@@ -197,53 +214,22 @@ function updateHome(st) {
     }
   }
 
-  // Show PixiJS need bubble on pet AND update DOM action buttons
+  // Show PixiJS need bubble on pet
   if (typeof PetRenderer !== 'undefined' && PetRenderer.showNeed) {
     var btn = Pet.getActionButton(st);
     if (btn) {
       var needMap = { 'feed': 'hungry', 'play': 'bored', 'sleep': 'sleepy', 'wake': 'sleepy', 'hatch': null };
       PetRenderer.showNeed(needMap[btn.action] || null);
       if (d.petHint) d.petHint.classList.add('hidden');
-
-      if (d.actionBtnNeed) {
-        var iconMap = { 'feed': '\uD83C\uDF5A', 'play': '\uD83C\uDFB2', 'sleep': '\uD83D\uDCA4', 'wake': '\u2600\uFE0F', 'hatch': '\uD83D\uDC4B' };
-        var classMap = { 'feed': '', 'play': '', 'sleep': 'action-btn-sleep', 'wake': 'action-btn-wake', 'hatch': '' };
-        d.actionBtnNeed.classList.remove('hidden', 'action-btn-sleep', 'action-btn-wake');
-        if (classMap[btn.action]) d.actionBtnNeed.classList.add(classMap[btn.action]);
-        if (d.actionBtnIcon) d.actionBtnIcon.textContent = iconMap[btn.action] || '';
-        if (d.actionBtnLabel) d.actionBtnLabel.textContent = btn.label;
-      }
     } else {
       PetRenderer.hideNeed();
       if (d.petHint) d.petHint.classList.remove('hidden');
-      if (d.actionBtnNeed) d.actionBtnNeed.classList.add('hidden');
     }
   }
 
-  // Update care bar: hide during egg stage, toggle sleep/wake
-  var careBar = document.getElementById('careBar');
-  if (careBar) {
-    careBar.style.display = (st.stage === 0) ? 'none' : '';
-    // Disable feed/wash/learn while sleeping
-    var otherBtns = careBar.querySelectorAll('.care-btn-feed,.care-btn-wash,.care-btn-learn');
-    for (var bi = 0; bi < otherBtns.length; bi++) {
-      otherBtns[bi].disabled = st.sleeping;
-      otherBtns[bi].style.opacity = st.sleeping ? '0.4' : '';
-    }
-  }
-  var careSleepIcon = document.getElementById('careSleepIcon');
-  var careSleepLabel = document.getElementById('careSleepLabel');
-  var careBtnSleep = document.getElementById('careBtnSleep');
-  if (careSleepIcon && careSleepLabel && careBtnSleep) {
-    if (st.sleeping) {
-      careSleepIcon.innerHTML = '&#9728;&#65039;';
-      careSleepLabel.textContent = '깨우기';
-      careBtnSleep.onclick = function() { handleAction('wake'); };
-    } else {
-      careSleepIcon.innerHTML = '&#128164;';
-      careSleepLabel.textContent = '잠자기';
-      careBtnSleep.onclick = function() { handleAction('sleep'); };
-    }
+  // Hide learn button during sleep or egg stage
+  if (d.learnBtn) {
+    d.learnBtn.style.display = (st.sleeping || st.stage === 0) ? 'none' : '';
   }
 
   if (typeof PetRenderer !== 'undefined' && PetRenderer.update) {
@@ -313,9 +299,16 @@ function handleAction(action) {
   }
 
   if (action === 'wash') {
-    if (typeof CareActivity !== 'undefined') {
-      CareActivity.startWash(st);
+    // Wash gives a small mood boost
+    st.mood = Math.min(100, st.mood + 10);
+    if (typeof PetRenderer !== 'undefined') {
+      if (PetRenderer.petted) PetRenderer.petted();
+      if (PetRenderer.emitParticles) PetRenderer.emitParticles('star', 4);
+      if (PetRenderer.showPixiBubble) PetRenderer.showPixiBubble('깨끗해!', 120);
     }
+    playSound('click');
+    saveState(st);
+    updateHome(st);
     return;
   }
 
@@ -333,6 +326,45 @@ function handleAction(action) {
     saveState(st);
     updateHome(st);
   }
+}
+
+// Pixel wipe screen transition
+function pixelWipeTransition(callback) {
+  var wipe = document.getElementById('pixelWipe');
+  if (!wipe) { if (callback) callback(); return; }
+  wipe.innerHTML = '';
+  var cols = 8;
+  var rows = 12;
+  var blocks = [];
+  for (var i = 0; i < cols * rows; i++) {
+    var block = document.createElement('div');
+    block.className = 'pixel-wipe-block';
+    wipe.appendChild(block);
+    blocks.push(block);
+  }
+  wipe.classList.add('active');
+  // Stagger show
+  for (var b = 0; b < blocks.length; b++) {
+    (function(bl, delay) {
+      setTimeout(function() { bl.classList.add('show'); }, delay);
+    })(blocks[b], b * 8);
+  }
+  // At peak, call callback
+  var peakDelay = blocks.length * 8 + 60;
+  setTimeout(function() {
+    if (callback) callback();
+    // Stagger hide
+    for (var h = 0; h < blocks.length; h++) {
+      (function(bl, delay) {
+        setTimeout(function() { bl.classList.remove('show'); }, delay);
+      })(blocks[h], h * 8);
+    }
+    // Cleanup
+    setTimeout(function() {
+      wipe.classList.remove('active');
+      wipe.innerHTML = '';
+    }, blocks.length * 8 + 100);
+  }, peakDelay);
 }
 
 function getState() {
