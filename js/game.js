@@ -328,7 +328,20 @@ function handleAction(action) {
 
   if (action === 'play' || action === 'learn') {
     if (typeof Learning !== 'undefined') {
-      Learning.startLearning(st);
+      // Pet walks off screen, then pixel wipe, then learning
+      if (typeof PetRenderer !== 'undefined' && PetRenderer.walkOffScreen) {
+        PetRenderer.walkOffScreen('right', function() {
+          pixelWipeTransition(function() {
+            showScreen('learning');
+            Learning.startLearning(st);
+          });
+        });
+      } else {
+        pixelWipeTransition(function() {
+          showScreen('learning');
+          Learning.startLearning(st);
+        });
+      }
     }
     return;
   }

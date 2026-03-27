@@ -178,9 +178,18 @@
         }
     }
 
-    // Learning back button
+    // Learning back button — pixel wipe + pet walks in
     function exitLearning() {
-        showScreen('home');
+        if (typeof pixelWipeTransition === 'function') {
+            pixelWipeTransition(function() {
+                showScreen('home');
+                if (typeof PetRenderer !== 'undefined' && PetRenderer.walkOnScreen) {
+                    PetRenderer.walkOnScreen('left');
+                }
+            });
+        } else {
+            showScreen('home');
+        }
     }
 
     // Long press (3 seconds) on .pet-info opens report screen

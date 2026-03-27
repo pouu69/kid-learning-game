@@ -1434,6 +1434,64 @@ var PetRenderer = {
     self._app.ticker.add(evoTicker);
   },
 
+  // Walk pet off screen in a direction, then call callback
+  walkOffScreen: function(direction, callback) {
+    var self = this;
+    if (!self._app || !self.container) { if (callback) callback(); return; }
+    var W = self._app.screen.width;
+    var targetX = direction === 'right' ? W + 100 : -100;
+    var frame = 0;
+    var startX = self.container.x;
+
+    var walkTicker = function() {
+      frame++;
+      var t = Math.min(frame / 40, 1);
+      var ease = t * t;
+      self.container.x = startX + (targetX - startX) * ease;
+      // Walking animation - slight bounce
+      self.container.y = self._groundY + Math.abs(Math.sin(frame * 0.3)) * -8;
+      if (frame >= 40) {
+        self._app.ticker.remove(walkTicker);
+        self.container.visible = false;
+        if (callback) callback();
+      }
+    };
+    self._app.ticker.add(walkTicker);
+  },
+
+  // Walk pet on screen from a direction
+  walkOnScreen: function(direction) {
+    var self = this;
+    if (!self._app || !self.container) return;
+    var W = self._app.screen.width;
+    var startX = direction === 'left' ? -100 : W + 100;
+    var targetX = W / 2;
+    self.container.x = startX;
+    self.container.visible = true;
+    var frame = 0;
+
+    var walkTicker = function() {
+      frame++;
+      var t = Math.min(frame / 50, 1);
+      var ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+      self.container.x = startX + (targetX - startX) * ease;
+      // Walking bounce
+      self.container.y = self._groundY + Math.abs(Math.sin(frame * 0.3)) * -8;
+      if (frame >= 50) {
+        self._app.ticker.remove(walkTicker);
+        self.container.x = targetX;
+        self.container.y = self._groundY;
+        self._wanderX = 0;
+        self._wanderTargetX = 0;
+        // Happy arrival
+        self._pettedTimer = 30;
+        self.setExpression('happy');
+        self.emitPixelParticles('sparkle', 5);
+      }
+    };
+    self._app.ticker.add(walkTicker);
+  },
+
   petted: function() {
     var self = this;
     self._pettedTimer = 120;
