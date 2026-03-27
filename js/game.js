@@ -187,29 +187,25 @@ function updateHome(st) {
     var cons = st.learning.knownConsonants.length;
     var vow = st.learning.knownVowels.length;
     var words = st.learning.completedWords.length;
-    var pct = 0;
-    var nextName = '';
 
+    // Total curriculum progress: 14 consonants + 8 vowels + 20 words = 42
+    var totalLearned = cons + vow + words;
+    var totalItems = 42;
+    var pct = Math.min(100, Math.round(totalLearned / totalItems * 100));
+
+    // Next evolution milestone
+    var nextName = '';
     if (st.stage >= 5) {
-      pct = 100;
-      nextName = '완료';
-      if (evoProg) evoProg.classList.add('maxed');
+      nextName = totalLearned >= totalItems ? '완료' : pct + '% (' + totalLearned + '/' + totalItems + ')';
+      if (totalLearned >= totalItems && evoProg) evoProg.classList.add('maxed');
     } else if (st.stage < 2) {
-      // Next: stage 2 at 9 consonants
-      pct = Math.min(100, Math.round(cons / 9 * 100));
-      nextName = '→ ' + (PET_STAGES[2] ? PET_STAGES[2].name : '');
+      nextName = '→ ' + (PET_STAGES[2] ? PET_STAGES[2].name : '') + ' (' + cons + '/9)';
     } else if (st.stage < 3) {
-      // Next: stage 3 at 6 vowels
-      pct = Math.min(100, Math.round(vow / 6 * 100));
-      nextName = '→ ' + (PET_STAGES[3] ? PET_STAGES[3].name : '');
+      nextName = '→ ' + (PET_STAGES[3] ? PET_STAGES[3].name : '') + ' (' + vow + '/6)';
     } else if (st.stage < 4) {
-      // Next: stage 4 at 10 words
-      pct = Math.min(100, Math.round(words / 10 * 100));
-      nextName = '→ ' + (PET_STAGES[4] ? PET_STAGES[4].name : '');
+      nextName = '→ ' + (PET_STAGES[4] ? PET_STAGES[4].name : '') + ' (' + words + '/10)';
     } else {
-      // Next: stage 5 at 15 words
-      pct = Math.min(100, Math.round(words / 15 * 100));
-      nextName = '→ ' + (PET_STAGES[5] ? PET_STAGES[5].name : '');
+      nextName = '→ ' + (PET_STAGES[5] ? PET_STAGES[5].name : '') + ' (' + words + '/15)';
     }
     evoBar.style.width = pct + '%';
     evoNext.textContent = nextName;
