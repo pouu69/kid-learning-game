@@ -178,17 +178,17 @@
         }
     }
 
-    // Learning back button — pixel wipe + pet walks in
+    // Learning back button — instant return to home, pet walks in
     function exitLearning() {
-        if (typeof pixelWipeTransition === 'function') {
-            pixelWipeTransition(function() {
-                showScreen('home');
-                if (typeof PetRenderer !== 'undefined' && PetRenderer.walkOnScreen) {
-                    PetRenderer.walkOnScreen('left');
-                }
-            });
-        } else {
-            showScreen('home');
+        // Close any open learning popup first
+        if (typeof Learning !== 'undefined' && Learning.closePopup) {
+            Learning.closePopup();
+        }
+        showScreen('home');
+        // Pet walks back in
+        if (typeof PetRenderer !== 'undefined') {
+            if (PetRenderer.container) PetRenderer.container.visible = true;
+            if (PetRenderer.walkOnScreen) PetRenderer.walkOnScreen('left');
         }
     }
 

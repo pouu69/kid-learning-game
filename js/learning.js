@@ -9,35 +9,41 @@ var Learning = {
 
   // Get current learning target based on state
   getCurrentTarget: function(st) {
-    if (st.learning.stage === 1) {
-      // Consonants
-      var idx = st.learning.consonantIndex;
-      if (idx < CURRICULUM.consonants.length) {
-        return { type: 'consonant', data: CURRICULUM.consonants[idx], index: idx };
+    // Always check for unlearned consonants/vowels first (handles curriculum expansion)
+    var consIdx = st.learning.consonantIndex || 0;
+    var vowIdx = st.learning.vowelIndex || 0;
+
+    if (consIdx < CURRICULUM.consonants.length) {
+      // Unlearned consonants remain
+      if (st.learning.stage > 1) {
+        st.learning.stage = 1; // Go back to teach new consonants
+        saveState(st);
       }
-      // All consonants done → advance to stage 2
-      st.learning.stage = 2;
-      st.learning.vowelIndex = 0;
-      saveState(st);
+      return { type: 'consonant', data: CURRICULUM.consonants[consIdx], index: consIdx };
     }
-    if (st.learning.stage === 2) {
-      var idx2 = st.learning.vowelIndex;
-      if (idx2 < CURRICULUM.vowels.length) {
-        return { type: 'vowel', data: CURRICULUM.vowels[idx2], index: idx2 };
+
+    if (vowIdx < CURRICULUM.vowels.length) {
+      // Unlearned vowels remain
+      if (st.learning.stage !== 2) {
+        st.learning.stage = 2;
+        saveState(st);
       }
-      // All vowels done → advance to stage 3
+      return { type: 'vowel', data: CURRICULUM.vowels[vowIdx], index: vowIdx };
+    }
+
+    // All letters done → words stage
+    if (st.learning.stage < 3) {
       st.learning.stage = 3;
-      st.learning.wordIndex = 0;
+      if (!st.learning.wordIndex) st.learning.wordIndex = 0;
       saveState(st);
     }
-    if (st.learning.stage === 3) {
-      var idx3 = st.learning.wordIndex;
-      if (idx3 < CURRICULUM.words.length) {
-        return { type: 'word', data: CURRICULUM.words[idx3], index: idx3 };
-      }
-      return null; // All done
+
+    var wordIdx = st.learning.wordIndex || 0;
+    if (wordIdx < CURRICULUM.words.length) {
+      return { type: 'word', data: CURRICULUM.words[wordIdx], index: wordIdx };
     }
-    return null;
+
+    return null; // All done
   },
 
   // Open learning popup overlay (no screen transition)
