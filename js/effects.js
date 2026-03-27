@@ -105,17 +105,18 @@ function showCelebration(x, y) {
   if (typeof World === 'undefined' || !World.app) return;
   var colors = [0xf4b870, 0xf08080, 0xa8d8b0, 0x88c8e8, 0xc8a0d8, 0xf0d060];
   for (var i = 0; i < 12; i++) {
-    var circle = new PIXI.Graphics();
+    var particle = new PIXI.Graphics();
     var color = colors[Math.floor(Math.random() * colors.length)];
-    var size = 4 + Math.random() * 8;
-    circle.circle(0, 0, size).fill({ color: color });
-    circle.x = x + (Math.random() - 0.5) * 120;
-    circle.y = y + (Math.random() - 0.5) * 100;
-    circle.alpha = 0.9;
-    circle._vx = (Math.random() - 0.5) * 3;
-    circle._vy = -2 - Math.random() * 3;
-    circle._life = 50 + Math.random() * 30;
-    World.app.stage.addChild(circle);
+    var size = 3 + Math.floor(Math.random() * 5);
+    // Pixel-art style: use rect instead of circle
+    particle.rect(0, 0, size, size).fill({ color: color });
+    particle.x = x + (Math.random() - 0.5) * 120;
+    particle.y = y + (Math.random() - 0.5) * 100;
+    particle.alpha = 0.9;
+    particle._vx = (Math.random() - 0.5) * 3;
+    particle._vy = -2 - Math.random() * 3;
+    particle._life = 50 + Math.random() * 30;
+    World.app.stage.addChild(particle);
     (function(c) {
       var ticker = function() {
         c.x += c._vx;
@@ -130,7 +131,7 @@ function showCelebration(x, y) {
         }
       };
       World.app.ticker.add(ticker);
-    })(circle);
+    })(particle);
   }
 }
 
@@ -146,10 +147,10 @@ function showStarParticles(x, y, count) {
   if (typeof World === 'undefined' || !World.app) return;
   var n = Math.min(count || 15, 50);
   for (var i = 0; i < n; i++) {
-    var star = new PIXI.Text({
-      text: '*',
-      style: { fontSize: 12 + Math.random() * 12, fill: 0xf0d060, fontWeight: 'bold' }
-    });
+    // Pixel-art style: use rect instead of text star
+    var star = new PIXI.Graphics();
+    var size = 3 + Math.floor(Math.random() * 4);
+    star.rect(0, 0, size, size).fill({ color: 0xf0d060 });
     star.x = x + (Math.random() - 0.5) * 100;
     star.y = y + (Math.random() - 0.5) * 80;
     star.alpha = 0.8;
