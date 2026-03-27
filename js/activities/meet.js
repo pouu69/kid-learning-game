@@ -419,132 +419,104 @@ var LetterActivity = {
   },
 
   // Utility: animate stroke order on canvas — full multi-stroke demo
-  _animateStrokeGuide: function(canvas, letterData, scale, stopFlag) {
+  _animateStrokeGuide: function(canvas, letterData, scale) {
     var ctx = canvas.getContext('2d');
     var strokes = letterData.strokes;
     if (!strokes || strokes.length === 0) return;
 
-    var strokeIndex = 0;
     var self = this;
-    // Use a shared object to check stop signal from parent scope
     var stopped = { value: false };
-    // Store reference so callers can stop it
     self._currentGuideStop = stopped;
 
-    function animateStroke() {
-      if (stopped.value || strokeIndex >= strokes.length) return;
-      var stroke = strokes[strokeIndex];
-      var num = strokeIndex + 1;
+    // Draw each stroke sequentially with delays (no requestAnimationFrame)
+    function drawStrokeAtIndex(idx) {
+      if (stopped.value || idx >= strokes.length) return;
+      var stroke = strokes[idx];
+      var num = idx + 1;
+
+      ctx.setLineDash([]);
+      ctx.strokeStyle = '#f8d848';
+      ctx.lineWidth = 6;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
 
       if (stroke[0] && stroke[0].circle) {
-        // Circle stroke — draw it gradually
-        var angle = 0;
         var cx = stroke[0].cx * scale;
         var cy = stroke[0].cy * scale;
         var r = stroke[0].r * scale;
 
-        // Show number
-        ctx.fillStyle = '#f4b870';
-        ctx.font = 'bold 18px sans-serif';
+        // Number
+        ctx.fillStyle = '#f8d848';
+        ctx.font = 'bold 18px "DungGeunMo", monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(num.toString(), cx, cy - r - 8);
+        ctx.fillText(num.toString(), cx, cy - r - 12);
         ctx.textAlign = 'start';
         ctx.textBaseline = 'alphabetic';
 
-        function drawCircleStep() {
-          if (stopped.value) return;
-          if (angle > Math.PI * 2) {
-            strokeIndex++;
-            setTimeout(animateStroke, 300);
-            return;
-          }
-          ctx.strokeStyle = '#f4b870';
-          ctx.lineWidth = 6;
-          ctx.lineCap = 'round';
-          ctx.setLineDash([]);
-          ctx.beginPath();
-          ctx.arc(cx, cy, r, angle, angle + 0.15);
-          ctx.stroke();
-          angle += 0.15;
-          setTimeout(drawCircleStep, 16);
-        }
-        drawCircleStep();
+        // Draw full circle at once
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Start dot
+        ctx.fillStyle = '#f8d848';
+        ctx.globalAlpha = 0.7;
+        ctx.beginPath();
+        ctx.arc(cx + r, cy, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+
       } else if (stroke.length >= 2) {
         var startX = stroke[0].x * scale;
         var startY = stroke[0].y * scale;
         var endX = stroke[stroke.length - 1].x * scale;
         var endY = stroke[stroke.length - 1].y * scale;
 
-        // Show stroke number at start
-        ctx.fillStyle = '#f4b870';
-        ctx.font = 'bold 18px sans-serif';
+        // Number at start
+        ctx.fillStyle = '#f8d848';
+        ctx.font = 'bold 18px "DungGeunMo", monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        var numOffsetX = startX < 150 ? -15 : 15;
-        var numOffsetY = startY < 150 ? -15 : 15;
-        ctx.fillText(num.toString(), startX + numOffsetX, startY + numOffsetY);
+        var numOX = startX < 200 ? -16 : 16;
+        var numOY = startY < 200 ? -16 : 16;
+        ctx.fillText(num.toString(), startX + numOX, startY + numOY);
         ctx.textAlign = 'start';
         ctx.textBaseline = 'alphabetic';
 
-        // Show start dot
-        ctx.fillStyle = '#f4b870';
-        ctx.globalAlpha = 0.8;
+        // Start dot
+        ctx.fillStyle = '#f8d848';
+        ctx.globalAlpha = 0.7;
         ctx.beginPath();
-        ctx.arc(startX, startY, 14, 0, Math.PI * 2);
+        ctx.arc(startX, startY, 10, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 1.0;
 
-        // Animate line drawing
-        var progress = 0;
-        var prevX = startX;
-        var prevY = startY;
-
-        function drawLineStep() {
-          if (stopped.value) return;
-          if (progress > 1) {
-            // Draw end dot
-            ctx.fillStyle = '#f4b870';
-            ctx.globalAlpha = 0.6;
-            ctx.beginPath();
-            ctx.arc(endX, endY, 10, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.globalAlpha = 1.0;
-
-            strokeIndex++;
-            setTimeout(animateStroke, 400);
-            return;
-          }
-
-          progress += 0.04;
-          var t = Math.min(progress, 1);
-          var totalLen = stroke.length - 1;
-          var segIdx = Math.min(Math.floor(t * totalLen), totalLen - 1);
-          var localT = (t * totalLen) - segIdx;
-          var x = stroke[segIdx].x * scale + (stroke[segIdx + 1].x * scale - stroke[segIdx].x * scale) * localT;
-          var y = stroke[segIdx].y * scale + (stroke[segIdx + 1].y * scale - stroke[segIdx].y * scale) * localT;
-
-          ctx.strokeStyle = '#f4b870';
-          ctx.lineWidth = 6;
-          ctx.lineCap = 'round';
-          ctx.setLineDash([]);
-          ctx.beginPath();
-          ctx.moveTo(prevX, prevY);
-          ctx.lineTo(x, y);
-          ctx.stroke();
-
-          prevX = x;
-          prevY = y;
-          setTimeout(drawLineStep, 16);
+        // Draw full stroke line at once
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        for (var p = 1; p < stroke.length; p++) {
+          ctx.lineTo(stroke[p].x * scale, stroke[p].y * scale);
         }
-        drawLineStep();
-      } else {
-        strokeIndex++;
-        animateStroke();
+        ctx.stroke();
+
+        // End arrow dot
+        ctx.fillStyle = '#f8d848';
+        ctx.globalAlpha = 0.5;
+        ctx.beginPath();
+        ctx.arc(endX, endY, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
       }
+
+      // Draw next stroke after delay
+      setTimeout(function() { drawStrokeAtIndex(idx + 1); }, 600);
     }
 
-    animateStroke();
+    // Start after popup has rendered
+    setTimeout(function() {
+      if (!stopped.value) drawStrokeAtIndex(0);
+    }, 500);
   },
 
   _generateCheckpoints: function(stroke, count, scale) {
