@@ -38,16 +38,7 @@
     --star:        #f8d848;
     --milk:        #ffffff;
 
-    /* Pixel art palette */
-    --ui-bg:       #201838;
-    --ui-border:   #584880;
-    --text-light:  #e8e0f8;
-    --text-dark:   #201838;
-    --gold:        #f0c830;
-    --red:         #e05050;
-    --orange:      #f0a830;
-    --blue:        #50a0e0;
-    --purple:      #9068c0;
+    /* (Team C duplicates removed — using spec values above) */
 
     --font-display: 'Gaegu', cursive;
     --font-body:    'Noto Sans KR', sans-serif;
