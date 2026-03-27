@@ -421,9 +421,9 @@ body {
 .care-btn-learn { background: linear-gradient(180deg, #6a4c9c 0%, #483868 100%); border-color: #8868c0; box-shadow: 0 3px 0 #2a1848; }
 .care-btn-learn span { color: #f8e888; }
 .care-icon { width: 26px; height: 26px; border: 2px solid; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
-.care-icon-feed { background: var(--red); border-color: #c04848; }
-.care-icon-sleep { background: var(--purple); border-color: #7858a0; }
-.care-icon-wash { background: var(--blue); border-color: #3888c0; }
+.care-icon-feed { background: var(--red); border-color: #c04848; color: #fff; font-size: 16px; }
+.care-icon-sleep { background: var(--purple); border-color: #7858a0; color: #fff; font-size: 16px; }
+.care-icon-wash { background: var(--blue); border-color: #3888c0; color: #fff; font-size: 16px; }
 .care-icon-learn { background: var(--gold); border-color: #d0a830; font-family: var(--font-pixel); font-size: 14px; font-weight: bold; color: var(--text-dark); }
 @keyframes btnBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 .care-btn.urgent { animation: btnBounce 0.8s ease infinite; }

@@ -1358,9 +1358,12 @@ var PetRenderer = {
 
     if (!needType || !self.container) return;
 
+    // Hide speech bubble when need bubble is shown
+    self.hidePixiBubble();
+
     var bubble = new PIXI.Container();
-    bubble.y = -80;
-    bubble.x = 30;
+    bubble.y = -100;
+    bubble.x = 50;
 
     // Thought bubble background — pixel rect style
     var bg = new PIXI.Graphics();
@@ -1576,6 +1579,9 @@ var PetRenderer = {
     var self = this;
     if (!self._app || !self.container) return;
 
+    // Don't show speech if need bubble is active
+    if (self._needBubble) return;
+
     self.hidePixiBubble();
 
     var bubble = new PIXI.Container();
@@ -1608,7 +1614,7 @@ var PetRenderer = {
     bubble.addChild(txt);
 
     bubble.x = 0;
-    bubble.y = -110;
+    bubble.y = -100;
     bubble.alpha = 0;
     bubble._fadeIn = true;
 
