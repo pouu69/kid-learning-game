@@ -312,16 +312,20 @@ function handleAction(action) {
   }
 
   if (action === 'wash') {
-    // Wash gives a small mood boost
-    st.mood = Math.min(100, st.mood + 10);
-    if (typeof PetRenderer !== 'undefined') {
-      if (PetRenderer.petted) PetRenderer.petted();
-      if (PetRenderer.emitParticles) PetRenderer.emitParticles('star', 4);
-      if (PetRenderer.showPixiBubble) PetRenderer.showPixiBubble('깨끗해!', 120);
+    if (typeof CareActivity !== 'undefined' && CareActivity.startWash) {
+      CareActivity.startWash(st);
+    } else {
+      // Fallback if no wash mini-game
+      st.mood = Math.min(100, st.mood + 15);
+      if (typeof PetRenderer !== 'undefined') {
+        if (PetRenderer.petted) PetRenderer.petted();
+        if (PetRenderer.emitParticles) PetRenderer.emitParticles('star', 4);
+        if (PetRenderer.showPixiBubble) PetRenderer.showPixiBubble('깨끗해!', 120);
+      }
+      playSound('click');
+      saveState(st);
+      updateHome(st);
     }
-    playSound('click');
-    saveState(st);
-    updateHome(st);
     return;
   }
 
