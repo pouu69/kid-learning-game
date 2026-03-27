@@ -188,9 +188,12 @@ function updateHome(st) {
     var vow = st.learning.knownVowels.length;
     var words = st.learning.completedWords.length;
 
-    // Total curriculum progress: 14 consonants + 8 vowels + 20 words = 42
+    // Total curriculum progress: actual curriculum sizes
+    var totalCons = typeof CURRICULUM !== 'undefined' ? CURRICULUM.consonants.length : 9;
+    var totalVow = typeof CURRICULUM !== 'undefined' ? CURRICULUM.vowels.length : 6;
+    var totalWords = typeof CURRICULUM !== 'undefined' ? CURRICULUM.words.length : 22;
     var totalLearned = cons + vow + words;
-    var totalItems = 42;
+    var totalItems = totalCons + totalVow + totalWords;
     var pct = Math.min(100, Math.round(totalLearned / totalItems * 100));
 
     // Next evolution milestone

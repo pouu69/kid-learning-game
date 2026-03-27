@@ -467,7 +467,7 @@ var LetterActivity = {
           ctx.arc(cx, cy, r, angle, angle + 0.15);
           ctx.stroke();
           angle += 0.15;
-          requestAnimationFrame(drawCircleStep);
+          setTimeout(drawCircleStep, 16);
         }
         drawCircleStep();
       } else if (stroke.length >= 2) {
@@ -535,7 +535,7 @@ var LetterActivity = {
 
           prevX = x;
           prevY = y;
-          requestAnimationFrame(drawLineStep);
+          setTimeout(drawLineStep, 16);
         }
         drawLineStep();
       } else {
