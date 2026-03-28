@@ -1329,8 +1329,8 @@ button,
     opacity: 0.5;
 }
 .sound-btn {
-    width: 72px;
-    height: 72px;
+    width: 80px;
+    height: 80px;
     border-radius: 6px;
     border: 3px solid var(--ui-border);
     background: linear-gradient(180deg, #6a4c9c 0%, #483868 100%);
@@ -1660,4 +1660,327 @@ button,
     0% { transform: scale(1); }
     40% { transform: scale(0.88); }
     100% { transform: scale(1); }
+}
+
+/* ── Reward UI ── */
+.reward-container {
+    text-align: center;
+    padding: 2rem;
+}
+.reward-letter {
+    font-size: 4rem;
+    animation: popIn 0.4s ease;
+}
+.reward-letter--small {
+    font-size: 2.5rem;
+}
+.reward-praise {
+    font-size: 1.2rem;
+    color: var(--gold);
+    margin-top: 1rem;
+    font-family: var(--font-pixel);
+    animation: popIn 0.6s ease;
+}
+
+/* ── Continue Prompt (infinite session) ── */
+.continue-container {
+    text-align: center;
+    padding: 2rem;
+}
+.continue-face {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    animation: popIn 0.4s ease;
+}
+.continue-msg {
+    font-family: var(--font-pixel);
+    font-size: 1.4rem;
+    color: var(--gold);
+    margin-bottom: 1.5rem;
+}
+.continue-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+.continue-btn {
+    font-family: var(--font-pixel);
+    font-size: 1.1rem;
+    padding: 0.8rem 1.5rem;
+    min-width: 120px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    user-select: none;
+}
+.continue-btn:active {
+    transform: translateY(2px);
+}
+.continue-btn--primary {
+    background: var(--gold);
+    color: #1a1830;
+}
+.continue-btn--secondary {
+    background: #3a3850;
+    color: var(--text-light);
+}
+
+/* ── Stage Recap ── */
+.recap-title {
+    font-family: var(--font-pixel);
+    font-size: 1.4rem;
+    color: var(--gold);
+    text-align: center;
+    animation: popIn 0.4s ease;
+    margin-bottom: 0.3rem;
+}
+.recap-subtitle {
+    font-family: var(--font-pixel);
+    font-size: 0.85rem;
+    color: var(--text-light);
+    text-align: center;
+    opacity: 0.7;
+    margin-bottom: 0.5rem;
+}
+.recap-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 1rem auto;
+    width: 100%;
+    max-width: 300px;
+}
+.recap-grid .distinguish-choice {
+    animation: popIn 0.3s ease;
+    animation-fill-mode: both;
+}
+
+/* ── Sound Match Activity (Stage 0) ── */
+.sound-match-activity {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+}
+.sound-match-egg {
+    font-size: 3rem;
+    animation: popIn 0.4s ease;
+    opacity: 0.6;
+}
+.sound-match-instruction {
+    font-family: var(--font-pixel);
+    font-size: 1.1rem;
+    color: var(--text-light);
+    opacity: 0.8;
+}
+.sound-match-choices {
+    display: flex;
+    gap: 1.2rem;
+    justify-content: center;
+    width: 100%;
+}
+.sound-match-choice {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem 1.5rem;
+    min-width: 120px;
+    min-height: 80px;
+    background: #2a2848;
+    border: 3px solid var(--ui-border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+    user-select: none;
+}
+.sound-match-choice:active {
+    transform: scale(0.95);
+}
+.sound-match-icon {
+    font-size: 2.5rem;
+}
+.sound-match-label {
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-light);
+}
+.sound-match-choice.choice-correct {
+    border-color: #4ade80;
+    background: rgba(74, 222, 128, 0.15);
+}
+.sound-match-choice.choice-wrong {
+    border-color: #f87171;
+    animation: cardShake 0.3s ease;
+}
+.sound-match-choice.choice-locked {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+/* ── Letter Hunt Activity (Stage 1-2) ── */
+.letter-hunt-activity {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 1rem;
+}
+.letter-hunt-syllable {
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--gold);
+    animation: popIn 0.5s ease;
+}
+.letter-hunt-word-hint {
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 1rem;
+    color: var(--text-light);
+    opacity: 0.7;
+}
+.letter-hunt-choices {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 0.5rem;
+}
+.letter-hunt-choice {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-light);
+    background: #2a2848;
+    border: 3px solid var(--ui-border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+    user-select: none;
+}
+.letter-hunt-choice:active {
+    transform: scale(0.93);
+}
+.letter-hunt-choice.choice-correct {
+    border-color: #4ade80;
+    background: rgba(74, 222, 128, 0.15);
+    color: #4ade80;
+}
+.letter-hunt-choice.choice-wrong {
+    border-color: #f87171;
+    animation: cardShake 0.3s ease;
+}
+.letter-hunt-choice.choice-locked {
+    pointer-events: none;
+    opacity: 0.7;
+}
+.trace-canvas {
+    border: 2px solid var(--ui-border);
+    border-radius: 12px;
+    background: #1a1830;
+    touch-action: none;
+}
+
+/* ── Syllable Factory Activity (Stage 3) ── */
+.syllable-factory-activity {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 1rem;
+}
+.factory-slots {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0.5rem 0;
+}
+.factory-slot {
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-light);
+    background: #2a2848;
+    border: 3px dashed var(--ui-border);
+    border-radius: 10px;
+    opacity: 0.6;
+    transition: opacity 0.2s ease, border-color 0.2s ease;
+}
+.factory-slot--filled {
+    border-style: solid;
+    border-color: var(--gold);
+    opacity: 1;
+}
+.factory-slot--result {
+    width: 64px;
+    height: 64px;
+    font-size: 2.2rem;
+}
+.factory-slot--complete {
+    border-color: #4ade80;
+    background: rgba(74, 222, 128, 0.1);
+    animation: popIn 0.4s ease;
+}
+.factory-operator {
+    font-family: var(--font-pixel);
+    font-size: 1.4rem;
+    color: var(--text-light);
+    opacity: 0.5;
+}
+.factory-section-label {
+    font-family: var(--font-pixel);
+    font-size: 0.85rem;
+    color: var(--text-light);
+    opacity: 0.6;
+    align-self: flex-start;
+    margin-left: 1rem;
+}
+.factory-choices {
+    display: flex;
+    gap: 0.8rem;
+    justify-content: center;
+}
+.factory-choice {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-light);
+    background: #2a2848;
+    border: 3px solid var(--ui-border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+    user-select: none;
+}
+.factory-choice:active {
+    transform: scale(0.93);
+}
+.factory-choice.choice-correct {
+    border-color: #4ade80;
+    background: rgba(74, 222, 128, 0.15);
+    color: #4ade80;
+}
+.factory-choice.choice-wrong {
+    border-color: #f87171;
+    animation: cardShake 0.3s ease;
+}
+.factory-choice.choice-locked {
+    pointer-events: none;
+    opacity: 0.6;
 }
