@@ -1628,41 +1628,41 @@ var PetRenderer = {
     var W = self._app.screen.width;
     var petX = self.container.x;
 
-    // Place food on opposite side of the pet
+    // Place food on opposite side of the pet, well above grass line
     var foodX = petX > W / 2 ? W * 0.15 : W * 0.85;
-    var foodY = self._groundY;
+    var stageIdx = Math.min(self._stage || 0, PET_STAGES.length - 1);
+    var petBodyH = PET_STAGES[stageIdx].bodyH || 60;
+    var foodY = self._groundY - petBodyH * 0.8;
 
-    // Display actual food emoji (or fallback to pixel rect)
-    var food;
-    if (foodEmoji) {
-      var foodStyle = new PIXI.TextStyle({ fontSize: 48 });
-      food = new PIXI.Text({ text: foodEmoji, style: foodStyle });
-      food.anchor.set(0.5, 0.5);
-      food._foodStyle = foodStyle;
-    } else {
-      food = new PIXI.Graphics();
-      food.rect(-16, -16, 32, 32).fill({ color: 0xf4b870 });
-      food.rect(-8, -8, 16, 16).fill({ color: 0xffffff });
-    }
-    food.x = foodX;
-    food.y = foodY;
-    food.alpha = 0;
-    self._app.stage.addChild(food);
+    // Use HTML overlay for food emoji (PixiJS text doesn't render emoji reliably)
+    var canvas = self._app.canvas;
+    var canvasRect = canvas.getBoundingClientRect();
+    var scaleX = canvasRect.width / self._app.screen.width;
+    var scaleY = canvasRect.height / self._app.screen.height;
 
-    // Phase 1: Food appears (pop in)
-    var appearFrame = 0;
-    var appearTicker = function() {
-      appearFrame++;
-      var t = Math.min(appearFrame / 15, 1);
-      food.alpha = t;
-      food.scale.set(0.5 + t * 0.5);
-      if (appearFrame >= 15) {
-        self._app.ticker.remove(appearTicker);
-        // Phase 2: Pet walks to food
-        self._walkToFood(food, foodX);
+    var foodEl = document.createElement('div');
+    foodEl.className = 'feed-food-overlay';
+    foodEl.textContent = foodEmoji || '\uD83C\uDF5A';
+    foodEl.style.left = (canvasRect.left + foodX * scaleX) + 'px';
+    foodEl.style.top = (canvasRect.top + foodY * scaleY) + 'px';
+    document.body.appendChild(foodEl);
+
+    // Store reference for cleanup in walk/eat phases
+    self._foodOverlay = foodEl;
+    self._foodScaleX = scaleX;
+    self._foodScaleY = scaleY;
+    self._canvasRect = canvasRect;
+
+    // Small delay so player sees the food before pet moves
+    var waitFrame = 0;
+    var waitTicker = function() {
+      waitFrame++;
+      if (waitFrame >= 20) {
+        self._app.ticker.remove(waitTicker);
+        self._walkToFood(null, foodX);
       }
     };
-    self._app.ticker.add(appearTicker);
+    self._app.ticker.add(waitTicker);
   },
 
   _walkToFood: function(food, foodX) {
@@ -1686,13 +1686,13 @@ var PetRenderer = {
         self.container.x = targetX;
         self.container.y = self._groundY;
         // Phase 3: Eat the food (pet stays here after)
-        self._eatFood(food);
+        self._eatFood();
       }
     };
     self._app.ticker.add(walkTicker);
   },
 
-  _eatFood: function(food) {
+  _eatFood: function() {
     var self = this;
     if (!self._app || !self.container) return;
 
@@ -1709,33 +1709,25 @@ var PetRenderer = {
       self.mouth.fill({ color: 0x3a3028 });
     }
 
-    // Food shrinks into pet
-    var eatFrame = 0;
-    var eatTicker = function() {
-      eatFrame++;
-      var t = Math.min(eatFrame / 20, 1);
-      food.scale.set(1 - t);
-      food.alpha = 1 - t;
-      food.y -= 1;
+    // Shrink food overlay via CSS transition
+    var foodEl = self._foodOverlay;
+    if (foodEl) {
+      foodEl.style.transition = 'transform 0.4s ease-in, opacity 0.4s ease-in';
+      foodEl.style.transform = 'translate(-50%, -50%) scale(0.1)';
+      foodEl.style.opacity = '0';
+      setTimeout(function() {
+        if (foodEl.parentNode) foodEl.parentNode.removeChild(foodEl);
+        self._foodOverlay = null;
+      }, 450);
+    }
 
-      if (eatFrame >= 20) {
-        self._app.ticker.remove(eatTicker);
-        self._app.stage.removeChild(food);
-        // Cleanup food style if it was a PIXI.Text
-        if (food._foodStyle) food._foodStyle.destroy();
-        food.destroy(true);
+    // Start chewing + immediate reaction
+    self._chewCount = 3;
+    self._feedAnimTimer = 1;
+    self._floatHearts();
 
-        // Start chewing + immediate reaction
-        self._chewCount = 3;
-        self._feedAnimTimer = 1;
-        self._floatHearts();
-
-        // Happy reaction: bubble + celebrate
-        if (self.showPixiBubble) self.showPixiBubble('맛있다!', 150);
-        if (self.celebrate) self.celebrate();
-      }
-    };
-    self._app.ticker.add(eatTicker);
+    if (self.showPixiBubble) self.showPixiBubble('맛있다!', 150);
+    if (self.celebrate) self.celebrate();
   },
 
   _floatHearts: function() {

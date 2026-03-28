@@ -159,28 +159,27 @@ var CareActivity = {
 
   // Close popup → play feed animation on home screen via PetRenderer
   _feedOnHomeScreen: function(st, food) {
-    var self = this;
-
-    // Close popup immediately → return to home
     Learning.closePopup();
     updateHome(st);
 
-    // Trigger PixiJS feed animation with the selected food emoji
-    self._setTimeout(function() {
+    // Wait for popup close + pet walkOnScreen to finish (~1s), then trigger feed
+    var feedIcon = food.icon;
+    var feedBoost = food.boost;
+    setTimeout(function() {
       if (typeof PetRenderer !== 'undefined' && PetRenderer.feedAnim) {
-        PetRenderer.feedAnim(food.icon);
+        PetRenderer.feedAnim(feedIcon);
       }
       playSound('click');
-    }, 300);
 
-    // After walk+eat animation (~2.5s), apply hunger boost + update HUD
-    self._setTimeout(function() {
-      st.hunger = Math.min(100, st.hunger + food.boost);
-      st.mood = Math.min(100, st.mood + 8);
-      saveState(st);
-      updateHome(st);
-      playSound('correct');
-    }, 2500);
+      // After walk+eat animation (~3s), apply hunger + update HUD
+      setTimeout(function() {
+        st.hunger = Math.min(100, st.hunger + feedBoost);
+        st.mood = Math.min(100, st.mood + 8);
+        saveState(st);
+        updateHome(st);
+        playSound('correct');
+      }, 3000);
+    }, 1200);
   },
 
   // === SLEEP: Tap stars (with hangul on stars for Stage 1+) ===

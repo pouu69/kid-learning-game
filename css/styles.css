@@ -2354,12 +2354,14 @@ button,
     transform: scale(0.5);
     pointer-events: none;
 }
-.care-feed-fly {
-    position: absolute;
-    font-size: 2.5rem;
+.feed-food-overlay {
+    position: fixed;
+    font-size: 4rem;
+    transform: translate(-50%, -50%);
+    z-index: 50;
     pointer-events: none;
-    transition: transform 0.35s ease-in, opacity 0.35s ease-in;
-    z-index: 10;
+    animation: popIn 0.3s ease;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));
 }
 .care-done {
     text-align: center;
