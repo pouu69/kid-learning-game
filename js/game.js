@@ -17,6 +17,9 @@ function initGame() {
     showScreen('home');
     startTicking();
     initWorld();
+    if (typeof StoryEngine !== 'undefined') {
+      StoryEngine.init(st);
+    }
   } else {
     st = createDefaultState();
     showScreen('naming');
@@ -38,6 +41,7 @@ document.addEventListener('visibilitychange', function() {
       _tickInterval = null;
     }
     saveState(st);
+    if (typeof StoryEngine !== 'undefined') StoryEngine.pause();
   } else {
     // Tab visible → apply offline decay, resume
     applyOfflineDecay(st);
@@ -100,6 +104,7 @@ function tick() {
   if (!st || !st.name) return;
   tickCount++;
 
+  // 1. Stat decay (existing logic)
   if (!st.sleeping) {
     st.hunger = Math.max(0, st.hunger - 0.3);
     st.mood = Math.max(0, st.mood - 0.2);
@@ -117,10 +122,18 @@ function tick() {
     st.reports.totalMinutes++;
   }
 
+  // 2. Story systems update + EventBus flush
+  if (typeof StoryEngine !== 'undefined') {
+    StoryEngine.update(st);
+  }
+
+  // 3. Pet reaction (after story state is updated)
   Pet.updateRequest(st);
 
+  // 4. Save periodically
   if (tickCount % 30 === 0) saveState(st);
 
+  // 5. Render (after flush — sees latest state)
   if (currentScreen === 'home') {
     updateHome(st);
   }

@@ -96,6 +96,41 @@ function playSound(type) {
       osc.start();
       osc.stop(ctx.currentTime + 0.6);
       osc.onended = function() { osc.disconnect(); gain.disconnect(); };
+    } else if (type === 'rain') {
+      osc.frequency.value = 200;
+      osc.type = 'sawtooth';
+      gain.gain.setValueAtTime(0.04, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.5);
+      osc.onended = function() { osc.disconnect(); gain.disconnect(); };
+    } else if (type === 'wind') {
+      osc.frequency.value = 150;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.06, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.8);
+      osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.8);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.8);
+      osc.onended = function() { osc.disconnect(); gain.disconnect(); };
+    } else if (type === 'thunder') {
+      osc.frequency.value = 60;
+      osc.type = 'sawtooth';
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.6);
+      osc.onended = function() { osc.disconnect(); gain.disconnect(); };
+    } else if (type === 'sparkle') {
+      osc.frequency.value = 1200;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.10, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+      osc.frequency.exponentialRampToValueAtTime(2000, ctx.currentTime + 0.2);
+      osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.4);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.4);
+      osc.onended = function() { osc.disconnect(); gain.disconnect(); };
     }
   } catch(e) {}
 }

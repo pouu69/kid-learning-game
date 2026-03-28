@@ -14,6 +14,8 @@ var World = {
   _frame: 0,
   _weather: 'clear',
   _rainDrops: [],
+  _snowDrops: [],
+  _rainbowGfx: null,
   _ambientParticles: [],
   _isNight: false,
   _grassBlades: [],
@@ -76,19 +78,6 @@ var World = {
       app.ticker.add(function() { self.animate(); });
 
       window.addEventListener('resize', function() { self.resize(); });
-
-      // Day/night update every 60 seconds
-      setInterval(function() { self.updateTimeOfDay(); }, 60000);
-
-      // Weather change every 5 minutes
-      setInterval(function() {
-        var rand = Math.random();
-        if (rand < 0.7) {
-          if (self._weather !== 'clear') { self._stopRain(); self._weather = 'clear'; }
-        } else {
-          if (self._weather === 'clear') { self._startRain(); self._weather = 'rain'; }
-        }
-      }, 300000);
     });
   },
 
@@ -113,6 +102,99 @@ var World = {
       this._rainDrops[i].destroy();
     }
     this._rainDrops = [];
+  },
+
+  _startSnow: function() {
+    var self = this;
+    var W = self.app.screen.width;
+    var H = self.app.screen.height;
+    for (var i = 0; i < 15; i++) {
+      var flake = new PIXI.Graphics();
+      var size = 2 + Math.floor(Math.random() * 3);
+      flake.rect(0, 0, size, size).fill({ color: 0xffffff, alpha: 0.6 });
+      flake.x = Math.random() * W;
+      flake.y = Math.random() * H * 0.5;
+      flake._speed = 0.5 + Math.random() * 1;
+      flake._drift = (Math.random() - 0.5) * 0.3;
+      self._snowDrops.push(flake);
+      self.app.stage.addChild(flake);
+    }
+  },
+
+  _stopSnow: function() {
+    for (var i = 0; i < this._snowDrops.length; i++) {
+      this.app.stage.removeChild(this._snowDrops[i]);
+      this._snowDrops[i].destroy();
+    }
+    this._snowDrops = [];
+  },
+
+  _flashLightning: function() {
+    var self = this;
+    var W = self.app.screen.width;
+    var H = self.app.screen.height;
+    var flash = new PIXI.Graphics();
+    flash.rect(0, 0, W, H).fill({ color: 0xffffff, alpha: 0.7 });
+    self.app.stage.addChild(flash);
+    setTimeout(function() {
+      flash.alpha = 0.3;
+      setTimeout(function() {
+        self.app.stage.removeChild(flash);
+        flash.destroy();
+      }, 80);
+    }, 60);
+  },
+
+  _showRainbow: function() {
+    var self = this;
+    var W = self.app.screen.width;
+    var H = self.app.screen.height;
+    if (self._rainbowGfx) {
+      self.app.stage.removeChild(self._rainbowGfx);
+      self._rainbowGfx.destroy();
+    }
+    var gfx = new PIXI.Graphics();
+    var colors = [0xff0000, 0xff8800, 0xffff00, 0x00cc00, 0x0088ff, 0x4400cc];
+    var cx = W * 0.5;
+    var cy = H * 0.55;
+    for (var i = colors.length - 1; i >= 0; i--) {
+      var r = 80 + i * 12;
+      gfx.rect(cx - r, cy - r * 0.5, r * 2, 4).fill({ color: colors[i], alpha: 0.4 });
+      gfx.rect(cx - r * 0.8, cy - r * 0.7, r * 1.6, 4).fill({ color: colors[i], alpha: 0.35 });
+    }
+    gfx.alpha = 0;
+    self.app.stage.addChild(gfx);
+    self._rainbowGfx = gfx;
+    var fadeIn = function() {
+      gfx.alpha += 0.02;
+      if (gfx.alpha >= 0.8) {
+        self.app.ticker.remove(fadeIn);
+        setTimeout(function() {
+          var fadeOut = function() {
+            gfx.alpha -= 0.02;
+            if (gfx.alpha <= 0) {
+              self.app.ticker.remove(fadeOut);
+              self.app.stage.removeChild(gfx);
+              gfx.destroy();
+              self._rainbowGfx = null;
+            }
+          };
+          self.app.ticker.add(fadeOut);
+        }, 4000);
+      }
+    };
+    self.app.ticker.add(fadeIn);
+  },
+
+  _updateSeasonPalette: function(season) {
+    var grassColors = [0x5aaf4f, 0x4a9f3f, 0xc08830, 0xd0d8e0];
+    var grassColor = grassColors[season] || grassColors[0];
+    if (this._grassGfx) {
+      var W = this.app.screen.width;
+      var H = this.app.screen.height;
+      this._grassGfx.clear();
+      this._grassGfx.rect(0, H * 0.65, W, H * 0.35).fill({ color: grassColor });
+    }
   },
 
   _addDecorations: function() {
@@ -691,6 +773,7 @@ var World = {
     var self = this;
     self._frame++;
     var W = self.app.screen.width;
+    var H = self.app.screen.height;
 
     // Move rain drops
     for (var r = 0; r < self._rainDrops.length; r++) {
@@ -700,6 +783,17 @@ var World = {
       if (d.y > self.app.screen.height) {
         d.y = -10;
         d.x = Math.random() * self.app.screen.width;
+      }
+    }
+
+    // Animate snow
+    for (var si = 0; si < self._snowDrops.length; si++) {
+      var flake = self._snowDrops[si];
+      flake.y += flake._speed;
+      flake.x += flake._drift;
+      if (flake.y > H * 0.65) {
+        flake.y = -4;
+        flake.x = Math.random() * W;
       }
     }
 

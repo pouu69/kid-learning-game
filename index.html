@@ -144,6 +144,17 @@
     <script src="js/activities/play.js"></script>
     <script src="js/activities/care.js"></script>
     <script src="js/report.js"></script>
+    <!-- Story System -->
+    <script src="js/story/Constants.js"></script>
+    <script src="js/story/EventBus.js"></script>
+    <script src="js/story/Utils.js"></script>
+    <script src="js/story/TimeSystem.js"></script>
+    <script src="js/story/WeatherSystem.js"></script>
+    <script src="js/story/SeasonSystem.js"></script>
+    <script src="js/story/VisitorSystem.js"></script>
+    <script src="js/story/ExploreSystem.js"></script>
+    <script src="js/story/WorldRenderer.js"></script>
+    <script src="js/story/StoryEngine.js"></script>
     <script src="js/game.js"></script>
     <script>
     // ── Inline bootstrap ──────────────────────────────────────────────────────
@@ -180,16 +191,20 @@
 
     // Learning back button — instant return to home, pet walks in
     function exitLearning() {
-        // Close any open learning popup first
+        // Close any open learning popup first (closePopup handles screen transition automatically)
         if (typeof Learning !== 'undefined' && Learning.closePopup) {
             Learning.closePopup();
         }
-        showScreen('home');
-        // Pet walks back in
-        if (typeof PetRenderer !== 'undefined') {
-            if (PetRenderer.container) PetRenderer.container.visible = true;
-            if (PetRenderer.walkOnScreen) PetRenderer.walkOnScreen('left');
+        // Ensure home screen is active and HUD is refreshed
+        if (typeof currentScreen !== 'undefined' && currentScreen !== 'home') {
+            showScreen('home');
+            if (typeof PetRenderer !== 'undefined') {
+                if (PetRenderer.container) PetRenderer.container.visible = true;
+                if (PetRenderer.walkOnScreen) PetRenderer.walkOnScreen('left');
+            }
         }
+        var s = typeof getState === 'function' ? getState() : null;
+        if (s && typeof updateHome === 'function') updateHome(s);
     }
 
     // Long press (3 seconds) on .pet-info opens report screen
