@@ -185,6 +185,30 @@ function showScreen(name) {
   }
 }
 
+// Letter collection HUD — shows learned letters below pet name
+var _letterCollectionCache = '';
+function _updateLetterCollection(st) {
+  var el = document.getElementById('letterCollection');
+  if (!el) return;
+
+  var collection = (typeof Pet !== 'undefined' && Pet.getLetterCollection)
+    ? Pet.getLetterCollection(st)
+    : [];
+
+  // Cache check — skip DOM update if unchanged
+  var key = collection.map(function(c) { return c.letter; }).join('');
+  if (key === _letterCollectionCache) return;
+  _letterCollectionCache = key;
+
+  el.innerHTML = '';
+  for (var i = 0; i < collection.length; i++) {
+    var badge = document.createElement('span');
+    badge.className = 'letter-badge letter-badge--' + collection[i].type;
+    badge.textContent = collection[i].letter;
+    el.appendChild(badge);
+  }
+}
+
 function updateHome(st) {
   var d = _getDom();
   if (d.nameEl) d.nameEl.textContent = st.name;
@@ -193,40 +217,48 @@ function updateHome(st) {
     d.stageEl.textContent = evo.name;
   }
 
-  // Evolution progress toward next stage
+  // Evolution progress toward next stage (6-stage aware)
   var evoBar = document.getElementById('evoProgressBar');
   var evoNext = document.getElementById('evoNextLabel');
   var evoProg = document.getElementById('evoProgress');
   if (evoBar && evoNext) {
-    var cons = st.learning.knownConsonants.length;
-    var vow = st.learning.knownVowels.length;
-    var words = st.learning.completedWords.length;
+    var cons = (st.learning.knownConsonants || []).length;
+    var vow = (st.learning.knownVowels || []).length;
+    var words = (st.learning.completedWords || []).length;
+    var wholeWords = (st.learning.wholeWordsMatched || []).length;
+    var syllables = st.learning.syllablesCompleted || 0;
+    var sentences = st.learning.sentencesCompleted || 0;
 
     var totalCons = CURRICULUM.consonants.length;
     var totalVow = CURRICULUM.vowels.length;
+    var totalSyl = EVO_THRESHOLDS.syllables || 15;
     var totalWords = CURRICULUM.words.length;
-    var totalLearned = cons + vow + words;
-    var totalItems = totalCons + totalVow + totalWords;
+    var totalSent = CURRICULUM.sentences.length;
+    var totalLearned = wholeWords + cons + vow + syllables + words + sentences;
+    var totalItems = 5 + totalCons + totalVow + totalSyl + totalWords + totalSent;
     var pct = Math.min(100, Math.round(totalLearned / totalItems * 100));
 
-    // Next evolution milestone
+    // Next evolution milestone based on current pet stage
     var nextName = '';
     if (st.stage >= 5) {
-      nextName = totalLearned >= totalItems ? '완료' : pct + '% (' + totalLearned + '/' + totalItems + ')';
+      nextName = totalLearned >= totalItems ? '완료' : pct + '%';
       if (totalLearned >= totalItems && evoProg) evoProg.classList.add('maxed');
     } else if (st.stage < 2) {
-      nextName = '→ ' + (PET_STAGES[2] ? PET_STAGES[2].name : '') + ' (' + cons + '/' + EVO_THRESHOLDS.consonants + ')';
+      nextName = '→ ' + (EVOLUTION[2] ? EVOLUTION[2].name : '') + ' (' + cons + '/' + EVO_THRESHOLDS.consonants + ')';
     } else if (st.stage < 3) {
-      nextName = '→ ' + (PET_STAGES[3] ? PET_STAGES[3].name : '') + ' (' + vow + '/' + EVO_THRESHOLDS.vowels + ')';
+      nextName = '→ ' + (EVOLUTION[3] ? EVOLUTION[3].name : '') + ' (' + vow + '/' + EVO_THRESHOLDS.vowels + ')';
     } else if (st.stage < 4) {
-      nextName = '→ ' + (PET_STAGES[4] ? PET_STAGES[4].name : '') + ' (' + words + '/' + EVO_THRESHOLDS.words4 + ')';
+      nextName = '→ ' + (EVOLUTION[4] ? EVOLUTION[4].name : '') + ' (' + words + '/' + EVO_THRESHOLDS.words4 + ')';
     } else {
-      nextName = '→ ' + (PET_STAGES[5] ? PET_STAGES[5].name : '') + ' (' + words + '/' + EVO_THRESHOLDS.words5 + ')';
+      nextName = '→ ' + (EVOLUTION[5] ? EVOLUTION[5].name : '') + ' (' + words + '/' + EVO_THRESHOLDS.words5 + ')';
     }
     evoBar.style.width = pct + '%';
     evoNext.textContent = nextName;
     if (evoProg && st.stage < 5) evoProg.classList.remove('maxed');
   }
+
+  // Letter collection HUD
+  _updateLetterCollection(st);
 
   // Update pixel stat bars (width-based)
   if (d.barH) {

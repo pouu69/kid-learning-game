@@ -2135,6 +2135,31 @@ button,
     border-color: #f87171;
     animation: cardShake 0.3s ease;
 }
+/* ── Letter Collection HUD ── */
+.letter-collection {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+    max-width: 100%;
+}
+.letter-badge {
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 3px;
+    line-height: 1.2;
+}
+.letter-badge--consonant {
+    background: rgba(99, 179, 237, 0.2);
+    color: #63b3ed;
+}
+.letter-badge--vowel {
+    background: rgba(237, 137, 99, 0.2);
+    color: #ed8963;
+}
+
 .sentence-complete-praise {
     font-family: var(--font-pixel);
     font-size: 1.4rem;
