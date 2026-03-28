@@ -15,6 +15,9 @@ var World = {
   _rainDrops: [],
   _snowDrops: [],
   _rainbowGfx: null,
+  _rainbowFadeTimer: null,
+  _rainbowFadeOut: null,
+  _flashGfx: null,
   _ambientParticles: [],
   _isNight: false,
   _grassBlades: [],
@@ -81,6 +84,7 @@ var World = {
   },
 
   _startRain: function() {
+    if (this._rainDrops.length > 0) return;
     var self = this;
     var W = self.app.screen.width;
     var H = self.app.screen.height;
@@ -104,6 +108,7 @@ var World = {
   },
 
   _startSnow: function() {
+    if (this._snowDrops.length > 0) return;
     var self = this;
     var W = self.app.screen.width;
     var H = self.app.screen.height;
@@ -130,29 +135,44 @@ var World = {
 
   _flashLightning: function() {
     var self = this;
+    if (self._flashGfx) {
+      self.app.stage.removeChild(self._flashGfx);
+      self._flashGfx.destroy();
+      self._flashGfx = null;
+    }
     var W = self.app.screen.width;
     var H = self.app.screen.height;
     var flash = new PIXI.Graphics();
     flash.rect(0, 0, W, H).fill({ color: 0xffffff, alpha: 0.7 });
     self.app.stage.addChild(flash);
+    self._flashGfx = flash;
     setTimeout(function() {
       flash.alpha = 0.3;
       setTimeout(function() {
         self.app.stage.removeChild(flash);
         flash.destroy();
+        if (self._flashGfx === flash) self._flashGfx = null;
       }, 80);
     }, 60);
   },
 
   _showRainbow: function() {
     var self = this;
-    var W = self.app.screen.width;
-    var H = self.app.screen.height;
+    if (self._rainbowFadeTimer) {
+      clearTimeout(self._rainbowFadeTimer);
+      self._rainbowFadeTimer = null;
+    }
+    if (self._rainbowFadeOut) {
+      self.app.ticker.remove(self._rainbowFadeOut);
+      self._rainbowFadeOut = null;
+    }
     if (self._rainbowGfx) {
       self.app.stage.removeChild(self._rainbowGfx);
       self._rainbowGfx.destroy();
     }
     var gfx = new PIXI.Graphics();
+    var W = self.app.screen.width;
+    var H = self.app.screen.height;
     var colors = [0xff0000, 0xff8800, 0xffff00, 0x00cc00, 0x0088ff, 0x4400cc];
     var cx = W * 0.5;
     var cy = H * 0.55;
@@ -168,16 +188,24 @@ var World = {
       gfx.alpha += 0.02;
       if (gfx.alpha >= 0.8) {
         self.app.ticker.remove(fadeIn);
-        setTimeout(function() {
+        self._rainbowFadeTimer = setTimeout(function() {
+          self._rainbowFadeTimer = null;
           var fadeOut = function() {
+            if (!self._rainbowGfx || self._rainbowGfx !== gfx) {
+              self.app.ticker.remove(fadeOut);
+              self._rainbowFadeOut = null;
+              return;
+            }
             gfx.alpha -= 0.02;
             if (gfx.alpha <= 0) {
               self.app.ticker.remove(fadeOut);
               self.app.stage.removeChild(gfx);
               gfx.destroy();
               self._rainbowGfx = null;
+              self._rainbowFadeOut = null;
             }
           };
+          self._rainbowFadeOut = fadeOut;
           self.app.ticker.add(fadeOut);
         }, 4000);
       }
