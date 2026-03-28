@@ -1,5 +1,9 @@
 // js/effects.js
 // TTS 발음 + 효과음 + 파티클
+// PixiJS 앱 참조 (World에 의존하지 않고 레지스트리 패턴 사용)
+var _pixiApp = null;
+function setPixiApp(app) { _pixiApp = app; }
+function getPixiApp() { return _pixiApp; }
 
 function speakText(text, rate) {
   if (!('speechSynthesis' in window)) return;
@@ -18,17 +22,6 @@ function speakText(text, rate) {
   }
   speechSynthesis.cancel();
   speechSynthesis.speak(u);
-}
-
-// Speak letter with its name first, then the sound
-// e.g., "기역... 그" for ㄱ
-function speakLetterFull(letter) {
-  var letterData = typeof LETTERS !== 'undefined' ? LETTERS[letter] : null;
-  if (letterData) {
-    speakText(letterData.name, 0.75);
-  } else {
-    speakText(letter, 0.75);
-  }
 }
 
 var _audioCtx = null;
@@ -137,13 +130,13 @@ function playSound(type) {
 
 function showCelebration(x, y) {
   showStarParticles(x, y, 25);
-  if (typeof World === 'undefined' || !World.app) return;
+  var app = getPixiApp();
+  if (!app) return;
   var colors = [0xf4b870, 0xf08080, 0x68c048, 0x58b8f8, 0xa888d0, 0xf0d060];
   for (var i = 0; i < 12; i++) {
     var particle = new PIXI.Graphics();
     var color = colors[Math.floor(Math.random() * colors.length)];
     var size = 3 + Math.floor(Math.random() * 5);
-    // Pixel-art style: use rect instead of circle
     particle.rect(0, 0, size, size).fill({ color: color });
     particle.x = x + (Math.random() - 0.5) * 120;
     particle.y = y + (Math.random() - 0.5) * 100;
@@ -151,8 +144,8 @@ function showCelebration(x, y) {
     particle._vx = (Math.random() - 0.5) * 3;
     particle._vy = -2 - Math.random() * 3;
     particle._life = 50 + Math.random() * 30;
-    World.app.stage.addChild(particle);
-    (function(c) {
+    app.stage.addChild(particle);
+    (function(c, a) {
       var ticker = function() {
         c.x += c._vx;
         c.y += c._vy;
@@ -160,13 +153,13 @@ function showCelebration(x, y) {
         c.alpha -= 0.012;
         c._life--;
         if (c._life <= 0) {
-          World.app.stage.removeChild(c);
-          World.app.ticker.remove(ticker);
+          a.stage.removeChild(c);
+          a.ticker.remove(ticker);
           c.destroy();
         }
       };
-      World.app.ticker.add(ticker);
-    })(particle);
+      a.ticker.add(ticker);
+    })(particle, app);
   }
 }
 
@@ -179,10 +172,10 @@ function flashScreen() {
 }
 
 function showStarParticles(x, y, count) {
-  if (typeof World === 'undefined' || !World.app) return;
+  var app = getPixiApp();
+  if (!app) return;
   var n = Math.min(count || 15, 50);
   for (var i = 0; i < n; i++) {
-    // Pixel-art style: use rect instead of text star
     var star = new PIXI.Graphics();
     var size = 3 + Math.floor(Math.random() * 4);
     star.rect(0, 0, size, size).fill({ color: 0xf0d060 });
@@ -192,9 +185,9 @@ function showStarParticles(x, y, count) {
     star._vx = (Math.random() - 0.5) * 2;
     star._vy = -1 - Math.random() * 2;
     star._life = 60;
-    World.app.stage.addChild(star);
+    app.stage.addChild(star);
 
-    (function(s) {
+    (function(s, a) {
       var ticker = function() {
         s.x += s._vx;
         s.y += s._vy;
@@ -202,12 +195,12 @@ function showStarParticles(x, y, count) {
         s.alpha -= 0.013;
         s._life--;
         if (s._life <= 0) {
-          World.app.stage.removeChild(s);
-          World.app.ticker.remove(ticker);
+          a.stage.removeChild(s);
+          a.ticker.remove(ticker);
           s.destroy();
         }
       };
-      World.app.ticker.add(ticker);
-    })(star);
+      a.ticker.add(ticker);
+    })(star, app);
   }
 }

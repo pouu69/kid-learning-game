@@ -7,35 +7,35 @@ var Learning = {
   popupEl: null,
   overlayEl: null,
 
-  // Get current learning target based on state
+  // Sync learning stage to match actual progress (call before getCurrentTarget)
+  _syncStage: function(st) {
+    var consIdx = st.learning.consonantIndex || 0;
+    var vowIdx = st.learning.vowelIndex || 0;
+    var changed = false;
+
+    if (consIdx < CURRICULUM.consonants.length) {
+      if (st.learning.stage > 1) { st.learning.stage = 1; changed = true; }
+    } else if (vowIdx < CURRICULUM.vowels.length) {
+      if (st.learning.stage !== 2) { st.learning.stage = 2; changed = true; }
+    } else if (st.learning.stage < 3) {
+      st.learning.stage = 3;
+      if (!st.learning.wordIndex) st.learning.wordIndex = 0;
+      changed = true;
+    }
+
+    if (changed) saveState(st);
+  },
+
+  // Get current learning target (pure read, no side effects)
   getCurrentTarget: function(st) {
-    // Always check for unlearned consonants/vowels first (handles curriculum expansion)
     var consIdx = st.learning.consonantIndex || 0;
     var vowIdx = st.learning.vowelIndex || 0;
 
     if (consIdx < CURRICULUM.consonants.length) {
-      // Unlearned consonants remain
-      if (st.learning.stage > 1) {
-        st.learning.stage = 1; // Go back to teach new consonants
-        saveState(st);
-      }
       return { type: 'consonant', data: CURRICULUM.consonants[consIdx], index: consIdx };
     }
-
     if (vowIdx < CURRICULUM.vowels.length) {
-      // Unlearned vowels remain
-      if (st.learning.stage !== 2) {
-        st.learning.stage = 2;
-        saveState(st);
-      }
       return { type: 'vowel', data: CURRICULUM.vowels[vowIdx], index: vowIdx };
-    }
-
-    // All letters done → words stage
-    if (st.learning.stage < 3) {
-      st.learning.stage = 3;
-      if (!st.learning.wordIndex) st.learning.wordIndex = 0;
-      saveState(st);
     }
 
     var wordIdx = st.learning.wordIndex || 0;
@@ -43,7 +43,7 @@ var Learning = {
       return { type: 'word', data: CURRICULUM.words[wordIdx], index: wordIdx };
     }
 
-    return null; // All done
+    return null;
   },
 
   // Open learning popup overlay (no screen transition)
@@ -158,6 +158,7 @@ var Learning = {
   _sessionCount: 0,
 
   startLearning: function(st) {
+    this._syncStage(st);
     this._sessionCount++;
 
     // Initialize practice tracker if missing
@@ -247,9 +248,50 @@ var Learning = {
     }
   },
 
+  // Shared reward sequence (eliminates duplication between onLetterComplete/onWordComplete)
+  _showReward: function(st, displayText, praise, soundType, speechText, particleType, hungerBonus, moodBonus) {
+    var self = this;
+    var prevStage = st.stage;
+    this._checkEvolution(st);
+    var didEvolve = st.stage > prevStage;
+
+    saveState(st);
+    if (typeof updateHome === 'function') updateHome(st);
+
+    var rewardEl = document.createElement('div');
+    rewardEl.style.cssText = 'text-align:center;padding:2rem;';
+    rewardEl.innerHTML = '<div style="font-size:' + (displayText.length > 1 ? '3.5' : '4') + 'rem;animation:popIn 0.4s ease">' + displayText + '</div>' +
+      '<div style="font-size:1.2rem;color:var(--gold);margin-top:1rem;font-family:var(--font-pixel);animation:popIn 0.6s ease">' + praise + '</div>';
+    self.openPopup(rewardEl);
+
+    if (typeof showCelebration === 'function') {
+      showCelebration(window.innerWidth / 2, window.innerHeight / 2);
+    }
+    if (didEvolve && typeof flashScreen === 'function') {
+      flashScreen();
+      playSound('evolve');
+    } else {
+      playSound(soundType);
+    }
+    if (speechText) speakText(speechText);
+
+    setTimeout(function() {
+      self.closePopup();
+      if (typeof PetRenderer !== 'undefined') {
+        if (PetRenderer.celebrate) PetRenderer.celebrate();
+        if (PetRenderer.emitParticles) PetRenderer.emitParticles(particleType, 5);
+        if (PetRenderer.showPixiBubble) PetRenderer.showPixiBubble('잘했어!', 120);
+      }
+      st.hunger = Math.min(100, st.hunger + hungerBonus);
+      st.mood = Math.min(100, st.mood + moodBonus);
+      st.daily.activitiesDone++;
+      saveState(st);
+      updateHome(st);
+    }, 1500);
+  },
+
   // Called when a letter is learned
   onLetterComplete: function(st, target) {
-    var self = this;
     var letter = target.data.letter;
     if (target.type === 'consonant') {
       if (st.learning.knownConsonants.indexOf(letter) === -1) {
@@ -263,67 +305,23 @@ var Learning = {
       }
     }
 
-    // Check evolution before showing reward
-    var prevStage = st.stage;
-    this._checkEvolution(st);
-    var didEvolve = st.stage > prevStage;
+    if (typeof World !== 'undefined') World.addLetterFlower(letter, true);
 
-    // Update flower in world
-    if (typeof World !== 'undefined') {
-      World.addLetterFlower(letter, true);
-    }
-
-    saveState(st);
-    if (typeof updateHome === 'function') updateHome(st);
-
-    // Check if entire consonant stage is now complete → show recap
+    // Stage complete → show recap instead of normal reward
     if (target.type === 'consonant' && st.learning.consonantIndex >= CURRICULUM.consonants.length) {
-      self._showStageRecap(st, 'consonant');
+      saveState(st);
+      this._showStageRecap(st, 'consonant');
       return;
     }
-    // Check if entire vowel stage is now complete → show recap
     if (target.type === 'vowel' && st.learning.vowelIndex >= CURRICULUM.vowels.length) {
-      self._showStageRecap(st, 'vowel');
+      saveState(st);
+      this._showStageRecap(st, 'vowel');
       return;
     }
 
-    // Show reward in popup before closing (use openPopup to re-render updated progress dots)
     var praises = ['잘했어!', '멋져!', '최고야!', '대단해!'];
     var praise = praises[Math.floor(Math.random() * praises.length)];
-    var rewardEl = document.createElement('div');
-    rewardEl.style.cssText = 'text-align:center;padding:2rem;';
-    rewardEl.innerHTML = '<div style="font-size:4rem;animation:popIn 0.4s ease">' + letter + '</div>' +
-      '<div style="font-size:1.4rem;color:var(--gold);margin-top:1rem;font-family:var(--font-pixel);animation:popIn 0.6s ease">' + praise + '</div>';
-    self.openPopup(rewardEl);
-
-    // Celebration effects
-    if (typeof showCelebration === 'function') {
-      showCelebration(window.innerWidth / 2, window.innerHeight / 2);
-    }
-    if (didEvolve && typeof flashScreen === 'function') {
-      flashScreen();
-    }
-
-    playSound('correct');
-    speakText(target.data.sound);
-
-    setTimeout(function() {
-      self.closePopup();
-
-      // Pet reaction
-      if (typeof PetRenderer !== 'undefined') {
-        if (PetRenderer.celebrate) PetRenderer.celebrate();
-        if (PetRenderer.emitParticles) PetRenderer.emitParticles('star', 5);
-        if (PetRenderer.showPixiBubble) PetRenderer.showPixiBubble('잘했어!', 120);
-      }
-
-      // Stat recovery + activity tracking
-      st.hunger = Math.min(100, st.hunger + 15);
-      st.mood = Math.min(100, st.mood + 10);
-      st.daily.activitiesDone++;
-      saveState(st);
-      updateHome(st);
-    }, 1500);
+    this._showReward(st, letter, praise, 'correct', target.data.sound, 'star', 15, 10);
   },
 
   // Show recap grid of all learned letters before advancing stage
@@ -403,59 +401,16 @@ var Learning = {
 
   // Called when a word is completed
   onWordComplete: function(st, wordData) {
-    var self = this;
     if (st.learning.completedWords.indexOf(wordData.word) === -1) {
       st.learning.completedWords.push(wordData.word);
     }
     st.learning.wordIndex++;
 
-    var prevStage = st.stage;
-    this._checkEvolution(st);
-    var didEvolve = st.stage > prevStage;
+    if (typeof World !== 'undefined') World.addWordFlower(wordData.word);
 
-    if (typeof World !== 'undefined') {
-      World.addWordFlower(wordData.word);
-    }
-
-    saveState(st);
-    if (typeof updateHome === 'function') updateHome(st);
-
-    // Show reward in popup before closing (use openPopup to re-render updated progress)
     var wordPraises = ['새로운 말을 배웠어!', '또 하나 배웠다!', '점점 잘하고 있어!', '너무 잘해!'];
     var wPraise = wordPraises[Math.floor(Math.random() * wordPraises.length)];
-    var rewardEl = document.createElement('div');
-    rewardEl.style.cssText = 'text-align:center;padding:2rem;';
-    rewardEl.innerHTML = '<div style="font-size:3.5rem;animation:popIn 0.4s ease">' + wordData.word + '</div>' +
-      '<div style="font-size:1.2rem;color:var(--gold);margin-top:1rem;font-family:var(--font-pixel);animation:popIn 0.6s ease">' + wPraise + '</div>';
-    self.openPopup(rewardEl);
-
-    // Celebration effects
-    if (typeof showCelebration === 'function') {
-      showCelebration(window.innerWidth / 2, window.innerHeight / 2);
-    }
-    if (didEvolve && typeof flashScreen === 'function') {
-      flashScreen();
-      playSound('evolve');
-    } else {
-      playSound('correct');
-    }
-    speakText(wordData.word);
-
-    setTimeout(function() {
-      self.closePopup();
-
-      if (typeof PetRenderer !== 'undefined') {
-        if (PetRenderer.celebrate) PetRenderer.celebrate();
-        if (PetRenderer.emitParticles) PetRenderer.emitParticles('note', 5);
-        if (PetRenderer.showPixiBubble) PetRenderer.showPixiBubble(wordData.word + '!', 120);
-      }
-
-      st.hunger = Math.min(100, st.hunger + 20);
-      st.mood = Math.min(100, st.mood + 15);
-      st.daily.activitiesDone++;
-      saveState(st);
-      updateHome(st);
-    }, 1500);
+    this._showReward(st, wordData.word, wPraise, 'correct', wordData.word, 'note', 20, 15);
   },
 
   _checkEvolution: function(st) {
@@ -463,11 +418,12 @@ var Learning = {
     var vowCount = st.learning.knownVowels.length;
     var wordCount = st.learning.completedWords.length;
 
+    var th = typeof EVO_THRESHOLDS !== 'undefined' ? EVO_THRESHOLDS : { consonants: 9, vowels: 6, words4: 10, words5: 15 };
     var newStage = st.stage;
-    if (wordCount >= 15) newStage = 5;
-    else if (wordCount >= 10) newStage = 4;
-    else if (vowCount >= 6) newStage = 3;
-    else if (consCount >= 9) newStage = 2;
+    if (wordCount >= th.words5) newStage = 5;
+    else if (wordCount >= th.words4) newStage = 4;
+    else if (vowCount >= th.vowels) newStage = 3;
+    else if (consCount >= th.consonants) newStage = 2;
     else if (st.stage >= 1) newStage = st.stage;
 
     if (newStage > st.stage) {
@@ -519,7 +475,3 @@ var Learning = {
   }
 };
 
-// Global function called from game.js
-function startLearning(st) {
-  Learning.startLearning(st);
-}

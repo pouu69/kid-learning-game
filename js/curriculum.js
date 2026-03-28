@@ -207,17 +207,6 @@ var CURRICULUM = {
         { char: '나', type: 'lr', cho: 'ㄴ', jung: 'ㅏ' }
       ] }
   ],
-  extConsonants: [
-    { letter: 'ㅊ', sound: '치읓. 츠', order: 10 },
-    { letter: 'ㅋ', sound: '키읔. 크', order: 11 },
-    { letter: 'ㅌ', sound: '티읕. 트', order: 12 },
-    { letter: 'ㅍ', sound: '피읖. 프', order: 13 },
-    { letter: 'ㅎ', sound: '히읗. 흐', order: 14 }
-  ],
-  extVowels: [
-    { letter: 'ㅐ', sound: '애', order: 7 },
-    { letter: 'ㅔ', sound: '에', order: 8 }
-  ]
 };
 
 var EVOLUTION = [
@@ -229,23 +218,11 @@ var EVOLUTION = [
   { stage: 5, name: '다 큰 펫', condition: 'words_15' }
 ];
 
-function decomposeHangul(char) {
-  var code = char.charCodeAt(0) - 0xAC00;
-  if (code < 0 || code > 11171) return null;
-  var CHO = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
-  var JUNG = ['ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅗ','ㅘ','ㅙ','ㅚ','ㅛ','ㅜ','ㅝ','ㅞ','ㅟ','ㅠ','ㅡ','ㅢ','ㅣ'];
-  var JONG = ['','ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
-  var cho = Math.floor(code / 588);
-  var jung = Math.floor((code % 588) / 28);
-  var jong = code % 28;
-  var result = [CHO[cho], JUNG[jung]];
-  if (jong > 0) result.push(JONG[jong]);
-  return result;
-}
+// 진화 임계값 (learning.js, game.js에서 공통 참조)
+var EVO_THRESHOLDS = {
+  consonants: 9,
+  vowels: 6,
+  words4: 10,
+  words5: 15
+};
 
-function getSyllableType(jung, hasJong) {
-  var verticalVowels = ['ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅣ'];
-  var isVertical = verticalVowels.indexOf(jung) !== -1;
-  if (hasJong) return isVertical ? 'lrb' : 'tmb';
-  return isVertical ? 'lr' : 'tb';
-}

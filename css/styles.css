@@ -98,7 +98,7 @@ body {
     height: 100%;
 }
 
-.hidden:not(.speech-bubble) {
+.hidden {
     display: none !important;
 }
 
@@ -211,28 +211,6 @@ body {
 
 .btn-primary:active {
     transform: translateY(4px);
-    box-shadow: none;
-}
-
-.btn-action {
-    width: 100%;
-    padding: 1.2rem;
-    border: 3px solid var(--ui-border);
-    border-radius: 6px;
-    background: linear-gradient(180deg, #6a4c9c 0%, #483868 100%);
-    color: var(--text-light);
-    font-family: var(--font-pixel);
-    font-size: 1.3rem;
-    font-weight: 700;
-    cursor: pointer;
-    box-shadow: 0 3px 0 #2a1848;
-    min-height: 56px;
-    transition: transform 0.08s, box-shadow 0.08s;
-    user-select: none;
-}
-
-.btn-action:active {
-    transform: translateY(3px);
     box-shadow: none;
 }
 
@@ -376,51 +354,6 @@ body {
     width: 100% !important;
     height: 100% !important;
 }
-
-/* Speech bubble — positioned near the pet (52% height) */
-.speech-bubble {
-    position: absolute;
-    top: 38%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--milk);
-    border-radius: 20px;
-    padding: 0.6rem 1.2rem;
-    box-shadow: 0 4px 16px rgba(58, 48, 40, 0.12);
-    z-index: 5;
-    font-family: var(--font-pixel);
-    font-size: 1.3rem;
-    font-weight: 700;
-    color: var(--chocolate);
-    white-space: nowrap;
-    pointer-events: none;
-    animation: speechIn 0.35s ease;
-    opacity: 1;
-    transition: opacity 0.3s ease;
-}
-
-.speech-bubble.hidden {
-    opacity: 0;
-    pointer-events: none;
-}
-
-/* Triangle pointing down from bubble */
-.speech-bubble::after {
-    content: '';
-    position: absolute;
-    bottom: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    border-left: 8px solid transparent;
-    border-right: 8px solid transparent;
-    border-top: 10px solid var(--milk);
-}
-
-@keyframes speechIn {
-    0% { opacity: 0; transform: translateX(-50%) translateY(8px) scale(0.9); }
-    100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
-}
-
 
 /* === Pixel Care Bar === */
 .care-bar {
@@ -614,53 +547,6 @@ body.night .pet-name { color: #c8b8e0; }
     padding-bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
 }
 
-
-/* ══════════════════════════════════════════
-   REWARD SCREEN
-══════════════════════════════════════════ */
-#rewardScreen {
-    background: var(--ui-bg);
-    align-items: center;
-    justify-content: center;
-}
-
-.reward-inner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 1.2rem;
-    padding: 2rem 1.5rem;
-    width: 100%;
-    max-width: 400px;
-    text-align: center;
-}
-
-.reward-pet-bounce {
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    background: var(--cookie);
-    animation: bounce 0.8s ease infinite alternate;
-}
-
-.reward-word {
-    font-family: var(--font-pixel);
-    font-size: 2.5rem;
-    font-weight: 900;
-    color: var(--chocolate);
-}
-
-.reward-message {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #8a7e72;
-    line-height: 1.6;
-}
-
-.reward-content {
-    width: 100%;
-}
 
 /* ══════════════════════════════════════════
    REPORT SCREEN
@@ -882,14 +768,6 @@ button,
         padding: 0.75rem 1.5rem;
     }
 
-    .reward-pet-bounce {
-        width: 60px;
-        height: 60px;
-    }
-
-    .reward-word {
-        font-size: 1.8rem;
-    }
 }
 
 /* ══════════════════════════════════════════
@@ -898,8 +776,7 @@ button,
 @media (min-width: 768px) {
 
     /* ── Naming Screen ── */
-    .naming-inner,
-    .reward-inner {
+    .naming-inner {
         max-width: 560px;
         gap: 2rem;
     }
@@ -926,11 +803,6 @@ button,
         min-height: 76px;
         max-width: 420px;
         border-radius: 26px;
-    }
-    .btn-action {
-        font-size: 1.5rem;
-        padding: 1.4rem;
-        min-height: 68px;
     }
     .btn-back {
         font-size: 1.1rem;
@@ -1111,22 +983,6 @@ button,
     }
     .care-moon {
         font-size: 4.5rem;
-    }
-
-    /* ── Reward Screen ── */
-    .reward-inner {
-        gap: 1.8rem;
-        padding: 3rem 2rem;
-    }
-    .reward-pet-bounce {
-        width: 130px;
-        height: 130px;
-    }
-    .reward-word {
-        font-size: 3.5rem;
-    }
-    .reward-message {
-        font-size: 1.4rem;
     }
 
     /* ── Review Badge ── */

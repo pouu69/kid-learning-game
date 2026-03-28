@@ -58,17 +58,4 @@ var Pet = {
     return null;
   },
 
-  checkEvolution: function(st) {
-    var consCount = st.learning.knownConsonants.length;
-    var vowCount = st.learning.knownVowels.length;
-    var wordCount = st.learning.completedWords.length;
-    var newStage = st.stage;
-    if (wordCount >= 15) newStage = 5;
-    else if (wordCount >= 10) newStage = 4;
-    else if (wordCount >= 5) newStage = Math.max(newStage, 3);
-    else if (vowCount >= 6) newStage = Math.max(newStage, 3);
-    else if (consCount >= 9) newStage = 2;
-    if (newStage > st.stage) return { stage: newStage, name: EVOLUTION[newStage].name };
-    return null;
-  }
 };

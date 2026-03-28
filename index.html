@@ -73,24 +73,21 @@
         <!-- World canvas (PixiJS renders here) -->
         <div class="world-canvas" id="worldCanvas"></div>
 
-        <!-- Speech bubble (PixiJS renders this now, DOM fallback hidden) -->
-        <div class="speech-bubble hidden" id="speechBubble" style="display:none"></div>
-
         <!-- Pixel care bar at bottom -->
         <div class="care-bar" id="homeActions">
-            <button class="care-btn" data-action="feed" onclick="handleAction('feed')">
+            <button class="care-btn" data-action="feed">
                 <div class="care-icon care-icon-feed">&#9829;</div>
                 <span>밥</span>
             </button>
-            <button class="care-btn" data-action="sleep" onclick="handleAction('sleep')">
+            <button class="care-btn" data-action="sleep">
                 <div class="care-icon care-icon-sleep">&#9790;</div>
                 <span>잠</span>
             </button>
-            <button class="care-btn" data-action="wash" onclick="handleAction('wash')">
+            <button class="care-btn" data-action="wash">
                 <div class="care-icon care-icon-wash">&#9697;</div>
                 <span>씻기</span>
             </button>
-            <button class="care-btn care-btn-learn" data-action="learn" onclick="handleAction('learn')">
+            <button class="care-btn care-btn-learn" data-action="learn">
                 <div class="care-icon care-icon-learn">ㄱ</div>
                 <span>배우기</span>
             </button>
@@ -105,17 +102,6 @@
         </div>
         <div class="learning-content" id="learningContent"></div>
         <div class="mini-pet" id="miniPet"></div>
-    </div>
-
-    <!-- REWARD SCREEN -->
-    <div id="rewardScreen" class="screen">
-        <div class="reward-inner">
-            <div class="reward-pet-bounce" id="rewardPet"></div>
-            <div class="reward-word" id="rewardWord"></div>
-            <div class="reward-message" id="rewardMessage"></div>
-            <div class="reward-content" id="rewardContent"></div>
-            <button class="btn-primary" id="rewardBtn" onclick="exitLearning()">홈으로</button>
-        </div>
     </div>
 
     <!-- REPORT SCREEN (hidden, 3sec long press on pet-info) -->
@@ -244,12 +230,21 @@
     document.addEventListener('DOMContentLoaded', function () {
         if (typeof initGame === 'function') initGame();
 
+        // Care bar: 이벤트 위임 (인라인 onclick 제거)
+        var careBar = document.getElementById('homeActions');
+        if (careBar) {
+            careBar.addEventListener('click', function(e) {
+                var btn = e.target.closest('[data-action]');
+                if (btn && typeof handleAction === 'function') {
+                    handleAction(btn.dataset.action);
+                }
+            });
+        }
+
         var worldCanvas = document.getElementById('worldCanvas');
         if (worldCanvas) {
             worldCanvas.addEventListener('click', function(e) {
-                // Don't trigger if clicking a button
                 if (e.target.tagName === 'BUTTON') return;
-                // Skip if pet was just dragged (physics mode handles it)
                 if (typeof PetRenderer !== 'undefined' && (PetRenderer._isDragging || PetRenderer._physicsMode)) return;
                 if (typeof handleAction === 'function') {
                     handleAction('pet');

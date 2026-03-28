@@ -53,10 +53,6 @@ function loadState() {
   }
 }
 
-function resetState() {
-  localStorage.removeItem(STORAGE_KEY);
-}
-
 function updateDaily(st) {
   var today = new Date().toISOString().slice(0, 10);
   if (st.daily.date !== today) {

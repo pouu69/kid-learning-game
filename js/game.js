@@ -56,9 +56,10 @@ function initWorld() {
   var container = document.getElementById('worldCanvas');
   if (container && typeof World !== 'undefined') {
     World.init(container).then(function() {
+      // effects.js 앱 레지스트리 등록 (effects↔world 순환참조 해결)
+      if (typeof setPixiApp === 'function') setPixiApp(World.app);
       var allKnown = (st.learning.knownConsonants || []).concat(st.learning.knownVowels || []);
       World.syncLetterFlowers(allKnown);
-      // Also sync completed words as flowers
       var completedWords = st.learning.completedWords || [];
       for (var wi = 0; wi < completedWords.length; wi++) {
         World.addWordFlower(completedWords[wi]);
@@ -201,10 +202,9 @@ function updateHome(st) {
     var vow = st.learning.knownVowels.length;
     var words = st.learning.completedWords.length;
 
-    // Total curriculum progress: actual curriculum sizes
-    var totalCons = typeof CURRICULUM !== 'undefined' ? CURRICULUM.consonants.length : 9;
-    var totalVow = typeof CURRICULUM !== 'undefined' ? CURRICULUM.vowels.length : 6;
-    var totalWords = typeof CURRICULUM !== 'undefined' ? CURRICULUM.words.length : 22;
+    var totalCons = CURRICULUM.consonants.length;
+    var totalVow = CURRICULUM.vowels.length;
+    var totalWords = CURRICULUM.words.length;
     var totalLearned = cons + vow + words;
     var totalItems = totalCons + totalVow + totalWords;
     var pct = Math.min(100, Math.round(totalLearned / totalItems * 100));
@@ -215,13 +215,13 @@ function updateHome(st) {
       nextName = totalLearned >= totalItems ? '완료' : pct + '% (' + totalLearned + '/' + totalItems + ')';
       if (totalLearned >= totalItems && evoProg) evoProg.classList.add('maxed');
     } else if (st.stage < 2) {
-      nextName = '→ ' + (PET_STAGES[2] ? PET_STAGES[2].name : '') + ' (' + cons + '/9)';
+      nextName = '→ ' + (PET_STAGES[2] ? PET_STAGES[2].name : '') + ' (' + cons + '/' + EVO_THRESHOLDS.consonants + ')';
     } else if (st.stage < 3) {
-      nextName = '→ ' + (PET_STAGES[3] ? PET_STAGES[3].name : '') + ' (' + vow + '/6)';
+      nextName = '→ ' + (PET_STAGES[3] ? PET_STAGES[3].name : '') + ' (' + vow + '/' + EVO_THRESHOLDS.vowels + ')';
     } else if (st.stage < 4) {
-      nextName = '→ ' + (PET_STAGES[4] ? PET_STAGES[4].name : '') + ' (' + words + '/10)';
+      nextName = '→ ' + (PET_STAGES[4] ? PET_STAGES[4].name : '') + ' (' + words + '/' + EVO_THRESHOLDS.words4 + ')';
     } else {
-      nextName = '→ ' + (PET_STAGES[5] ? PET_STAGES[5].name : '') + ' (' + words + '/15)';
+      nextName = '→ ' + (PET_STAGES[5] ? PET_STAGES[5].name : '') + ' (' + words + '/' + EVO_THRESHOLDS.words5 + ')';
     }
     evoBar.style.width = pct + '%';
     evoNext.textContent = nextName;
@@ -248,12 +248,12 @@ function updateHome(st) {
     d.sleepBtn.classList.toggle('urgent', st.sleepy > 80);
     // Toggle sleep/wake button based on sleeping state
     if (st.sleeping) {
-      d.sleepBtn.setAttribute('onclick', "handleAction('wake')");
+      d.sleepBtn.dataset.action = 'wake';
       d.sleepBtn.querySelector('span').textContent = '깨우기';
       d.sleepBtn.querySelector('.care-icon').textContent = '☀';
       d.sleepBtn.classList.add('urgent');
     } else {
-      d.sleepBtn.setAttribute('onclick', "handleAction('sleep')");
+      d.sleepBtn.dataset.action = 'sleep';
       d.sleepBtn.querySelector('span').textContent = '잠';
       d.sleepBtn.querySelector('.care-icon').textContent = '☾';
     }

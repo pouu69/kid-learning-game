@@ -15,8 +15,4 @@ var PET_STAGES = [
     color: 0xf0b888, strokeColor: 0xd89060, strokeW: 4, eyeSize: 9 },
   { name: '수다쟁이', bodyW: 80, bodyH: 88, hasEyes: true, hasFeet: true, hasEars: true, hasArms: true,
     color: 0xe8a898, strokeColor: 0xc88070, strokeW: 4, eyeSize: 9 },
-  { name: '글자 요리사', bodyW: 84, bodyH: 92, hasEyes: true, hasFeet: true, hasEars: true, hasArms: true, hasCrown: true,
-    color: 0xd0b8e8, strokeColor: 0xb090c8, strokeW: 4, eyeSize: 9 },
-  { name: '다 큰 펫', bodyW: 90, bodyH: 98, hasEyes: true, hasFeet: true, hasEars: true, hasArms: true, hasCrown: true, hasWings: true,
-    color: 0xa8d0f0, strokeColor: 0x80b0d8, strokeW: 4, eyeSize: 10 },
 ];
