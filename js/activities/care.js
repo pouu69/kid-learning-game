@@ -134,7 +134,7 @@ var CareActivity = {
       var btns = foodGrid.querySelectorAll('.care-food-btn');
       for (var b = 0; b < btns.length; b++) btns[b].disabled = true;
       btn.classList.add('care-food-selected');
-      self._feedAnimation(st, foods[idx], container);
+      self._feedOnHomeScreen(st, foods[idx]);
     };
 
     for (var i = 0; i < foods.length; i++) {
@@ -157,127 +157,36 @@ var CareActivity = {
     speakText('뭘 먹을까?', 0.75);
   },
 
-  // Feed mini-game: tap food pieces to feed pet one by one
-  _feedAnimation: function(st, food, container) {
+  // Close popup → play feed animation on home screen via PetRenderer
+  _feedOnHomeScreen: function(st, food) {
     var self = this;
-    this._setTimeout(function() {
-      container.innerHTML = '';
 
-      // Pet face at top — mouth open, waiting for food
-      var petFace = document.createElement('div');
-      petFace.className = 'care-feed-pet';
-      petFace.innerHTML = '<div class="care-feed-pet-eyes"><span class="care-feed-pet-eye"></span><span class="care-feed-pet-eye"></span></div><div class="care-feed-pet-mouth"></div>';
-      container.appendChild(petFace);
+    // Close popup immediately → return to home
+    Learning.closePopup();
+    updateHome(st);
 
-      speakText('먹여주자!', 0.7);
-
-      // Scatter 4 food pieces below pet face
-      var totalPieces = 4;
-      var tappedPieces = 0;
-      var field = document.createElement('div');
-      field.className = 'care-feed-field';
-
-      field.onclick = function(e) {
-        var piece = e.target.closest('.care-feed-piece');
-        if (!piece || piece.classList.contains('piece-eaten')) return;
-
-        piece.classList.add('piece-eaten');
-        tappedPieces++;
-
-        // Fly toward pet mouth (top center)
-        var pieceRect = piece.getBoundingClientRect();
-        var petRect = petFace.getBoundingClientRect();
-        var flyClone = document.createElement('div');
-        flyClone.className = 'care-feed-fly';
-        flyClone.textContent = food.icon;
-        flyClone.style.position = 'fixed';
-        flyClone.style.left = (pieceRect.left + pieceRect.width / 2 - 20) + 'px';
-        flyClone.style.top = (pieceRect.top + pieceRect.height / 2 - 20) + 'px';
-        document.body.appendChild(flyClone);
-
-        // Animate toward pet mouth
-        requestAnimationFrame(function() {
-          flyClone.style.transform = 'translate(' +
-            ((petRect.left + petRect.width / 2 - 20) - (pieceRect.left + pieceRect.width / 2 - 20)) + 'px, ' +
-            ((petRect.top + petRect.height - 10) - (pieceRect.top + pieceRect.height / 2 - 20)) + 'px) scale(0.2)';
-          flyClone.style.opacity = '0';
-        });
-
-        playSound('click');
-
-        // Pet reacts: mouth closes then opens
-        self._setTimeout(function() {
-          if (flyClone.parentNode) flyClone.parentNode.removeChild(flyClone);
-          petFace.classList.add('care-feed-pet--chew');
-          self._setTimeout(function() {
-            petFace.classList.remove('care-feed-pet--chew');
-          }, 300);
-
-          if (typeof PetRenderer !== 'undefined') {
-            if (PetRenderer.emitParticles) PetRenderer.emitParticles('heart', 1);
-          }
-        }, 350);
-
-        if (tappedPieces >= totalPieces) {
-          self._setTimeout(function() {
-            self._finishFeed(st, food, container);
-          }, 700);
-        }
-      };
-
-      // Place pieces below pet face
-      var positions = [
-        { left: '10%', top: '25%' },
-        { left: '55%', top: '20%' },
-        { left: '20%', top: '65%' },
-        { left: '60%', top: '60%' }
-      ];
-
-      for (var i = 0; i < totalPieces; i++) {
-        var piece = document.createElement('div');
-        piece.className = 'care-feed-piece';
-        piece.textContent = food.icon;
-        piece.style.left = positions[i].left;
-        piece.style.top = positions[i].top;
-        piece.style.animationDelay = (i * 0.15) + 's';
-        field.appendChild(piece);
+    // Trigger PixiJS feed animation on the actual pet
+    self._setTimeout(function() {
+      if (typeof PetRenderer !== 'undefined' && PetRenderer.feedAnim) {
+        PetRenderer.feedAnim();
       }
-      container.appendChild(field);
+      playSound('click');
     }, 300);
-  },
 
-  _finishFeed: function(st, food, container) {
-    var self = this;
-    container.innerHTML = '';
-
-    st.hunger = Math.min(100, st.hunger + 25);
-    st.mood = Math.min(100, st.mood + 8);
-    saveState(st);
-
-    var doneEl = document.createElement('div');
-    doneEl.className = 'care-done';
-    var icon = document.createElement('div');
-    icon.className = 'care-done-icon';
-    icon.textContent = food.icon;
-    doneEl.appendChild(icon);
-    var msg = document.createElement('div');
-    msg.className = 'care-done-msg';
-    msg.textContent = '맛있다!';
-    doneEl.appendChild(msg);
-    container.appendChild(doneEl);
-
-    playSound('correct');
-    speakText('맛있다!', 0.7);
-    if (typeof PetRenderer !== 'undefined') {
-      if (PetRenderer.feedAnim) PetRenderer.feedAnim();
-      if (PetRenderer.emitParticles) PetRenderer.emitParticles('heart', 3);
-      if (PetRenderer.showPixiBubble) PetRenderer.showPixiBubble('맛있다!', 100);
-    }
-
-    this._setTimeout(function() {
-      Learning.closePopup();
+    // After eat animation finishes (~1.5s), apply hunger + show bubble
+    self._setTimeout(function() {
+      st.hunger = Math.min(100, st.hunger + food.boost);
+      st.mood = Math.min(100, st.mood + 8);
+      saveState(st);
       updateHome(st);
-    }, 1500);
+
+      playSound('correct');
+      if (typeof PetRenderer !== 'undefined') {
+        if (PetRenderer.showPixiBubble) PetRenderer.showPixiBubble('맛있다!', 120);
+        if (PetRenderer.emitParticles) PetRenderer.emitParticles('heart', 5);
+        if (PetRenderer.celebrate) PetRenderer.celebrate();
+      }
+    }, 1800);
   },
 
   // === SLEEP: Tap stars (with hangul on stars for Stage 1+) ===
