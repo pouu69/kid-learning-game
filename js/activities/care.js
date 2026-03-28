@@ -165,10 +165,10 @@ var CareActivity = {
     Learning.closePopup();
     updateHome(st);
 
-    // Trigger PixiJS feed animation on the actual pet
+    // Trigger PixiJS feed animation with the selected food emoji
     self._setTimeout(function() {
       if (typeof PetRenderer !== 'undefined' && PetRenderer.feedAnim) {
-        PetRenderer.feedAnim();
+        PetRenderer.feedAnim(food.icon);
       }
       playSound('click');
     }, 300);

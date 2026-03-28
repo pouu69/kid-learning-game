@@ -1621,7 +1621,7 @@ var PetRenderer = {
     this.showNeed(null);
   },
 
-  feedAnim: function() {
+  feedAnim: function(foodEmoji) {
     var self = this;
     if (!self._app || !self.container) return;
 
@@ -1632,10 +1632,18 @@ var PetRenderer = {
     var foodX = petX > W / 2 ? W * 0.15 : W * 0.85;
     var foodY = self._groundY;
 
-    // Draw food on the ground
-    var food = new PIXI.Graphics();
-    food.rect(-16, -16, 32, 32).fill({ color: 0xf4b870 });
-    food.rect(-8, -8, 16, 16).fill({ color: 0xffffff });
+    // Display actual food emoji (or fallback to pixel rect)
+    var food;
+    if (foodEmoji) {
+      var foodStyle = new PIXI.TextStyle({ fontSize: 48 });
+      food = new PIXI.Text({ text: foodEmoji, style: foodStyle });
+      food.anchor.set(0.5, 0.5);
+      food._foodStyle = foodStyle;
+    } else {
+      food = new PIXI.Graphics();
+      food.rect(-16, -16, 32, 32).fill({ color: 0xf4b870 });
+      food.rect(-8, -8, 16, 16).fill({ color: 0xffffff });
+    }
     food.x = foodX;
     food.y = foodY;
     food.alpha = 0;
@@ -1651,13 +1659,13 @@ var PetRenderer = {
       if (appearFrame >= 15) {
         self._app.ticker.remove(appearTicker);
         // Phase 2: Pet walks to food
-        self._walkToFood(food, foodX, foodY);
+        self._walkToFood(food, foodX);
       }
     };
     self._app.ticker.add(appearTicker);
   },
 
-  _walkToFood: function(food, foodX, foodY) {
+  _walkToFood: function(food, foodX) {
     var self = this;
     if (!self._app || !self.container) return;
 
@@ -1677,14 +1685,14 @@ var PetRenderer = {
         self._app.ticker.remove(walkTicker);
         self.container.x = targetX;
         self.container.y = self._groundY;
-        // Phase 3: Eat the food
-        self._eatFood(food, startX);
+        // Phase 3: Eat the food (pet stays here after)
+        self._eatFood(food);
       }
     };
     self._app.ticker.add(walkTicker);
   },
 
-  _eatFood: function(food, returnX) {
+  _eatFood: function(food) {
     var self = this;
     if (!self._app || !self.container) return;
 
@@ -1713,42 +1721,17 @@ var PetRenderer = {
       if (eatFrame >= 20) {
         self._app.ticker.remove(eatTicker);
         self._app.stage.removeChild(food);
-        food.destroy();
+        // Cleanup food style if it was a PIXI.Text
+        if (food._foodStyle) food._foodStyle.destroy();
+        food.destroy(true);
 
-        // Start chewing
+        // Start chewing — pet stays at current position
         self._chewCount = 3;
         self._feedAnimTimer = 1;
         self._floatHearts();
-
-        // Phase 4: Walk back to center
-        self._walkBack(returnX);
       }
     };
     self._app.ticker.add(eatTicker);
-  },
-
-  _walkBack: function(targetX) {
-    var self = this;
-    if (!self._app || !self.container) return;
-
-    var startX = self.container.x;
-    var frame = 0;
-    var totalFrames = 40;
-
-    var walkTicker = function() {
-      frame++;
-      var t = Math.min(frame / totalFrames, 1);
-      var ease = t * t;
-      self.container.x = startX + (targetX - startX) * ease;
-      self.container.y = self._groundY + Math.abs(Math.sin(frame * 0.3)) * -8;
-
-      if (frame >= totalFrames) {
-        self._app.ticker.remove(walkTicker);
-        self.container.x = targetX;
-        self.container.y = self._groundY;
-      }
-    };
-    self._app.ticker.add(walkTicker);
   },
 
   _floatHearts: function() {
