@@ -12,7 +12,6 @@ var World = {
   clouds: [],
   letterFlowers: [],
   _frame: 0,
-  _weather: 'clear',
   _rainDrops: [],
   _snowDrops: [],
   _rainbowGfx: null,
