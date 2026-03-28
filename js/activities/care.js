@@ -157,58 +157,73 @@ var CareActivity = {
     speakText('뭘 먹을까?', 0.75);
   },
 
+  // Feed mini-game: tap food pieces to feed pet one by one
   _feedAnimation: function(st, food, container) {
     var self = this;
     this._setTimeout(function() {
       container.innerHTML = '';
 
-      var foodFall = document.createElement('div');
-      foodFall.className = 'care-food-fall';
-      foodFall.textContent = food.emoji;
-      container.appendChild(foodFall);
+      var label = document.createElement('div');
+      label.className = 'phase-label';
+      label.textContent = '먹여주자!';
+      speakText('먹여주자!', 0.7);
+      container.appendChild(label);
 
-      var petMouth = document.createElement('div');
-      petMouth.className = 'care-pet-mouth';
-      petMouth.textContent = 'O';
-      container.appendChild(petMouth);
+      // Scatter 4 food pieces across the popup
+      var totalPieces = 4;
+      var tappedPieces = 0;
+      var field = document.createElement('div');
+      field.className = 'care-feed-field';
 
-      playSound('click');
+      field.onclick = function(e) {
+        var piece = e.target.closest('.care-feed-piece');
+        if (!piece || piece.classList.contains('piece-eaten')) return;
 
-      self._setTimeout(function() {
-        foodFall.style.display = 'none';
-        petMouth.textContent = '냠냠';
-        petMouth.className = 'care-chew';
-        speakText('냠냠', 0.8);
+        piece.classList.add('piece-eaten');
+        playSound('click');
+        speakText('냠!', 0.8);
+        tappedPieces++;
 
-        var chews = 0;
-        var chewOnce = function() {
-          chews++;
-          petMouth.style.transform = chews % 2 === 0 ? 'scale(1.1)' : 'scale(0.9)';
-          if (chews >= 6) {
-            container.innerHTML = '';
+        // Pet reaction for each piece
+        if (typeof PetRenderer !== 'undefined' && PetRenderer.emitParticles) {
+          PetRenderer.emitParticles('heart', 1);
+        }
 
-            st.hunger = Math.min(100, st.hunger + 8);
-            st.mood = Math.min(100, st.mood + 3);
-            saveState(st);
+        if (tappedPieces >= totalPieces) {
+          self._setTimeout(function() {
+            self._finishFeed(st, food, container);
+          }, 400);
+        }
+      };
 
-            // Hangul bonus challenge before completing
-            self._renderHangulBonus(st, container, function() {
-              self._finishFeed(st, food, container);
-            }, function() {
-              self._finishFeed(st, food, container);
-            });
-          } else {
-            self._setTimeout(chewOnce, 250);
-          }
-        };
-        self._setTimeout(chewOnce, 250);
-      }, 800);
+      // Place pieces at varied positions
+      var positions = [
+        { left: '15%', top: '20%' },
+        { left: '55%', top: '15%' },
+        { left: '25%', top: '55%' },
+        { left: '60%', top: '50%' }
+      ];
+
+      for (var i = 0; i < totalPieces; i++) {
+        var piece = document.createElement('div');
+        piece.className = 'care-feed-piece';
+        piece.textContent = food.emoji;
+        piece.style.left = positions[i].left;
+        piece.style.top = positions[i].top;
+        piece.style.animationDelay = (i * 0.15) + 's';
+        field.appendChild(piece);
+      }
+      container.appendChild(field);
     }, 300);
   },
 
   _finishFeed: function(st, food, container) {
     var self = this;
     container.innerHTML = '';
+
+    st.hunger = Math.min(100, st.hunger + 25);
+    st.mood = Math.min(100, st.mood + 8);
+    saveState(st);
 
     var doneEl = document.createElement('div');
     doneEl.className = 'care-done';
@@ -223,6 +238,7 @@ var CareActivity = {
     container.appendChild(doneEl);
 
     playSound('correct');
+    speakText('맛있다!', 0.7);
     if (typeof PetRenderer !== 'undefined') {
       if (PetRenderer.feedAnim) PetRenderer.feedAnim();
       if (PetRenderer.emitParticles) PetRenderer.emitParticles('heart', 3);
