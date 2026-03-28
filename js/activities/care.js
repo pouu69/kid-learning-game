@@ -120,9 +120,9 @@ var CareActivity = {
     container.appendChild(label);
 
     var foods = [
-      { emoji: '\uD83C\uDF5A', name: '밥', boost: 25 },
-      { emoji: '\uD83C\uDF5C', name: '국', boost: 20 },
-      { emoji: '\uD83C\uDF4E', name: '과일', boost: 15 }
+      { icon: '\uD83C\uDF5A', name: '밥', boost: 25 },
+      { icon: '\uD83C\uDF5C', name: '국', boost: 20 },
+      { icon: '\uD83C\uDF4E', name: '과일', boost: 15 }
     ];
 
     var foodGrid = document.createElement('div');
@@ -141,14 +141,14 @@ var CareActivity = {
       var btn = document.createElement('button');
       btn.className = 'care-food-btn';
       btn.setAttribute('data-idx', i);
-      var emoji = document.createElement('span');
-      emoji.className = 'care-food-emoji';
-      emoji.textContent = foods[i].emoji;
-      btn.appendChild(emoji);
-      var name = document.createElement('span');
-      name.className = 'care-food-name';
-      name.textContent = foods[i].name;
-      btn.appendChild(name);
+      var iconEl = document.createElement('span');
+      iconEl.className = 'care-food-icon';
+      iconEl.textContent = foods[i].icon;
+      btn.appendChild(iconEl);
+      var nameEl = document.createElement('span');
+      nameEl.className = 'care-food-name';
+      nameEl.textContent = foods[i].name;
+      btn.appendChild(nameEl);
       foodGrid.appendChild(btn);
     }
     container.appendChild(foodGrid);
@@ -189,7 +189,7 @@ var CareActivity = {
         var petRect = petFace.getBoundingClientRect();
         var flyClone = document.createElement('div');
         flyClone.className = 'care-feed-fly';
-        flyClone.textContent = food.emoji;
+        flyClone.textContent = food.icon;
         flyClone.style.position = 'fixed';
         flyClone.style.left = (pieceRect.left + pieceRect.width / 2 - 20) + 'px';
         flyClone.style.top = (pieceRect.top + pieceRect.height / 2 - 20) + 'px';
@@ -236,7 +236,7 @@ var CareActivity = {
       for (var i = 0; i < totalPieces; i++) {
         var piece = document.createElement('div');
         piece.className = 'care-feed-piece';
-        piece.textContent = food.emoji;
+        piece.textContent = food.icon;
         piece.style.left = positions[i].left;
         piece.style.top = positions[i].top;
         piece.style.animationDelay = (i * 0.15) + 's';
@@ -258,7 +258,7 @@ var CareActivity = {
     doneEl.className = 'care-done';
     var icon = document.createElement('div');
     icon.className = 'care-done-icon';
-    icon.textContent = food.emoji;
+    icon.textContent = food.icon;
     doneEl.appendChild(icon);
     var msg = document.createElement('div');
     msg.className = 'care-done-msg';

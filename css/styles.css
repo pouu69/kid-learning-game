@@ -1243,7 +1243,11 @@ button,
     transform: scale(1.05);
 }
 .care-food-btn:disabled { opacity: 0.5; pointer-events: none; }
-.care-food-emoji { font-size: 3rem; }
+.care-food-icon {
+    font-family: var(--font-pixel);
+    font-size: 2.5rem;
+    line-height: 1;
+}
 .care-food-name {
     font-family: var(--font-pixel);
     font-size: 1.2rem;
@@ -1711,13 +1715,15 @@ button,
     padding: 1rem 1.5rem;
     min-width: 120px;
     min-height: 80px;
-    border: none;
-    border-radius: 12px;
+    border: 3px solid var(--ui-border);
+    border-radius: 6px;
+    box-shadow: 0 3px 0 #181028;
     cursor: pointer;
     user-select: none;
 }
 .continue-btn:active {
-    transform: translateY(2px);
+    transform: translateY(3px);
+    box-shadow: none;
 }
 .continue-btn-icon {
     font-size: 2rem;
@@ -1729,11 +1735,13 @@ button,
     opacity: 0.8;
 }
 .continue-btn--primary {
-    background: var(--gold);
+    background: linear-gradient(180deg, #f8d848 0%, #d8b828 100%);
+    border-color: #f8e878;
+    box-shadow: 0 3px 0 #886808;
     color: #1a1830;
 }
 .continue-btn--secondary {
-    background: #3a3850;
+    background: linear-gradient(180deg, #383058 0%, #282048 100%);
     color: var(--text-light);
 }
 
@@ -1767,6 +1775,44 @@ button,
     animation-fill-mode: both;
 }
 
+/* ── Shared Game Button (3D pixel press) ── */
+.game-choice {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 1rem;
+    min-width: 80px;
+    min-height: 80px;
+    background: linear-gradient(180deg, #383058 0%, #282048 100%);
+    border: 3px solid var(--ui-border);
+    border-radius: 6px;
+    box-shadow: 0 3px 0 #181028;
+    cursor: pointer;
+    transition: transform 0.08s, box-shadow 0.08s;
+    user-select: none;
+    font-family: var(--font-pixel);
+    color: var(--text-light);
+}
+.game-choice:active {
+    transform: translateY(3px);
+    box-shadow: none;
+}
+.game-choice.choice-correct {
+    border-color: #48a868;
+    background: linear-gradient(180deg, #305838 0%, #284828 100%);
+    box-shadow: 0 3px 0 #1a3018;
+}
+.game-choice.choice-wrong {
+    border-color: #c84848;
+    animation: cardShake 0.3s ease;
+}
+.game-choice.choice-locked {
+    pointer-events: none;
+    opacity: 0.5;
+}
+
 /* ── Sound Match Activity (Stage 0) ── */
 .sound-match-activity {
     display: flex;
@@ -1776,8 +1822,10 @@ button,
     padding: 1rem;
 }
 .sound-match-egg {
+    font-family: var(--font-pixel);
     font-size: 3rem;
     animation: popIn 0.4s ease;
+    color: var(--gold);
     opacity: 0.6;
 }
 .sound-match-instruction {
@@ -1799,37 +1847,39 @@ button,
     gap: 0.5rem;
     padding: 1rem 1.5rem;
     min-width: 120px;
-    min-height: 80px;
-    background: #2a2848;
+    min-height: 100px;
+    background: linear-gradient(180deg, #383058 0%, #282048 100%);
     border: 3px solid var(--ui-border);
-    border-radius: 12px;
+    border-radius: 6px;
+    box-shadow: 0 3px 0 #181028;
     cursor: pointer;
-    transition: transform 0.15s ease;
+    transition: transform 0.08s, box-shadow 0.08s;
     user-select: none;
 }
 .sound-match-choice:active {
-    transform: scale(0.95);
+    transform: translateY(3px);
+    box-shadow: none;
 }
 .sound-match-icon {
     font-size: 2.5rem;
 }
 .sound-match-label {
-    font-family: 'Noto Sans KR', sans-serif;
-    font-size: 1.4rem;
-    font-weight: 700;
+    font-family: var(--font-pixel);
+    font-size: 1.3rem;
     color: var(--text-light);
 }
 .sound-match-choice.choice-correct {
-    border-color: #4ade80;
-    background: rgba(74, 222, 128, 0.15);
+    border-color: #48a868;
+    background: linear-gradient(180deg, #305838 0%, #284828 100%);
+    box-shadow: 0 3px 0 #1a3018;
 }
 .sound-match-choice.choice-wrong {
-    border-color: #f87171;
+    border-color: #c84848;
     animation: cardShake 0.3s ease;
 }
 .sound-match-choice.choice-locked {
     pointer-events: none;
-    opacity: 0.7;
+    opacity: 0.5;
 }
 
 /* ── Letter Hunt Activity (Stage 1-2) ── */
@@ -1869,28 +1919,31 @@ button,
     font-size: 2rem;
     font-weight: 700;
     color: var(--text-light);
-    background: #2a2848;
+    background: linear-gradient(180deg, #383058 0%, #282048 100%);
     border: 3px solid var(--ui-border);
-    border-radius: 12px;
+    border-radius: 6px;
+    box-shadow: 0 3px 0 #181028;
     cursor: pointer;
-    transition: transform 0.15s ease;
+    transition: transform 0.08s, box-shadow 0.08s;
     user-select: none;
 }
 .letter-hunt-choice:active {
-    transform: scale(0.93);
+    transform: translateY(3px);
+    box-shadow: none;
 }
 .letter-hunt-choice.choice-correct {
-    border-color: #4ade80;
-    background: rgba(74, 222, 128, 0.15);
-    color: #4ade80;
+    border-color: #48a868;
+    background: linear-gradient(180deg, #305838 0%, #284828 100%);
+    box-shadow: 0 3px 0 #1a3018;
+    color: #88e888;
 }
 .letter-hunt-choice.choice-wrong {
-    border-color: #f87171;
+    border-color: #c84848;
     animation: cardShake 0.3s ease;
 }
 .letter-hunt-choice.choice-locked {
     pointer-events: none;
-    opacity: 0.7;
+    opacity: 0.5;
 }
 .trace-canvas {
     border: 2px solid var(--ui-border);
@@ -1973,28 +2026,31 @@ button,
     font-size: 1.8rem;
     font-weight: 700;
     color: var(--text-light);
-    background: #2a2848;
+    background: linear-gradient(180deg, #383058 0%, #282048 100%);
     border: 3px solid var(--ui-border);
-    border-radius: 10px;
+    border-radius: 6px;
+    box-shadow: 0 3px 0 #181028;
     cursor: pointer;
-    transition: transform 0.15s ease;
+    transition: transform 0.08s, box-shadow 0.08s;
     user-select: none;
 }
 .factory-choice:active {
-    transform: scale(0.93);
+    transform: translateY(3px);
+    box-shadow: none;
 }
 .factory-choice.choice-correct {
-    border-color: #4ade80;
-    background: rgba(74, 222, 128, 0.15);
-    color: #4ade80;
+    border-color: #48a868;
+    background: linear-gradient(180deg, #305838 0%, #284828 100%);
+    box-shadow: 0 3px 0 #1a3018;
+    color: #88e888;
 }
 .factory-choice.choice-wrong {
-    border-color: #f87171;
+    border-color: #c84848;
     animation: cardShake 0.3s ease;
 }
 .factory-choice.choice-locked {
     pointer-events: none;
-    opacity: 0.6;
+    opacity: 0.5;
 }
 
 /* ── Word Games Activity (Stage 4) ── */
@@ -2051,11 +2107,12 @@ button,
     font-size: 1.8rem;
     font-weight: 700;
     color: var(--text-light);
-    background: #2a2848;
+    background: linear-gradient(180deg, #383058 0%, #282048 100%);
     border: 3px solid var(--ui-border);
-    border-radius: 12px;
+    border-radius: 6px;
+    box-shadow: 0 3px 0 #181028;
     cursor: pointer;
-    transition: transform 0.15s ease;
+    transition: transform 0.08s, box-shadow 0.08s;
     user-select: none;
 }
 .word-games-choice--word {
@@ -2064,20 +2121,22 @@ button,
     min-width: 100px;
 }
 .word-games-choice:active {
-    transform: scale(0.93);
+    transform: translateY(3px);
+    box-shadow: none;
 }
 .word-games-choice.choice-correct {
-    border-color: #4ade80;
-    background: rgba(74, 222, 128, 0.15);
-    color: #4ade80;
+    border-color: #48a868;
+    background: linear-gradient(180deg, #305838 0%, #284828 100%);
+    box-shadow: 0 3px 0 #1a3018;
+    color: #88e888;
 }
 .word-games-choice.choice-wrong {
-    border-color: #f87171;
+    border-color: #c84848;
     animation: cardShake 0.3s ease;
 }
 .word-games-choice.choice-locked {
     pointer-events: none;
-    opacity: 0.7;
+    opacity: 0.5;
 }
 
 /* ── Sentence Builder Activity (Stage 5) ── */
@@ -2122,22 +2181,23 @@ button,
     flex-wrap: wrap;
 }
 .sentence-card {
-    font-family: 'Noto Sans KR', sans-serif;
-    font-size: 1.2rem;
-    font-weight: 700;
+    font-family: var(--font-pixel);
+    font-size: 1.1rem;
     color: var(--text-light);
     padding: 0.7rem 1.2rem;
     min-width: 80px;
-    min-height: 48px;
-    background: #3a3850;
-    border: 2px solid var(--ui-border);
-    border-radius: 8px;
+    min-height: 56px;
+    background: linear-gradient(180deg, #383058 0%, #282048 100%);
+    border: 3px solid var(--ui-border);
+    border-radius: 6px;
+    box-shadow: 0 3px 0 #181028;
     cursor: pointer;
-    transition: transform 0.15s ease;
+    transition: transform 0.08s, box-shadow 0.08s;
     user-select: none;
 }
 .sentence-card:active {
-    transform: scale(0.93);
+    transform: translateY(3px);
+    box-shadow: none;
 }
 .sentence-card.card-used {
     opacity: 0.3;
