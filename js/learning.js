@@ -330,6 +330,7 @@ var Learning = {
     // Stage 4: Word games
     if (stage === 4) {
       if (typeof WordGamesActivity !== 'undefined') {
+        this._activeActivity = WordGamesActivity;
         WordGamesActivity.start(st, target);
       } else if (typeof PuzzleActivity !== 'undefined') {
         PuzzleActivity.start(st, target.data);
@@ -340,6 +341,7 @@ var Learning = {
     // Stage 5: Sentence builder
     if (stage === 5) {
       if (typeof SentenceBuilderActivity !== 'undefined') {
+        this._activeActivity = SentenceBuilderActivity;
         SentenceBuilderActivity.start(st, target);
       } else {
         // Temporary fallback: auto-complete sentence

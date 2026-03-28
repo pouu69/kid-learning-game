@@ -1984,3 +1984,161 @@ button,
     pointer-events: none;
     opacity: 0.6;
 }
+
+/* ── Word Games Activity (Stage 4) ── */
+.word-games-activity {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 1rem;
+}
+.word-games-word-row {
+    display: flex;
+    gap: 0.4rem;
+    justify-content: center;
+    margin: 0.5rem 0;
+}
+.word-games-char {
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-light);
+    min-width: 56px;
+    text-align: center;
+}
+.word-games-char--blank {
+    color: var(--gold);
+    border-bottom: 3px dashed var(--gold);
+    animation: popIn 0.4s ease;
+}
+.word-games-char--filled {
+    color: #4ade80;
+    border-bottom: 3px solid #4ade80;
+    animation: popIn 0.3s ease;
+}
+.word-games-meaning {
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 1.1rem;
+    color: var(--text-light);
+    opacity: 0.7;
+}
+.word-games-choices {
+    display: flex;
+    gap: 0.8rem;
+    justify-content: center;
+    margin-top: 0.5rem;
+}
+.word-games-choice {
+    min-width: 80px;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-light);
+    background: #2a2848;
+    border: 3px solid var(--ui-border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+    user-select: none;
+}
+.word-games-choice--word {
+    font-size: 1.4rem;
+    padding: 0.6rem 1rem;
+    min-width: 100px;
+}
+.word-games-choice:active {
+    transform: scale(0.93);
+}
+.word-games-choice.choice-correct {
+    border-color: #4ade80;
+    background: rgba(74, 222, 128, 0.15);
+    color: #4ade80;
+}
+.word-games-choice.choice-wrong {
+    border-color: #f87171;
+    animation: cardShake 0.3s ease;
+}
+.word-games-choice.choice-locked {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+/* ── Sentence Builder Activity (Stage 5) ── */
+.sentence-builder-activity {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+}
+.sentence-slots {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: 0.5rem 0;
+}
+.sentence-slot {
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text-light);
+    padding: 0.6rem 1rem;
+    min-width: 70px;
+    min-height: 48px;
+    text-align: center;
+    background: #2a2848;
+    border: 2px dashed var(--ui-border);
+    border-radius: 8px;
+    opacity: 0.6;
+}
+.sentence-slot.slot-filled {
+    border-style: solid;
+    border-color: #4ade80;
+    opacity: 1;
+    animation: popIn 0.3s ease;
+}
+.sentence-cards {
+    display: flex;
+    gap: 0.6rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.sentence-card {
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-light);
+    padding: 0.7rem 1.2rem;
+    min-width: 80px;
+    min-height: 48px;
+    background: #3a3850;
+    border: 2px solid var(--ui-border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+    user-select: none;
+}
+.sentence-card:active {
+    transform: scale(0.93);
+}
+.sentence-card.card-used {
+    opacity: 0.3;
+    pointer-events: none;
+}
+.sentence-card.choice-wrong {
+    border-color: #f87171;
+    animation: cardShake 0.3s ease;
+}
+.sentence-complete-praise {
+    font-family: var(--font-pixel);
+    font-size: 1.4rem;
+    color: var(--gold);
+    animation: popIn 0.4s ease;
+    margin-top: 0.5rem;
+}
