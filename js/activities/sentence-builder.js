@@ -1,22 +1,9 @@
 // js/activities/sentence-builder.js
 // Stage 5: Sentence building game — arrange word cards to form sentences
 // Globals: CURRICULUM, Learning, speakText, playSound
+// Shared: shuffleArray, createSoundButton, applyTimerMixin
 
 var SentenceBuilderActivity = {
-  _timers: [],
-
-  _cleanup: function() {
-    for (var i = 0; i < this._timers.length; i++) {
-      clearTimeout(this._timers[i]);
-    }
-    this._timers = [];
-  },
-
-  _setTimeout: function(fn, ms) {
-    var id = setTimeout(fn, ms);
-    this._timers.push(id);
-    return id;
-  },
 
   start: function(st, target) {
     this._cleanup();
@@ -35,13 +22,13 @@ var SentenceBuilderActivity = {
     var label = document.createElement('div');
     label.className = 'phase-label';
     label.textContent = '문장을 만들어봐!';
+    speakText('문장을 만들어봐!', 0.7);
     container.appendChild(label);
 
     // Sound button — plays full sentence
-    var soundBtn = document.createElement('button');
-    soundBtn.className = 'sound-btn sound-btn-big sound-btn-wave';
-    soundBtn.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>';
-    soundBtn.onclick = function() { speakText(sentenceData.text, 0.7); };
+    var soundBtn = createSoundButton(function() {
+      speakText(sentenceData.text, 0.7);
+    });
     container.appendChild(soundBtn);
 
     // Sentence slot area (blank cards to fill)
@@ -60,12 +47,8 @@ var SentenceBuilderActivity = {
     }
     container.appendChild(slotArea);
 
-    // Scrambled word cards
-    var scrambled = slots.slice();
-    for (var j = scrambled.length - 1; j > 0; j--) {
-      var k = Math.floor(Math.random() * (j + 1));
-      var t = scrambled[j]; scrambled[j] = scrambled[k]; scrambled[k] = t;
-    }
+    // Scrambled word cards using shared shuffle
+    var scrambled = shuffleArray(slots);
 
     var cardArea = document.createElement('div');
     cardArea.className = 'sentence-cards';
@@ -142,6 +125,7 @@ var SentenceBuilderActivity = {
     var praise = document.createElement('div');
     praise.className = 'sentence-complete-praise';
     praise.textContent = '문장 완성!';
+    speakText('문장 완성!', 0.7);
     container.appendChild(praise);
 
     this._setTimeout(function() {
@@ -150,3 +134,5 @@ var SentenceBuilderActivity = {
     }, 1500);
   }
 };
+
+applyTimerMixin(SentenceBuilderActivity);

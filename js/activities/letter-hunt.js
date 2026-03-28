@@ -2,13 +2,13 @@
 // Stage 1-2: Letter learning with VAK loop (see/hear/trace/hunt)
 // Replaces LetterActivity for new content; LetterActivity still used for reviews
 // Globals: CURRICULUM, LETTERS, Learning, speakText, playSound
+// Shared: shuffleArray, buildChoices, createSoundButton, handleChoiceResult, applyTimerMixin
 
 var LetterHuntActivity = {
-  _phase: 'intro',  // intro → trace → hunt → complete
+  _phase: 'intro',  // intro -> trace -> hunt -> complete
   _guideTimer: null,
   _target: null,
   _canvasListeners: null,
-  _timers: [],
 
   start: function(st, target) {
     this._cleanup();
@@ -17,15 +17,12 @@ var LetterHuntActivity = {
     this._showIntro(st, target);
   },
 
-  _cleanup: function() {
+  // Override _cleanup after mixin to preserve canvas cleanup
+  _cleanupExtra: function() {
     if (this._guideTimer) {
       clearTimeout(this._guideTimer);
       this._guideTimer = null;
     }
-    for (var i = 0; i < this._timers.length; i++) {
-      clearTimeout(this._timers[i]);
-    }
-    this._timers = [];
     // Remove canvas pointer listeners
     if (this._canvasListeners) {
       var cl = this._canvasListeners;
@@ -38,12 +35,6 @@ var LetterHuntActivity = {
     this._phase = 'intro';
   },
 
-  _setTimeout: function(fn, ms) {
-    var id = setTimeout(fn, ms);
-    this._timers.push(id);
-    return id;
-  },
-
   // Phase 1: Letter intro — show letter + associated word + sound
   _showIntro: function(st, target) {
     var self = this;
@@ -54,10 +45,12 @@ var LetterHuntActivity = {
     var container = document.createElement('div');
     container.className = 'letter-hunt-activity';
 
-    // Phase label
+    // Phase label with voice
     var label = document.createElement('div');
     label.className = 'phase-label';
-    label.textContent = target.review ? '복습해보자!' : '새 글자를 배워보자!';
+    var labelText = target.review ? '복습해보자!' : '새 글자를 배워보자!';
+    label.textContent = labelText;
+    speakText(labelText, 0.7);
     if (target.review) {
       var badge = document.createElement('span');
       badge.className = 'review-badge';
@@ -79,7 +72,7 @@ var LetterHuntActivity = {
     nameLabel.textContent = letterInfo ? letterInfo.name : '';
     container.appendChild(nameLabel);
 
-    // Combined syllable display (e.g., ㄱ → 가)
+    // Combined syllable display (e.g., ㄱ -> 가)
     if (consonantData.combinedSyllable) {
       var syllableRow = document.createElement('div');
       syllableRow.className = 'letter-hunt-syllable';
@@ -96,29 +89,27 @@ var LetterHuntActivity = {
     }
 
     // Sound button
-    var soundBtn = document.createElement('button');
-    soundBtn.className = 'sound-btn sound-btn-big sound-btn-wave';
-    soundBtn.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>';
-    soundBtn.onclick = function() {
+    var soundBtn = createSoundButton(function() {
       soundBtn.classList.remove('sound-btn-press');
       void soundBtn.offsetWidth;
       soundBtn.classList.add('sound-btn-press');
       speakText(consonantData.sound, 0.7);
-    };
+    });
     container.appendChild(soundBtn);
 
-    // Next button (appears after delay, guarded by phase)
+    // Next button (appears after delay, guarded by phase) — icon+voice UX
     this._guideTimer = setTimeout(function() {
       self._guideTimer = null;
       if (self._phase !== 'intro') return;
       var nextBtn = document.createElement('button');
       nextBtn.className = 'trace-check-btn';
-      nextBtn.textContent = '따라 써보기';
+      nextBtn.innerHTML = '<span style="font-size:1.5em">\u270F</span><br><span style="font-size:0.75em">\uB530\uB77C \uC368\uBCF4\uAE30</span>';
       nextBtn.style.animation = 'popIn 0.3s ease';
       nextBtn.onclick = function() {
         self._phase = 'trace';
         self._showTrace(st, target);
       };
+      speakText('따라 써보기', 0.7);
       container.appendChild(nextBtn);
     }, 1500);
 
@@ -144,6 +135,7 @@ var LetterHuntActivity = {
     var label = document.createElement('div');
     label.className = 'phase-label';
     label.textContent = '손가락으로 따라 써봐!';
+    speakText('손가락으로 따라 써봐!', 0.7);
     container.appendChild(label);
 
     // Tracing canvas
@@ -265,18 +257,22 @@ var LetterHuntActivity = {
     var label = document.createElement('div');
     label.className = 'phase-label';
     label.textContent = '어떤 글자일까?';
+    speakText('어떤 글자일까?', 0.7);
     container.appendChild(label);
 
     // Play the sound to identify
-    var soundBtn = document.createElement('button');
-    soundBtn.className = 'sound-btn sound-btn-big sound-btn-wave';
-    soundBtn.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>';
-    soundBtn.onclick = function() { speakText(target.data.sound, 0.7); };
+    var soundBtn = createSoundButton(function() {
+      speakText(target.data.sound, 0.7);
+    });
     container.appendChild(soundBtn);
 
-    // Build 3 choices (correct + 2 distractors)
+    // Build 3 choices using shared utility
     var pool = isConsonant ? CURRICULUM.consonants : CURRICULUM.vowels;
-    var choices = this._buildHuntChoices(correctLetter, pool);
+    var letterPool = [];
+    for (var p = 0; p < pool.length; p++) {
+      letterPool.push(pool[p].letter);
+    }
+    var choices = buildChoices(correctLetter, letterPool, 2);
 
     var choiceContainer = document.createElement('div');
     choiceContainer.className = 'letter-hunt-choices';
@@ -303,71 +299,32 @@ var LetterHuntActivity = {
     this._setTimeout(function() { speakText(target.data.sound, 0.7); }, 500);
   },
 
-  _buildHuntChoices: function(correct, pool) {
-    var distractors = [];
-    for (var i = 0; i < pool.length; i++) {
-      if (pool[i].letter !== correct) {
-        distractors.push(pool[i].letter);
-      }
-    }
-    // Shuffle and pick 2
-    for (var j = distractors.length - 1; j > 0; j--) {
-      var k = Math.floor(Math.random() * (j + 1));
-      var temp = distractors[j];
-      distractors[j] = distractors[k];
-      distractors[k] = temp;
-    }
-    var selected = distractors.slice(0, 2);
-    selected.push(correct);
-
-    // Shuffle final choices
-    for (var m = selected.length - 1; m > 0; m--) {
-      var n = Math.floor(Math.random() * (m + 1));
-      var t = selected[m];
-      selected[m] = selected[n];
-      selected[n] = t;
-    }
-    return selected;
-  },
-
   _handleHuntChoice: function(st, target, selected, choiceContainer) {
     var correct = target.data.letter;
     var buttons = choiceContainer.querySelectorAll('.letter-hunt-choice');
+    var self = this;
 
-    // Lock all
-    for (var i = 0; i < buttons.length; i++) {
-      buttons[i].classList.add('choice-locked');
-    }
-
-    if (selected === correct) {
-      // Highlight correct
-      for (var j = 0; j < buttons.length; j++) {
-        if (buttons[j].getAttribute('data-letter') === correct) {
-          buttons[j].classList.add('choice-correct');
-        }
-      }
-      playSound('correct');
-
-      var self = this;
-      this._setTimeout(function() {
+    handleChoiceResult(
+      this, buttons, 'data-letter', selected, correct,
+      function() {
         self._cleanup();
         self._phase = 'complete';
         Learning.onLetterComplete(st, target);
-      }, 800);
-    } else {
-      // Wrong — highlight wrong, then unlock after delay
-      for (var k = 0; k < buttons.length; k++) {
-        if (buttons[k].getAttribute('data-letter') === selected) {
-          buttons[k].classList.add('choice-wrong');
-        }
-      }
-
-      this._setTimeout(function() {
-        for (var i = 0; i < buttons.length; i++) {
-          buttons[i].classList.remove('choice-locked', 'choice-wrong');
-        }
+      },
+      function() {
         speakText(target.data.sound, 0.7);
-      }, 800);
-    }
+      }
+    );
   }
 };
+
+applyTimerMixin(LetterHuntActivity);
+
+// Override _cleanup to add canvas-specific teardown
+(function() {
+  var mixinCleanup = LetterHuntActivity._cleanup;
+  LetterHuntActivity._cleanup = function() {
+    mixinCleanup.call(this);
+    this._cleanupExtra();
+  };
+})();

@@ -108,8 +108,11 @@ var Learning = {
   },
 
   // Open learning popup overlay
-  openPopup: function(content) {
+  // options: { showProgress: bool, activity: object }
+  openPopup: function(content, options) {
     var self = this;
+    var opts = options || {};
+
     if (!this.overlayEl) {
       this.overlayEl = document.createElement('div');
       this.overlayEl.className = 'learning-overlay';
@@ -125,19 +128,26 @@ var Learning = {
     }
     this.popupEl.innerHTML = '';
 
+    // Register activity for cleanup
+    if (opts.activity) {
+      this._activeActivity = opts.activity;
+    }
+
     // Close button
     var closeBtn = document.createElement('button');
     closeBtn.className = 'popup-close-btn';
-    closeBtn.innerHTML = '&#10005;';
+    closeBtn.textContent = '\u2715';
     closeBtn.setAttribute('aria-label', '닫기');
     closeBtn.onclick = function() { self.closePopup(); };
     this.popupEl.appendChild(closeBtn);
 
-    // Progress indicator
-    var currentSt = typeof getState === 'function' ? getState() : null;
-    if (currentSt) {
-      var progressEl = this._buildProgressIndicator(currentSt);
-      if (progressEl) this.popupEl.appendChild(progressEl);
+    // Progress indicator (only for learning activities, not care)
+    if (opts.showProgress !== false) {
+      var currentSt = typeof getState === 'function' ? getState() : null;
+      if (currentSt) {
+        var progressEl = this._buildProgressIndicator(currentSt);
+        if (progressEl) this.popupEl.appendChild(progressEl);
+      }
     }
 
     // Main content
@@ -569,14 +579,14 @@ var Learning = {
 
     var btnContinue = document.createElement('button');
     btnContinue.className = 'continue-btn continue-btn--primary';
-    btnContinue.textContent = '더 배우기!';
+    btnContinue.innerHTML = '<span class="continue-btn-icon">\u25B6</span><span class="continue-btn-label">\uB354 \uBC30\uC6B0\uAE30</span>';
     btnContinue.onclick = function() {
       self.startLearning(st);
     };
 
     var btnRest = document.createElement('button');
     btnRest.className = 'continue-btn continue-btn--secondary';
-    btnRest.textContent = '쉬기';
+    btnRest.innerHTML = '<span class="continue-btn-icon">\u2302</span><span class="continue-btn-label">\uC26C\uAE30</span>';
     btnRest.onclick = function() {
       self.closePopup();
       if (typeof updateHome === 'function') updateHome(st);

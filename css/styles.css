@@ -1704,17 +1704,29 @@ button,
     justify-content: center;
 }
 .continue-btn {
-    font-family: var(--font-pixel);
-    font-size: 1.1rem;
-    padding: 0.8rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 1rem 1.5rem;
     min-width: 120px;
+    min-height: 80px;
     border: none;
-    border-radius: 8px;
+    border-radius: 12px;
     cursor: pointer;
     user-select: none;
 }
 .continue-btn:active {
     transform: translateY(2px);
+}
+.continue-btn-icon {
+    font-size: 2rem;
+    line-height: 1;
+}
+.continue-btn-label {
+    font-family: var(--font-pixel);
+    font-size: 0.75rem;
+    opacity: 0.8;
 }
 .continue-btn--primary {
     background: var(--gold);

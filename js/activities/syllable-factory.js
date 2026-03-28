@@ -1,31 +1,18 @@
 // js/activities/syllable-factory.js
 // Stage 3: Syllable combination game — combine consonant + vowel to make syllables
 // Globals: CURRICULUM, Learning, speakText, playSound
+// Shared: shuffleArray, buildChoices, createSoundButton, applyTimerMixin
 
 var SyllableFactoryActivity = {
   _attempts: 0,
   _selectedCho: null,
   _selectedJung: null,
-  _timers: [],
-
-  _cleanup: function() {
-    for (var i = 0; i < this._timers.length; i++) {
-      clearTimeout(this._timers[i]);
-    }
-    this._timers = [];
-    this._selectedCho = null;
-    this._selectedJung = null;
-    this._attempts = 0;
-  },
-
-  _setTimeout: function(fn, ms) {
-    var id = setTimeout(fn, ms);
-    this._timers.push(id);
-    return id;
-  },
 
   start: function(st, target) {
     this._cleanup();
+    this._selectedCho = null;
+    this._selectedJung = null;
+    this._attempts = 0;
     this._showRound(st, target.data);
   },
 
@@ -39,13 +26,13 @@ var SyllableFactoryActivity = {
     var label = document.createElement('div');
     label.className = 'phase-label';
     label.textContent = '글자를 만들어봐!';
+    speakText('글자를 만들어봐!', 0.7);
     container.appendChild(label);
 
     // Sound button
-    var soundBtn = document.createElement('button');
-    soundBtn.className = 'sound-btn sound-btn-big sound-btn-wave';
-    soundBtn.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>';
-    soundBtn.onclick = function() { speakText(targetSyllable, 0.7); };
+    var soundBtn = createSoundButton(function() {
+      speakText(targetSyllable, 0.7);
+    });
     container.appendChild(soundBtn);
 
     // Combination slots
@@ -69,7 +56,11 @@ var SyllableFactoryActivity = {
     choLabel.textContent = '자음';
     container.appendChild(choLabel);
 
-    var choChoices = this._buildChoices(syllableData.cho, 'consonant');
+    var conPool = [];
+    for (var ci = 0; ci < CURRICULUM.consonants.length; ci++) {
+      conPool.push(CURRICULUM.consonants[ci].letter);
+    }
+    var choChoices = buildChoices(syllableData.cho, conPool, 2);
     var choContainer = document.createElement('div');
     choContainer.className = 'factory-choices';
     choContainer.onclick = function(e) {
@@ -86,7 +77,11 @@ var SyllableFactoryActivity = {
     jungLabel.textContent = '모음';
     container.appendChild(jungLabel);
 
-    var jungChoices = this._buildChoices(syllableData.jung, 'vowel');
+    var vowPool = [];
+    for (var vi = 0; vi < CURRICULUM.vowels.length; vi++) {
+      vowPool.push(CURRICULUM.vowels[vi].letter);
+    }
+    var jungChoices = buildChoices(syllableData.jung, vowPool, 2);
     var jungContainer = document.createElement('div');
     jungContainer.className = 'factory-choices';
     jungContainer.onclick = function(e) {
@@ -114,27 +109,6 @@ var SyllableFactoryActivity = {
     op.className = 'factory-operator';
     op.textContent = text;
     return op;
-  },
-
-  _buildChoices: function(correct, type) {
-    var pool = type === 'consonant' ? CURRICULUM.consonants : CURRICULUM.vowels;
-    var others = [];
-    for (var i = 0; i < pool.length; i++) {
-      if (pool[i].letter !== correct) others.push(pool[i].letter);
-    }
-    // Fisher-Yates shuffle
-    for (var j = others.length - 1; j > 0; j--) {
-      var k = Math.floor(Math.random() * (j + 1));
-      var temp = others[j]; others[j] = others[k]; others[k] = temp;
-    }
-    var choices = others.slice(0, 2);
-    choices.push(correct);
-    // Shuffle final
-    for (var m = choices.length - 1; m > 0; m--) {
-      var n = Math.floor(Math.random() * (m + 1));
-      var t = choices[m]; choices[m] = choices[n]; choices[n] = t;
-    }
-    return choices;
   },
 
   _renderChoiceButtons: function(choices, container) {
@@ -203,3 +177,5 @@ var SyllableFactoryActivity = {
     }, 1000);
   }
 };
+
+applyTimerMixin(SyllableFactoryActivity);

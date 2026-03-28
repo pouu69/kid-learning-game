@@ -1,24 +1,11 @@
 // js/activities/sound-match.js
 // Stage 0: Sound matching game — match sounds to pictures (egg hatching)
 // Globals: CURRICULUM, Learning, speakText, playSound
+// Shared: shuffleArray, createSoundButton, applyTimerMixin
 
 var SoundMatchActivity = {
   _currentWord: null,
   _attempts: 0,
-  _timers: [],
-
-  _cleanup: function() {
-    for (var i = 0; i < this._timers.length; i++) {
-      clearTimeout(this._timers[i]);
-    }
-    this._timers = [];
-  },
-
-  _setTimeout: function(fn, ms) {
-    var id = setTimeout(fn, ms);
-    this._timers.push(id);
-    return id;
-  },
 
   start: function(st, target) {
     this._cleanup();
@@ -41,12 +28,9 @@ var SoundMatchActivity = {
     container.appendChild(eggHint);
 
     // Sound play button
-    var soundBtn = document.createElement('button');
-    soundBtn.className = 'sound-btn sound-btn-big sound-btn-wave';
-    soundBtn.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>';
-    soundBtn.onclick = function() {
+    var soundBtn = createSoundButton(function() {
       speakText(wordData.sound, 0.7);
-    };
+    });
     container.appendChild(soundBtn);
 
     // Instruction (voice-first)
@@ -54,6 +38,7 @@ var SoundMatchActivity = {
     instruction.className = 'sound-match-instruction';
     instruction.textContent = '어떤 그림일까?';
     container.appendChild(instruction);
+    speakText('어떤 그림일까?', 0.7);
 
     // Build choices: correct + distractor (2 choices for 5-7yo)
     var choices = this._buildChoices(wordData);
@@ -188,3 +173,5 @@ var SoundMatchActivity = {
     return map[illustration] || '?';
   }
 };
+
+applyTimerMixin(SoundMatchActivity);

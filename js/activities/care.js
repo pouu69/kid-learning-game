@@ -153,8 +153,7 @@ var CareActivity = {
     }
     container.appendChild(foodGrid);
 
-    Learning.openPopup(container);
-    Learning._activeActivity = CareActivity;
+    Learning.openPopup(container, { showProgress: false, activity: CareActivity });
     speakText('뭘 먹을까?', 0.75);
   },
 
@@ -309,8 +308,7 @@ var CareActivity = {
     moon.textContent = '\uD83C\uDF19';
     container.appendChild(moon);
 
-    Learning.openPopup(container);
-    Learning._activeActivity = CareActivity;
+    Learning.openPopup(container, { showProgress: false, activity: CareActivity });
     speakText('별을 눌러봐!', 0.75);
   },
 
@@ -403,8 +401,7 @@ var CareActivity = {
     }
     container.appendChild(sunField);
 
-    Learning.openPopup(container);
-    Learning._activeActivity = CareActivity;
+    Learning.openPopup(container, { showProgress: false, activity: CareActivity });
     speakText('해를 눌러봐!', 0.75);
   },
 
@@ -495,8 +492,7 @@ var CareActivity = {
     }
     container.appendChild(bubbleField);
 
-    Learning.openPopup(container);
-    Learning._activeActivity = CareActivity;
+    Learning.openPopup(container, { showProgress: false, activity: CareActivity });
     speakText('거품을 눌러봐!', 0.75);
   },
 
