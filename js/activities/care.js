@@ -175,24 +175,50 @@ var CareActivity = {
       var field = document.createElement('div');
       field.className = 'care-feed-field';
 
+      // Pet peek position (bottom center of popup)
+      var peekTarget = { x: '50%', y: '90%' };
+
       field.onclick = function(e) {
         var piece = e.target.closest('.care-feed-piece');
         if (!piece || piece.classList.contains('piece-eaten')) return;
 
         piece.classList.add('piece-eaten');
-        playSound('click');
-        speakText('냠!', 0.8);
         tappedPieces++;
 
-        // Pet reaction for each piece
-        if (typeof PetRenderer !== 'undefined' && PetRenderer.emitParticles) {
-          PetRenderer.emitParticles('heart', 1);
-        }
+        // Fly-to-pet animation: piece zooms toward pet mouth
+        var pieceRect = piece.getBoundingClientRect();
+        var fieldRect = field.getBoundingClientRect();
+        var flyClone = document.createElement('div');
+        flyClone.className = 'care-feed-fly';
+        flyClone.textContent = food.emoji;
+        flyClone.style.left = (pieceRect.left - fieldRect.left) + 'px';
+        flyClone.style.top = (pieceRect.top - fieldRect.top) + 'px';
+        field.appendChild(flyClone);
+
+        // Trigger fly animation on next frame
+        requestAnimationFrame(function() {
+          flyClone.style.transform = 'translate(' +
+            ((fieldRect.width / 2) - (pieceRect.left - fieldRect.left) - 24) + 'px, ' +
+            ((fieldRect.height - 20) - (pieceRect.top - fieldRect.top)) + 'px) scale(0.3)';
+          flyClone.style.opacity = '0';
+        });
+
+        playSound('click');
+
+        // "냠!" bubble appears at pet peek
+        self._setTimeout(function() {
+          if (flyClone.parentNode) flyClone.parentNode.removeChild(flyClone);
+
+          if (typeof PetRenderer !== 'undefined') {
+            if (PetRenderer.emitParticles) PetRenderer.emitParticles('heart', 1);
+            if (PetRenderer.showPixiBubble) PetRenderer.showPixiBubble('냠!', 60);
+          }
+        }, 350);
 
         if (tappedPieces >= totalPieces) {
           self._setTimeout(function() {
             self._finishFeed(st, food, container);
-          }, 400);
+          }, 600);
         }
       };
 
