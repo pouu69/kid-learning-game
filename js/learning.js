@@ -139,8 +139,17 @@ var Learning = {
       this.overlayEl.classList.remove('active');
     }
     // Always refresh HUD when popup closes
-    if (typeof st !== 'undefined' && typeof updateHome === 'function') {
-      updateHome(st);
+    var currentSt = typeof getState === 'function' ? getState() : null;
+    if (currentSt && typeof updateHome === 'function') {
+      updateHome(currentSt);
+    }
+    // Auto-return to home when learning is complete
+    if (typeof currentScreen !== 'undefined' && currentScreen === 'learning') {
+      if (typeof showScreen === 'function') showScreen('home');
+      if (typeof PetRenderer !== 'undefined') {
+        if (PetRenderer.container) PetRenderer.container.visible = true;
+        if (PetRenderer.walkOnScreen) PetRenderer.walkOnScreen('left');
+      }
     }
   },
 
@@ -245,13 +254,13 @@ var Learning = {
     if (target.type === 'consonant') {
       if (st.learning.knownConsonants.indexOf(letter) === -1) {
         st.learning.knownConsonants.push(letter);
+        if (!target.review) st.learning.consonantIndex++;
       }
-      st.learning.consonantIndex++;
     } else {
       if (st.learning.knownVowels.indexOf(letter) === -1) {
         st.learning.knownVowels.push(letter);
+        if (!target.review) st.learning.vowelIndex++;
       }
-      st.learning.vowelIndex++;
     }
 
     // Check evolution before showing reward
@@ -278,17 +287,14 @@ var Learning = {
       return;
     }
 
-    // Show reward in popup before closing
-    if (self.popupEl) {
-      var praises = ['잘했어!', '멋져!', '최고야!', '대단해!'];
-      var praise = praises[Math.floor(Math.random() * praises.length)];
-      var rewardEl = document.createElement('div');
-      rewardEl.style.cssText = 'text-align:center;padding:2rem;';
-      rewardEl.innerHTML = '<div style="font-size:4rem;animation:popIn 0.4s ease">' + letter + '</div>' +
-        '<div style="font-size:1.4rem;color:var(--gold);margin-top:1rem;font-family:var(--font-pixel);animation:popIn 0.6s ease">' + praise + '</div>';
-      self.popupEl.innerHTML = '';
-      self.popupEl.appendChild(rewardEl);
-    }
+    // Show reward in popup before closing (use openPopup to re-render updated progress dots)
+    var praises = ['잘했어!', '멋져!', '최고야!', '대단해!'];
+    var praise = praises[Math.floor(Math.random() * praises.length)];
+    var rewardEl = document.createElement('div');
+    rewardEl.style.cssText = 'text-align:center;padding:2rem;';
+    rewardEl.innerHTML = '<div style="font-size:4rem;animation:popIn 0.4s ease">' + letter + '</div>' +
+      '<div style="font-size:1.4rem;color:var(--gold);margin-top:1rem;font-family:var(--font-pixel);animation:popIn 0.6s ease">' + praise + '</div>';
+    self.openPopup(rewardEl);
 
     // Celebration effects
     if (typeof showCelebration === 'function') {
@@ -414,17 +420,14 @@ var Learning = {
     saveState(st);
     if (typeof updateHome === 'function') updateHome(st);
 
-    // Show reward in popup before closing
-    if (self.popupEl) {
-      var wordPraises = ['새로운 말을 배웠어!', '또 하나 배웠다!', '점점 잘하고 있어!', '너무 잘해!'];
-      var wPraise = wordPraises[Math.floor(Math.random() * wordPraises.length)];
-      var rewardEl = document.createElement('div');
-      rewardEl.style.cssText = 'text-align:center;padding:2rem;';
-      rewardEl.innerHTML = '<div style="font-size:3.5rem;animation:popIn 0.4s ease">' + wordData.word + '</div>' +
-        '<div style="font-size:1.2rem;color:var(--gold);margin-top:1rem;font-family:var(--font-pixel);animation:popIn 0.6s ease">' + wPraise + '</div>';
-      self.popupEl.innerHTML = '';
-      self.popupEl.appendChild(rewardEl);
-    }
+    // Show reward in popup before closing (use openPopup to re-render updated progress)
+    var wordPraises = ['새로운 말을 배웠어!', '또 하나 배웠다!', '점점 잘하고 있어!', '너무 잘해!'];
+    var wPraise = wordPraises[Math.floor(Math.random() * wordPraises.length)];
+    var rewardEl = document.createElement('div');
+    rewardEl.style.cssText = 'text-align:center;padding:2rem;';
+    rewardEl.innerHTML = '<div style="font-size:3.5rem;animation:popIn 0.4s ease">' + wordData.word + '</div>' +
+      '<div style="font-size:1.2rem;color:var(--gold);margin-top:1rem;font-family:var(--font-pixel);animation:popIn 0.6s ease">' + wPraise + '</div>';
+    self.openPopup(rewardEl);
 
     // Celebration effects
     if (typeof showCelebration === 'function') {
