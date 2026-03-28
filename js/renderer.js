@@ -1638,10 +1638,10 @@ var PetRenderer = {
     }
 
     var food = new PIXI.Graphics();
-    food.rect(-8, -8, 16, 16).fill({ color: 0xf4b870 });
-    food.rect(-4, -4, 8, 8).fill({ color: 0xffffff });
+    food.rect(-16, -16, 32, 32).fill({ color: 0xf4b870 });
+    food.rect(-8, -8, 16, 16).fill({ color: 0xffffff });
     food.x = self.container.x;
-    food.y = self.container.y - 100;
+    food.y = self.container.y - 140;
     food.alpha = 1;
     self._app.stage.addChild(food);
 
