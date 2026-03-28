@@ -173,20 +173,14 @@ var CareActivity = {
       playSound('click');
     }, 300);
 
-    // After walk+eat+walk-back animation finishes (~3.5s), apply hunger + show bubble
+    // After walk+eat animation (~2.5s), apply hunger boost + update HUD
     self._setTimeout(function() {
       st.hunger = Math.min(100, st.hunger + food.boost);
       st.mood = Math.min(100, st.mood + 8);
       saveState(st);
       updateHome(st);
-
       playSound('correct');
-      if (typeof PetRenderer !== 'undefined') {
-        if (PetRenderer.showPixiBubble) PetRenderer.showPixiBubble('맛있다!', 120);
-        if (PetRenderer.emitParticles) PetRenderer.emitParticles('heart', 5);
-        if (PetRenderer.celebrate) PetRenderer.celebrate();
-      }
-    }, 3500);
+    }, 2500);
   },
 
   // === SLEEP: Tap stars (with hangul on stars for Stage 1+) ===

@@ -1725,10 +1725,14 @@ var PetRenderer = {
         if (food._foodStyle) food._foodStyle.destroy();
         food.destroy(true);
 
-        // Start chewing — pet stays at current position
+        // Start chewing + immediate reaction
         self._chewCount = 3;
         self._feedAnimTimer = 1;
         self._floatHearts();
+
+        // Happy reaction: bubble + celebrate
+        if (self.showPixiBubble) self.showPixiBubble('맛있다!', 150);
+        if (self.celebrate) self.celebrate();
       }
     };
     self._app.ticker.add(eatTicker);
