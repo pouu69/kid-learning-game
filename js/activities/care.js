@@ -163,20 +163,19 @@ var CareActivity = {
     this._setTimeout(function() {
       container.innerHTML = '';
 
-      var label = document.createElement('div');
-      label.className = 'phase-label';
-      label.textContent = '먹여주자!';
-      speakText('먹여주자!', 0.7);
-      container.appendChild(label);
+      // Pet face at top — mouth open, waiting for food
+      var petFace = document.createElement('div');
+      petFace.className = 'care-feed-pet';
+      petFace.innerHTML = '<div class="care-feed-pet-eyes"><span class="care-feed-pet-eye"></span><span class="care-feed-pet-eye"></span></div><div class="care-feed-pet-mouth"></div>';
+      container.appendChild(petFace);
 
-      // Scatter 4 food pieces across the popup
+      speakText('먹여주자!', 0.7);
+
+      // Scatter 4 food pieces below pet face
       var totalPieces = 4;
       var tappedPieces = 0;
       var field = document.createElement('div');
       field.className = 'care-feed-field';
-
-      // Pet peek position (bottom center of popup)
-      var peekTarget = { x: '50%', y: '90%' };
 
       field.onclick = function(e) {
         var piece = e.target.closest('.care-feed-piece');
@@ -185,49 +184,53 @@ var CareActivity = {
         piece.classList.add('piece-eaten');
         tappedPieces++;
 
-        // Fly-to-pet animation: piece zooms toward pet mouth
+        // Fly toward pet mouth (top center)
         var pieceRect = piece.getBoundingClientRect();
-        var fieldRect = field.getBoundingClientRect();
+        var petRect = petFace.getBoundingClientRect();
         var flyClone = document.createElement('div');
         flyClone.className = 'care-feed-fly';
         flyClone.textContent = food.emoji;
-        flyClone.style.left = (pieceRect.left - fieldRect.left) + 'px';
-        flyClone.style.top = (pieceRect.top - fieldRect.top) + 'px';
-        field.appendChild(flyClone);
+        flyClone.style.position = 'fixed';
+        flyClone.style.left = (pieceRect.left + pieceRect.width / 2 - 20) + 'px';
+        flyClone.style.top = (pieceRect.top + pieceRect.height / 2 - 20) + 'px';
+        document.body.appendChild(flyClone);
 
-        // Trigger fly animation on next frame
+        // Animate toward pet mouth
         requestAnimationFrame(function() {
           flyClone.style.transform = 'translate(' +
-            ((fieldRect.width / 2) - (pieceRect.left - fieldRect.left) - 24) + 'px, ' +
-            ((fieldRect.height - 20) - (pieceRect.top - fieldRect.top)) + 'px) scale(0.3)';
+            ((petRect.left + petRect.width / 2 - 20) - (pieceRect.left + pieceRect.width / 2 - 20)) + 'px, ' +
+            ((petRect.top + petRect.height - 10) - (pieceRect.top + pieceRect.height / 2 - 20)) + 'px) scale(0.2)';
           flyClone.style.opacity = '0';
         });
 
         playSound('click');
 
-        // "냠!" bubble appears at pet peek
+        // Pet reacts: mouth closes then opens
         self._setTimeout(function() {
           if (flyClone.parentNode) flyClone.parentNode.removeChild(flyClone);
+          petFace.classList.add('care-feed-pet--chew');
+          self._setTimeout(function() {
+            petFace.classList.remove('care-feed-pet--chew');
+          }, 300);
 
           if (typeof PetRenderer !== 'undefined') {
             if (PetRenderer.emitParticles) PetRenderer.emitParticles('heart', 1);
-            if (PetRenderer.showPixiBubble) PetRenderer.showPixiBubble('냠!', 60);
           }
         }, 350);
 
         if (tappedPieces >= totalPieces) {
           self._setTimeout(function() {
             self._finishFeed(st, food, container);
-          }, 600);
+          }, 700);
         }
       };
 
-      // Place pieces at varied positions
+      // Place pieces below pet face
       var positions = [
-        { left: '15%', top: '20%' },
-        { left: '55%', top: '15%' },
-        { left: '25%', top: '55%' },
-        { left: '60%', top: '50%' }
+        { left: '10%', top: '25%' },
+        { left: '55%', top: '20%' },
+        { left: '20%', top: '65%' },
+        { left: '60%', top: '60%' }
       ];
 
       for (var i = 0; i < totalPieces; i++) {
