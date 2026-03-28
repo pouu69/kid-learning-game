@@ -1625,6 +1625,70 @@ var PetRenderer = {
     var self = this;
     if (!self._app || !self.container) return;
 
+    var W = self._app.screen.width;
+    var petX = self.container.x;
+
+    // Place food on opposite side of the pet
+    var foodX = petX > W / 2 ? W * 0.15 : W * 0.85;
+    var foodY = self._groundY;
+
+    // Draw food on the ground
+    var food = new PIXI.Graphics();
+    food.rect(-16, -16, 32, 32).fill({ color: 0xf4b870 });
+    food.rect(-8, -8, 16, 16).fill({ color: 0xffffff });
+    food.x = foodX;
+    food.y = foodY;
+    food.alpha = 0;
+    self._app.stage.addChild(food);
+
+    // Phase 1: Food appears (pop in)
+    var appearFrame = 0;
+    var appearTicker = function() {
+      appearFrame++;
+      var t = Math.min(appearFrame / 15, 1);
+      food.alpha = t;
+      food.scale.set(0.5 + t * 0.5);
+      if (appearFrame >= 15) {
+        self._app.ticker.remove(appearTicker);
+        // Phase 2: Pet walks to food
+        self._walkToFood(food, foodX, foodY);
+      }
+    };
+    self._app.ticker.add(appearTicker);
+  },
+
+  _walkToFood: function(food, foodX, foodY) {
+    var self = this;
+    if (!self._app || !self.container) return;
+
+    var startX = self.container.x;
+    var targetX = foodX;
+    var frame = 0;
+    var totalFrames = 50;
+
+    var walkTicker = function() {
+      frame++;
+      var t = Math.min(frame / totalFrames, 1);
+      var ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+      self.container.x = startX + (targetX - startX) * ease;
+      self.container.y = self._groundY + Math.abs(Math.sin(frame * 0.3)) * -8;
+
+      if (frame >= totalFrames) {
+        self._app.ticker.remove(walkTicker);
+        self.container.x = targetX;
+        self.container.y = self._groundY;
+        // Phase 3: Eat the food
+        self._eatFood(food, startX);
+      }
+    };
+    self._app.ticker.add(walkTicker);
+  },
+
+  _eatFood: function(food, returnX) {
+    var self = this;
+    if (!self._app || !self.container) return;
+
+    // Open mouth
     if (self.mouth) {
       self.mouth.clear();
       var stageIdx = Math.min(self._stage || 0, PET_STAGES.length - 1);
@@ -1637,30 +1701,54 @@ var PetRenderer = {
       self.mouth.fill({ color: 0x3a3028 });
     }
 
-    var food = new PIXI.Graphics();
-    food.rect(-16, -16, 32, 32).fill({ color: 0xf4b870 });
-    food.rect(-8, -8, 16, 16).fill({ color: 0xffffff });
-    food.x = self.container.x;
-    food.y = self.container.y - 140;
-    food.alpha = 1;
-    self._app.stage.addChild(food);
+    // Food shrinks into pet
+    var eatFrame = 0;
+    var eatTicker = function() {
+      eatFrame++;
+      var t = Math.min(eatFrame / 20, 1);
+      food.scale.set(1 - t);
+      food.alpha = 1 - t;
+      food.y -= 1;
 
-    var stageIdx2 = Math.min(self._stage || 0, PET_STAGES.length - 1);
-    var data2 = PET_STAGES[stageIdx2];
-    var mouthY = self.container.y - data2.bodyH * 0.10;
-
-    var fallTicker = function() {
-      food.y += 6;
-      if (food.y >= mouthY) {
+      if (eatFrame >= 20) {
+        self._app.ticker.remove(eatTicker);
         self._app.stage.removeChild(food);
-        self._app.ticker.remove(fallTicker);
         food.destroy();
+
+        // Start chewing
         self._chewCount = 3;
         self._feedAnimTimer = 1;
         self._floatHearts();
+
+        // Phase 4: Walk back to center
+        self._walkBack(returnX);
       }
     };
-    self._app.ticker.add(fallTicker);
+    self._app.ticker.add(eatTicker);
+  },
+
+  _walkBack: function(targetX) {
+    var self = this;
+    if (!self._app || !self.container) return;
+
+    var startX = self.container.x;
+    var frame = 0;
+    var totalFrames = 40;
+
+    var walkTicker = function() {
+      frame++;
+      var t = Math.min(frame / totalFrames, 1);
+      var ease = t * t;
+      self.container.x = startX + (targetX - startX) * ease;
+      self.container.y = self._groundY + Math.abs(Math.sin(frame * 0.3)) * -8;
+
+      if (frame >= totalFrames) {
+        self._app.ticker.remove(walkTicker);
+        self.container.x = targetX;
+        self.container.y = self._groundY;
+      }
+    };
+    self._app.ticker.add(walkTicker);
   },
 
   _floatHearts: function() {

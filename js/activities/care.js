@@ -173,7 +173,7 @@ var CareActivity = {
       playSound('click');
     }, 300);
 
-    // After eat animation finishes (~1.5s), apply hunger + show bubble
+    // After walk+eat+walk-back animation finishes (~3.5s), apply hunger + show bubble
     self._setTimeout(function() {
       st.hunger = Math.min(100, st.hunger + food.boost);
       st.mood = Math.min(100, st.mood + 8);
@@ -186,7 +186,7 @@ var CareActivity = {
         if (PetRenderer.emitParticles) PetRenderer.emitParticles('heart', 5);
         if (PetRenderer.celebrate) PetRenderer.celebrate();
       }
-    }, 1800);
+    }, 3500);
   },
 
   // === SLEEP: Tap stars (with hangul on stars for Stage 1+) ===
