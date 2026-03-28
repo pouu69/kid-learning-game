@@ -2160,6 +2160,88 @@ button,
     color: #ed8963;
 }
 
+/* ── Care Activity Hangul Bonus ── */
+.care-hangul-bonus {
+    text-align: center;
+    padding: 1rem;
+    animation: popIn 0.3s ease;
+}
+.care-hangul-prompt {
+    font-family: var(--font-pixel);
+    font-size: 1.1rem;
+    color: var(--text-light);
+    margin-bottom: 0.8rem;
+}
+.care-hangul-choices {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+.care-hangul-btn {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-light);
+    background: #2a2848;
+    border: 3px solid var(--ui-border);
+    border-radius: 12px;
+    cursor: pointer;
+    user-select: none;
+}
+.care-hangul-btn:active {
+    transform: scale(0.93);
+}
+.care-hangul-btn.choice-correct {
+    border-color: #4ade80;
+    background: rgba(74, 222, 128, 0.15);
+    color: #4ade80;
+}
+.care-hangul-btn.choice-wrong {
+    border-color: #f87171;
+    animation: cardShake 0.3s ease;
+}
+.care-star-letter {
+    font-family: 'Noto Sans KR', sans-serif;
+    font-weight: 700;
+    font-size: 2rem;
+    min-width: 80px;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.care-food-grid {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.care-done {
+    text-align: center;
+}
+.care-done-icon {
+    font-size: 4rem;
+    animation: popIn 0.4s ease;
+}
+.care-done-msg {
+    font-size: 1.5rem;
+    color: var(--gold);
+    margin-top: 1rem;
+    font-family: var(--font-pixel);
+    animation: popIn 0.6s ease;
+}
+.care-done-msg--purple {
+    color: var(--purple, #a78bfa);
+}
+.care-done-msg--blue {
+    color: var(--blue, #60a5fa);
+}
+
 .sentence-complete-praise {
     font-family: var(--font-pixel);
     font-size: 1.4rem;
