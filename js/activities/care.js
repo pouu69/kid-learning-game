@@ -178,8 +178,51 @@ var CareActivity = {
         saveState(st);
         updateHome(st);
         playSound('correct');
+
+        // After eating, suggest learning with pet bubble
+        setTimeout(function() {
+          if (typeof PetRenderer !== 'undefined' && PetRenderer.showPixiBubble) {
+            PetRenderer.showPixiBubble('공부하자!', 180);
+          }
+          // Show a subtle prompt to start learning
+          CareActivity._showLearnPrompt(st);
+        }, 1500);
       }, 3000);
     }, 1200);
+  },
+
+  // Show "공부하러 갈까?" prompt after feeding
+  _showLearnPrompt: function(st) {
+    var promptEl = document.createElement('div');
+    promptEl.className = 'care-learn-prompt';
+    promptEl.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:200;text-align:center;';
+
+    var btn = document.createElement('button');
+    btn.className = 'continue-btn continue-btn--primary';
+    btn.innerHTML = '<span class="continue-btn-icon">\u25B6</span><span class="continue-btn-label">\uACF5\uBD80\uD558\uB7EC \uAC00\uAE30</span>';
+    btn.onclick = function() {
+      document.body.removeChild(promptEl);
+      if (typeof Learning !== 'undefined') {
+        var fresh = (typeof loadState === 'function') ? loadState() : st;
+        Learning.startLearning(fresh || st);
+      }
+    };
+    promptEl.appendChild(btn);
+
+    // Auto-dismiss after 5 seconds if not tapped
+    var dismissTimer = setTimeout(function() {
+      if (promptEl.parentNode) {
+        promptEl.style.opacity = '0';
+        promptEl.style.transition = 'opacity 0.3s';
+        setTimeout(function() {
+          if (promptEl.parentNode) document.body.removeChild(promptEl);
+        }, 300);
+      }
+    }, 5000);
+
+    btn.addEventListener('click', function() { clearTimeout(dismissTimer); });
+
+    document.body.appendChild(promptEl);
   },
 
   // === SLEEP: Tap stars (with hangul on stars for Stage 1+) ===
