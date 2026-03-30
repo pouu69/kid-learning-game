@@ -517,7 +517,10 @@ var Learning = {
       }
       if (letterData) {
         var target = { type: isConsonant ? 'consonant' : 'vowel', data: letterData, index: 0, review: true };
-        if (typeof LetterActivity !== 'undefined') {
+        if (typeof LetterHuntActivity !== 'undefined') {
+          this._activeActivity = LetterHuntActivity;
+          LetterHuntActivity.start(st, target);
+        } else if (typeof LetterActivity !== 'undefined') {
           LetterActivity.start(st, target);
         }
       }
@@ -620,7 +623,9 @@ var Learning = {
     btnContinue.className = 'continue-btn continue-btn--primary';
     btnContinue.innerHTML = '<span class="continue-btn-icon">\u25B6</span><span class="continue-btn-label">\uB354 \uBC30\uC6B0\uAE30</span>';
     btnContinue.onclick = function() {
-      self.startLearning(st);
+      // Always re-read latest state to avoid stale closure
+      var latest = (typeof loadState === 'function') ? loadState() : st;
+      self.startLearning(latest || st);
     };
 
     var btnRest = document.createElement('button');
