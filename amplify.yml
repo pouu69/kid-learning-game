@@ -1,11 +1,21 @@
 version: 1
 frontend:
   phases:
+    preBuild:
+      commands:
+        - npm install -g terser
     build:
       commands:
-        - echo "No build step - static site"
+        # Copy all static files to dist/
+        - mkdir -p dist/css dist/js/activities dist/js/story
+        - cp index.html manifest.json sw.js dist/
+        - cp css/*.css dist/css/
+        # Minify all JS files
+        - for f in js/*.js; do terser "$f" --compress --mangle -o "dist/$f"; done
+        - for f in js/activities/*.js; do terser "$f" --compress --mangle -o "dist/$f"; done
+        - if [ -d js/story ]; then for f in js/story/*.js; do terser "$f" --compress --mangle -o "dist/$f"; done; fi
   artifacts:
-    baseDirectory: /
+    baseDirectory: dist
     files:
       - '**/*'
   cache:

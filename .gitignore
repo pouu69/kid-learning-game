@@ -2,3 +2,5 @@
 .claude/
 .superpowers/
 .omc/
+dist/
+node_modules/
