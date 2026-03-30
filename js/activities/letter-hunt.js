@@ -28,6 +28,10 @@ var LetterHuntActivity = {
       this._guideAnimStop.value = true;
       this._guideAnimStop = null;
     }
+    if (this._reGuideTimer) {
+      clearTimeout(this._reGuideTimer);
+      this._reGuideTimer = null;
+    }
     // Remove canvas pointer listeners
     if (this._canvasListeners) {
       var cl = this._canvasListeners;
@@ -122,13 +126,12 @@ var LetterHuntActivity = {
     this._setTimeout(function() { speakText(consonantData.sound, 0.7); }, 500);
   },
 
-  // Phase 2: Trace the letter
+  // Phase 2: Trace the letter (checkpoint-based evaluation with buttons)
   _showTrace: function(st, target) {
     var self = this;
     var letter = target.data.letter;
     var letterInfo = LETTERS[letter];
     if (!letterInfo || !letterInfo.strokes) {
-      // No stroke data, skip to hunt
       this._phase = 'hunt';
       this._showHunt(st, target);
       return;
@@ -152,26 +155,57 @@ var LetterHuntActivity = {
     container.appendChild(canvas);
 
     var ctx = canvas.getContext('2d');
+    var scale = canvasSize / 100;
     var isDrawing = false;
-    var strokeCount = 0;
-    var requiredStrokes = letterInfo.strokes.length;
+    var failCount = 0;
+    var hitRadius = 30;
 
-    // Draw ghost guide, then animate strokes sequentially
-    this._drawGuide(ctx, letterInfo, canvasSize);
+    // Draw ghost guide + animated stroke order
+    function redrawGuide() {
+      ctx.clearRect(0, 0, canvasSize, canvasSize);
+      self._drawGuide(ctx, letterInfo, canvasSize);
+    }
+    redrawGuide();
     this._animateStrokeGuide(canvas, letterInfo, canvasSize);
 
-    // Touch/pointer handlers with cached rect for perf
+    // Generate checkpoints for accuracy evaluation
+    var checkpoints = [];
+    for (var s = 0; s < letterInfo.strokes.length; s++) {
+      var pts = self._generateCheckpoints(letterInfo.strokes[s], 20, scale);
+      for (var cp = 0; cp < pts.length; cp++) {
+        checkpoints.push({ x: pts[cp].x, y: pts[cp].y, hit: false });
+      }
+    }
+
+    function checkHit(x, y) {
+      for (var i = 0; i < checkpoints.length; i++) {
+        if (!checkpoints[i].hit) {
+          var dx = x - checkpoints[i].x;
+          var dy = y - checkpoints[i].y;
+          if (Math.sqrt(dx * dx + dy * dy) < hitRadius) {
+            checkpoints[i].hit = true;
+          }
+        }
+      }
+    }
+
+    // Touch/pointer handlers
     var cachedRect = null;
     var onStart = function(e) {
       e.preventDefault();
+      // Stop animated guide on first touch
+      if (self._guideAnimStop) self._guideAnimStop.value = true;
+      if (self._reGuideTimer) { clearTimeout(self._reGuideTimer); self._reGuideTimer = null; }
       isDrawing = true;
       cachedRect = canvas.getBoundingClientRect();
       ctx.beginPath();
       var pos = self._getCanvasPosFromRect(e, canvas, cachedRect);
       ctx.moveTo(pos.x, pos.y);
-      ctx.lineWidth = 6;
+      ctx.lineWidth = 8;
       ctx.lineCap = 'round';
-      ctx.strokeStyle = '#f8d848';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#80d8ff';  // 하늘색 — 가이드(노란색)와 구분
+      checkHit(pos.x, pos.y);
     };
     var onMove = function(e) {
       if (!isDrawing) return;
@@ -179,23 +213,90 @@ var LetterHuntActivity = {
       var pos = self._getCanvasPosFromRect(e, canvas, cachedRect);
       ctx.lineTo(pos.x, pos.y);
       ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+      checkHit(pos.x, pos.y);
     };
     var onEnd = function() {
-      if (!isDrawing) return;
       isDrawing = false;
-      strokeCount++;
-      if (strokeCount >= requiredStrokes) {
-        self._onTraceComplete(st, target, container);
-      }
     };
 
     canvas.addEventListener('pointerdown', onStart);
     canvas.addEventListener('pointermove', onMove);
     canvas.addEventListener('pointerup', onEnd);
     canvas.addEventListener('pointerleave', onEnd);
-
-    // Store references for cleanup
     this._canvasListeners = { canvas: canvas, onStart: onStart, onMove: onMove, onEnd: onEnd };
+
+    // Evaluate trace accuracy
+    function evaluateTrace() {
+      var hitCount = 0;
+      for (var i = 0; i < checkpoints.length; i++) {
+        if (checkpoints[i].hit) hitCount++;
+      }
+      var coverage = checkpoints.length > 0 ? hitCount / checkpoints.length : 1;
+
+      if (coverage >= 0.5) {
+        canvas.style.borderColor = '#48a868';
+        canvas.style.boxShadow = '0 0 16px rgba(72,168,104,0.6)';
+        playSound('correct');
+        speakText(target.data.combinedSyllable || target.data.sound, 0.7);
+        self._setTimeout(function() {
+          self._phase = 'hunt';
+          self._showHunt(st, target);
+        }, 800);
+      } else {
+        failCount++;
+        if (failCount >= 3) {
+          speakText('잘했어! 다음으로 가자~', 0.75);
+          self._setTimeout(function() {
+            self._phase = 'hunt';
+            self._showHunt(st, target);
+          }, 1000);
+        } else {
+          canvas.style.borderColor = '#f08080';
+          canvas.style.boxShadow = '0 0 16px rgba(240,128,128,0.4)';
+          speakText('한 번 더 써볼까?', 0.75);
+          setTimeout(function() {
+            canvas.style.borderColor = '';
+            canvas.style.boxShadow = '';
+            for (var i = 0; i < checkpoints.length; i++) checkpoints[i].hit = false;
+            redrawGuide();
+            self._animateStrokeGuide(canvas, letterInfo, canvasSize);
+          }, 1000);
+        }
+      }
+    }
+
+    // Button row: 다시 + 확인
+    var btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:12px;justify-content:center;width:100%;margin-top:0.5rem;';
+
+    var retryBtn = document.createElement('button');
+    retryBtn.className = 'trace-retry-btn';
+    retryBtn.innerHTML = '&#8634; 다시';
+    retryBtn.onclick = function() {
+      for (var i = 0; i < checkpoints.length; i++) checkpoints[i].hit = false;
+      canvas.style.borderColor = '';
+      canvas.style.boxShadow = '';
+      redrawGuide();
+      self._animateStrokeGuide(canvas, letterInfo, canvasSize);
+    };
+    btnRow.appendChild(retryBtn);
+
+    var checkBtn = document.createElement('button');
+    checkBtn.className = 'trace-check-btn';
+    checkBtn.innerHTML = '&#10003; 확인';
+    checkBtn.onclick = function() { evaluateTrace(); };
+    btnRow.appendChild(checkBtn);
+
+    container.appendChild(btnRow);
+
+    // Auto re-guide after 8 seconds
+    self._reGuideTimer = setTimeout(function() {
+      self._reGuideTimer = null;
+      self._animateStrokeGuide(canvas, letterInfo, canvasSize);
+      speakText('천천히 따라 그려봐~', 0.75);
+    }, 8000);
 
     Learning.openPopup(container);
   },
@@ -336,20 +437,28 @@ var LetterHuntActivity = {
     };
   },
 
-  _onTraceComplete: function(st, target, container) {
-    var self = this;
-    // Flash effect on canvas
-    var canvas = container.querySelector('canvas');
-    if (canvas) {
-      canvas.style.boxShadow = '0 0 20px var(--gold)';
+  // Generate evenly-spaced checkpoints along a stroke for accuracy evaluation
+  _generateCheckpoints: function(stroke, count, scale) {
+    var points = [];
+    if (stroke[0] && stroke[0].circle) {
+      for (var i = 0; i < count; i++) {
+        var angle = (i / count) * Math.PI * 2;
+        points.push({
+          x: stroke[0].cx * scale + Math.cos(angle) * stroke[0].r * scale,
+          y: stroke[0].cy * scale + Math.sin(angle) * stroke[0].r * scale
+        });
+      }
+    } else if (stroke.length >= 2) {
+      for (var j = 0; j <= count; j++) {
+        var t = j / count;
+        var segIdx = Math.min(Math.floor(t * (stroke.length - 1)), stroke.length - 2);
+        var localT = (t * (stroke.length - 1)) - segIdx;
+        var x = stroke[segIdx].x + (stroke[segIdx + 1].x - stroke[segIdx].x) * localT;
+        var y = stroke[segIdx].y + (stroke[segIdx + 1].y - stroke[segIdx].y) * localT;
+        points.push({ x: x * scale, y: y * scale });
+      }
     }
-    playSound('correct');
-    speakText(target.data.combinedSyllable || target.data.sound, 0.7);
-
-    this._setTimeout(function() {
-      self._phase = 'hunt';
-      self._showHunt(st, target);
-    }, 800);
+    return points;
   },
 
   // Phase 3: Letter hunt — find the correct letter among distractors
