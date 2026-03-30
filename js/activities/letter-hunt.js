@@ -23,6 +23,11 @@ var LetterHuntActivity = {
       clearTimeout(this._guideTimer);
       this._guideTimer = null;
     }
+    // Stop animated stroke guide
+    if (this._guideAnimStop) {
+      this._guideAnimStop.value = true;
+      this._guideAnimStop = null;
+    }
     // Remove canvas pointer listeners
     if (this._canvasListeners) {
       var cl = this._canvasListeners;
@@ -151,8 +156,9 @@ var LetterHuntActivity = {
     var strokeCount = 0;
     var requiredStrokes = letterInfo.strokes.length;
 
-    // Draw ghost guide
+    // Draw ghost guide, then animate strokes sequentially
     this._drawGuide(ctx, letterInfo, canvasSize);
+    this._animateStrokeGuide(canvas, letterInfo, canvasSize);
 
     // Touch/pointer handlers with cached rect for perf
     var cachedRect = null;
@@ -194,10 +200,11 @@ var LetterHuntActivity = {
     Learning.openPopup(container);
   },
 
+  // Draw static ghost guide (faint outline for reference)
   _drawGuide: function(ctx, letterInfo, size) {
     ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-    ctx.lineWidth = 8;
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 10;
     ctx.lineCap = 'round';
     var scale = size / 100;
 
@@ -218,6 +225,106 @@ var LetterHuntActivity = {
       }
     }
     ctx.restore();
+  },
+
+  // Animate strokes sequentially with numbers and start/end dots
+  _animateStrokeGuide: function(canvas, letterInfo, size) {
+    var ctx = canvas.getContext('2d');
+    var strokes = letterInfo.strokes;
+    if (!strokes || strokes.length === 0) return;
+
+    var self = this;
+    var stopped = { value: false };
+    this._guideAnimStop = stopped;
+    var scale = size / 100;
+
+    function drawStrokeAtIndex(idx) {
+      if (stopped.value || idx >= strokes.length) return;
+      var stroke = strokes[idx];
+      var num = idx + 1;
+
+      ctx.strokeStyle = '#f8d848';
+      ctx.lineWidth = 6;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      if (stroke[0] && stroke[0].circle) {
+        var cx = stroke[0].cx * scale;
+        var cy = stroke[0].cy * scale;
+        var r = stroke[0].r * scale;
+
+        // Number above circle
+        ctx.fillStyle = '#f8d848';
+        ctx.font = 'bold 16px "DungGeunMo", monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(num.toString(), cx, cy - r - 12);
+        ctx.textAlign = 'start';
+        ctx.textBaseline = 'alphabetic';
+
+        // Draw circle
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Start dot
+        ctx.fillStyle = '#f8d848';
+        ctx.globalAlpha = 0.7;
+        ctx.beginPath();
+        ctx.arc(cx + r, cy, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+
+      } else if (stroke.length >= 2) {
+        var startX = stroke[0].x * scale;
+        var startY = stroke[0].y * scale;
+        var endX = stroke[stroke.length - 1].x * scale;
+        var endY = stroke[stroke.length - 1].y * scale;
+
+        // Number at start
+        ctx.fillStyle = '#f8d848';
+        ctx.font = 'bold 16px "DungGeunMo", monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        var numOX = startX < size / 2 ? -14 : 14;
+        var numOY = startY < size / 2 ? -14 : 14;
+        ctx.fillText(num.toString(), startX + numOX, startY + numOY);
+        ctx.textAlign = 'start';
+        ctx.textBaseline = 'alphabetic';
+
+        // Start dot
+        ctx.fillStyle = '#f8d848';
+        ctx.globalAlpha = 0.7;
+        ctx.beginPath();
+        ctx.arc(startX, startY, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+
+        // Draw stroke line
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        for (var p = 1; p < stroke.length; p++) {
+          ctx.lineTo(stroke[p].x * scale, stroke[p].y * scale);
+        }
+        ctx.stroke();
+
+        // End dot (smaller)
+        ctx.fillStyle = '#f8d848';
+        ctx.globalAlpha = 0.5;
+        ctx.beginPath();
+        ctx.arc(endX, endY, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+      }
+
+      // Next stroke after delay
+      setTimeout(function() { drawStrokeAtIndex(idx + 1); }, 600);
+    }
+
+    // Start after popup renders
+    setTimeout(function() {
+      if (!stopped.value) drawStrokeAtIndex(0);
+    }, 400);
   },
 
   _getCanvasPosFromRect: function(e, canvas, rect) {
