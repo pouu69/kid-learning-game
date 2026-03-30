@@ -15,6 +15,7 @@ var Learning = {
   popupEl: null,
   overlayEl: null,
   _sessionCount: 0,
+  _NEW_BEFORE_REVIEW: 2,  // 새 항목 2개 배운 후 복습 삽입
   _rewardTimer: null,
   _recapTimer: null,
   _evoTicker: null,
@@ -255,33 +256,42 @@ var Learning = {
     this._syncStage(st);
     this._sessionCount++;
 
-    // Initialize practiceLog if missing
+    // Initialize practiceLog and newSinceReview counter if missing
     if (!st.learning.practiceLog) st.learning.practiceLog = {};
+    if (typeof st.learning.newSinceReview !== 'number') st.learning.newSinceReview = 0;
 
     var target = this.getCurrentTarget(st);
-    var hasReviewable = this._hasReviewableItems(st);
+    var reviewableCount = this._countReviewableItems(st);
 
-    if (!target && !hasReviewable) return;
+    if (!target && reviewableCount === 0) return;
 
+    // No more new content → review only
     if (!target) {
       this._startReview(st);
       return;
     }
 
-    // Spaced repetition: new → review → review cycle
-    if (hasReviewable && this._sessionCount % 3 !== 1) {
+    // Smart interleaving: learn N new items, then review, repeat
+    // This prevents "always same thing" boredom by mixing new + review
+    if (reviewableCount >= 2 && st.learning.newSinceReview >= this._NEW_BEFORE_REVIEW) {
+      st.learning.newSinceReview = 0;
+      saveState(st);
       this._startReview(st);
       return;
     }
 
-    // Dispatch to appropriate activity based on stage
+    // Dispatch new content
     this._dispatchActivity(st, target);
   },
 
-  _hasReviewableItems: function(st) {
+  _countReviewableItems: function(st) {
     var letters = (st.learning.knownConsonants || []).concat(st.learning.knownVowels || []);
     var words = st.learning.completedWords || [];
-    return letters.length >= 1 || words.length >= 1;
+    return letters.length + words.length;
+  },
+
+  _hasReviewableItems: function(st) {
+    return this._countReviewableItems(st) >= 1;
   },
 
   // Dispatch to stage-appropriate activity
@@ -388,57 +398,86 @@ var Learning = {
     this._showReward(st, target.data.text, '문장 완성!', 'correct', target.data.text, 'note', 15, 10);
   },
 
-  // Smart review — prioritize items overdue for review (time-based)
+  // Smart review — mix recently learned + overdue items to prevent boredom
   _startReview: function(st) {
     if (!st.learning.practiceLog) st.learning.practiceLog = {};
     var pl = st.learning.practiceLog;
     var now = Date.now();
     var DAY_MS = 86400000;
+    var RECENT_MS = 10 * 60 * 1000; // 10분 이내 = "방금 배운 것"
 
     var allLetters = (st.learning.knownConsonants || []).concat(st.learning.knownVowels || []);
     var allWords = st.learning.completedWords || [];
-    var allItems = [];
+    var recentItems = [];  // 최근 배운 것 (복습 우선)
+    var olderItems = [];   // 오래된 것 (가끔 섞기)
 
-    var i, key, entry, daysSince;
+    var i, key, entry, daysSince, timeSince;
 
-    // Build items with time-based priority
+    // Categorize items into recent vs older
     for (i = 0; i < allLetters.length; i++) {
       key = allLetters[i];
       entry = pl[key] || { count: 0, lastPracticed: 0, interval: 0 };
-      daysSince = (now - (entry.lastPracticed || 0)) / DAY_MS;
-      allItems.push({
+      timeSince = now - (entry.lastPracticed || 0);
+      daysSince = timeSince / DAY_MS;
+      var item = {
         key: key,
         type: 'letter',
         overdue: daysSince - (entry.interval || 0),
-        count: entry.count || 0
-      });
+        count: entry.count || 0,
+        timeSince: timeSince
+      };
+      if (entry.count <= 2 || timeSince < RECENT_MS) {
+        recentItems.push(item);
+      } else {
+        olderItems.push(item);
+      }
     }
     for (i = 0; i < allWords.length; i++) {
       key = allWords[i];
       entry = pl[key] || { count: 0, lastPracticed: 0, interval: 0 };
-      daysSince = (now - (entry.lastPracticed || 0)) / DAY_MS;
-      allItems.push({
+      timeSince = now - (entry.lastPracticed || 0);
+      daysSince = timeSince / DAY_MS;
+      var wItem = {
         key: key,
         type: 'word',
         overdue: daysSince - (entry.interval || 0),
-        count: entry.count || 0
-      });
+        count: entry.count || 0,
+        timeSince: timeSince
+      };
+      if (entry.count <= 2 || timeSince < RECENT_MS) {
+        recentItems.push(wItem);
+      } else {
+        olderItems.push(wItem);
+      }
     }
 
-    if (allItems.length === 0) return;
+    if (recentItems.length === 0 && olderItems.length === 0) return;
 
-    // Sort: most overdue first, then least practiced, deterministic tiebreaker
-    allItems.sort(function(a, b) {
-      var overdueD = b.overdue - a.overdue;
-      if (Math.abs(overdueD) > 0.5) return overdueD;
+    // Sort recent: least practiced first (reinforce new learning)
+    recentItems.sort(function(a, b) {
       var countD = a.count - b.count;
       if (countD !== 0) return countD;
-      return a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
+      return a.timeSince - b.timeSince; // 더 최근에 배운 것 우선
     });
 
-    // Pick from top third
-    var pickRange = Math.max(1, Math.ceil(allItems.length / 3));
-    var pick = allItems[Math.floor(Math.random() * pickRange)];
+    // Sort older: most overdue first (spaced repetition)
+    olderItems.sort(function(a, b) {
+      var overdueD = b.overdue - a.overdue;
+      if (Math.abs(overdueD) > 0.5) return overdueD;
+      return a.count - b.count;
+    });
+
+    // Pick strategy: 75% recent, 25% older (prevents only reviewing old stuff)
+    var pick;
+    var useRecent = recentItems.length > 0 && (olderItems.length === 0 || Math.random() < 0.75);
+    if (useRecent) {
+      // Pick randomly from top half of recent items for variety
+      var recentRange = Math.max(1, Math.ceil(recentItems.length / 2));
+      pick = recentItems[Math.floor(Math.random() * recentRange)];
+    } else {
+      var olderRange = Math.max(1, Math.ceil(olderItems.length / 3));
+      pick = olderItems[Math.floor(Math.random() * olderRange)];
+    }
 
     // Update practice log
     var logEntry = pl[pick.key] || { count: 0, lastPracticed: 0, interval: 0 };
@@ -604,16 +643,21 @@ var Learning = {
   // Called when a letter is learned
   onLetterComplete: function(st, target) {
     var letter = target.data.letter;
+    var isNew = false;
     if (target.type === 'consonant') {
       if (st.learning.knownConsonants.indexOf(letter) === -1) {
         st.learning.knownConsonants.push(letter);
-        if (!target.review) st.learning.consonantIndex++;
+        if (!target.review) { st.learning.consonantIndex++; isNew = true; }
       }
     } else {
       if (st.learning.knownVowels.indexOf(letter) === -1) {
         st.learning.knownVowels.push(letter);
-        if (!target.review) st.learning.vowelIndex++;
+        if (!target.review) { st.learning.vowelIndex++; isNew = true; }
       }
+    }
+    // Track new items learned since last review
+    if (isNew) {
+      st.learning.newSinceReview = (st.learning.newSinceReview || 0) + 1;
     }
 
     if (typeof World !== 'undefined') World.addLetterFlower(letter, true);
@@ -713,8 +757,10 @@ var Learning = {
 
   // Called when a word is completed
   onWordComplete: function(st, wordData) {
-    if (st.learning.completedWords.indexOf(wordData.word) === -1) {
+    var isNew = st.learning.completedWords.indexOf(wordData.word) === -1;
+    if (isNew) {
       st.learning.completedWords.push(wordData.word);
+      st.learning.newSinceReview = (st.learning.newSinceReview || 0) + 1;
     }
     st.learning.wordIndex++;
 
@@ -728,6 +774,7 @@ var Learning = {
   // Called when a syllable combination is completed (Stage 3)
   onSyllableComplete: function(st, syllableData) {
     st.learning.syllablesCompleted = (st.learning.syllablesCompleted || 0) + 1;
+    st.learning.newSinceReview = (st.learning.newSinceReview || 0) + 1;
     saveState(st);
 
     var praises = ['음절을 만들었어!', '조합 성공!', '잘 만들었어!'];
@@ -738,6 +785,7 @@ var Learning = {
   // Called when a sentence is completed (Stage 5)
   onSentenceComplete: function(st, sentenceData) {
     st.learning.sentencesCompleted = (st.learning.sentencesCompleted || 0) + 1;
+    st.learning.newSinceReview = (st.learning.newSinceReview || 0) + 1;
     saveState(st);
 
     this._showReward(st, sentenceData.text, '문장 완성!', 'correct', sentenceData.text, 'note', 15, 12);
@@ -746,8 +794,10 @@ var Learning = {
   // Called when a whole word is matched (Stage 0)
   onWholeWordComplete: function(st, wordData) {
     if (!st.learning.wholeWordsMatched) st.learning.wholeWordsMatched = [];
-    if (st.learning.wholeWordsMatched.indexOf(wordData.word) === -1) {
+    var isNew = st.learning.wholeWordsMatched.indexOf(wordData.word) === -1;
+    if (isNew) {
       st.learning.wholeWordsMatched.push(wordData.word);
+      st.learning.newSinceReview = (st.learning.newSinceReview || 0) + 1;
     }
     saveState(st);
 

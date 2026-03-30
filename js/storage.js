@@ -34,6 +34,7 @@ function createDefaultState() {
       wholeWordsMatched: [],
       syllablesCompleted: 0,
       sentencesCompleted: 0,
+      newSinceReview: 0,
       practiceLog: {}
     },
     daily: {
