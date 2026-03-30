@@ -6,14 +6,51 @@ frontend:
         - npm install -g terser
     build:
       commands:
-        # Copy all static files to dist/
-        - mkdir -p dist/css dist/js/activities dist/js/story
-        - cp index.html manifest.json sw.js dist/
+        # Copy static files to dist/
+        - mkdir -p dist/css
+        - cp manifest.json sw.js dist/
         - cp css/*.css dist/css/
-        # Minify all JS files
-        - for f in js/*.js; do terser "$f" --compress --mangle -o "dist/$f"; done
-        - for f in js/activities/*.js; do terser "$f" --compress --mangle -o "dist/$f"; done
-        - if [ -d js/story ]; then for f in js/story/*.js; do terser "$f" --compress --mangle -o "dist/$f"; done; fi
+
+        # Concatenate all JS files in load order → single bundle
+        - |
+          cat \
+            js/curriculum.js \
+            js/storage.js \
+            js/pet.js \
+            js/effects.js \
+            js/world.js \
+            js/renderer.js \
+            js/sprites.js \
+            js/utils.js \
+            js/learning.js \
+            js/activities/meet.js \
+            js/activities/sound-match.js \
+            js/activities/letter-hunt.js \
+            js/activities/syllable-factory.js \
+            js/activities/word-games.js \
+            js/activities/sentence-builder.js \
+            js/activities/play.js \
+            js/activities/care.js \
+            js/report.js \
+            js/story/Constants.js \
+            js/story/EventBus.js \
+            js/story/Utils.js \
+            js/story/TimeSystem.js \
+            js/story/WeatherSystem.js \
+            js/story/SeasonSystem.js \
+            js/story/VisitorSystem.js \
+            js/story/ExploreSystem.js \
+            js/story/WorldRenderer.js \
+            js/story/StoryEngine.js \
+            js/game.js \
+            > dist/app.bundle.js
+
+        # Minify the bundle
+        - terser dist/app.bundle.js --compress passes=2,pure_getters=true --mangle --output dist/app.min.js
+        - rm dist/app.bundle.js
+
+        # Rewrite index.html to use single bundle
+        - python3 build.py
   artifacts:
     baseDirectory: dist
     files:
