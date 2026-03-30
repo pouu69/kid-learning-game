@@ -3,7 +3,7 @@ frontend:
   phases:
     preBuild:
       commands:
-        - npm install -g terser
+        - npm install terser
     build:
       commands:
         # Copy static files to dist/
@@ -46,7 +46,7 @@ frontend:
             > dist/app.bundle.js
 
         # Minify the bundle
-        - terser dist/app.bundle.js --compress passes=2,pure_getters=true --mangle --output dist/app.min.js
+        - npx terser dist/app.bundle.js --compress passes=2,pure_getters=true --mangle --output dist/app.min.js
         - rm dist/app.bundle.js
 
         # Rewrite index.html to use single bundle
@@ -56,4 +56,5 @@ frontend:
     files:
       - '**/*'
   cache:
-    paths: []
+    paths:
+      - node_modules/**/*
