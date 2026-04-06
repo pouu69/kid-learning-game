@@ -368,13 +368,6 @@ var Learning = {
       this._justPlayedMinigame = false;
     }
 
-    // DEBUG: 학습 상태 추적
-    console.log('[Learning] stage=' + st.learning.stage +
-      ' intIdx=' + (st.learning.interleavedIndex || 0) +
-      ' newSinceReview=' + (st.learning.newSinceReview || 0) +
-      ' sessionAct=' + this._sessionActivities +
-      ' lastPicks=' + JSON.stringify(this._lastPicks));
-
     // Initialize practiceLog and newSinceReview counter if missing
     if (!st.learning.practiceLog) st.learning.practiceLog = {};
     if (typeof st.learning.newSinceReview !== 'number') st.learning.newSinceReview = 0;
@@ -410,13 +403,11 @@ var Learning = {
     if (reviewableCount >= 2 && st.learning.newSinceReview >= this._NEW_BEFORE_REVIEW) {
       st.learning.newSinceReview = 0;
       saveState(st);
-      console.log('[Learning] → REVIEW (reviewable=' + reviewableCount + ')');
       this._startReview(st);
       return;
     }
 
     // Dispatch new content
-    console.log('[Learning] → NEW target=' + target.type + ':' + (target.data.letter || target.data.word || target.data.syllable || ''));
     this._dispatchActivity(st, target);
   },
 
@@ -614,7 +605,6 @@ var Learning = {
     }
 
     // _lastPicks 갱신은 onLetterComplete/onWordComplete에서 일괄 처리
-    console.log('[Review] pick=' + pick.key + ' type=' + pick.type + ' count=' + pick.count + ' excluded=' + JSON.stringify(lastPicks));
 
     // practiceLog는 활동 완료 시 onLetterComplete/onWordComplete에서 업데이트
     // (시작 시 count++ 하면 미완료도 카운트되는 문제 방지)
