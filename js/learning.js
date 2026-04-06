@@ -734,17 +734,15 @@ var Learning = {
     this._showReward(st, letter, praise, sound, target.data.sound, 'star', 15, 10);
   },
 
-  // 자음 3/6, 모음 2/4 도달 시 마일스톤 메시지 반환
+  // interleavedIndex 기반 마일스톤 메시지 반환
   _checkMicroMilestone: function(st, type) {
-    if (type === 'consonant') {
-      var consCount = (st.learning.knownConsonants || []).length;
-      if (consCount === 3) return '벌써 3개! 펫이 소리를 내기 시작했어!';
-      if (consCount === 6) return '6개 달성! 거의 다 왔어!';
-    } else {
-      var vowCount = (st.learning.knownVowels || []).length;
-      if (vowCount === 2) return '모음 2개! 소리가 더 다양해졌어!';
-      if (vowCount === 4) return '모음 4개! 거의 다 배웠어!';
-    }
+    var intIdx = st.learning.interleavedIndex || 0;
+    // 첫 음절 완성 (자음 1개 + 모음 1개 = intIdx 2)
+    if (intIdx === 2) return '첫 음절 완성! "가"를 만들 수 있어!';
+    // 5개 완료
+    if (intIdx === 5) return '벌써 5개! 펫이 옹알이 시작!';
+    // 10개 완료
+    if (intIdx === 10) return '10개 달성! 거의 다 왔어!';
     return null;
   },
 
