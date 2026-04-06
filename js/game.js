@@ -382,21 +382,7 @@ function handleAction(action) {
   }
 
   if (action === 'learn') {
-    if (typeof Learning !== 'undefined') {
-      if (typeof PetRenderer !== 'undefined' && PetRenderer.walkOffScreen) {
-        PetRenderer.walkOffScreen('right', function() {
-          pixelWipeTransition(function() {
-            showScreen('learning');
-            Learning.startLearning(refreshState());
-          });
-        });
-      } else {
-        pixelWipeTransition(function() {
-          showScreen('learning');
-          Learning.startLearning(refreshState());
-        });
-      }
-    }
+    showLearnMenu();
     return;
   }
 
@@ -496,6 +482,67 @@ function refreshState() {
   var fresh = loadState();
   if (fresh) st = fresh;
   return st;
+}
+
+// 학습 선택 메뉴: 한글 / 숫자
+function showLearnMenu() {
+  if (document.querySelector('[data-learn-menu]')) return;
+
+  var overlay = document.createElement('div');
+  overlay.setAttribute('data-learn-menu', '1');
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:200;background:rgba(26,24,48,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.2rem;';
+
+  var title = document.createElement('div');
+  title.style.cssText = 'font-family:"DungGeunMo",monospace;font-size:1.4rem;color:#f8d848;';
+  title.textContent = '뭐 배울까?';
+  overlay.appendChild(title);
+
+  var items = [
+    { name: '한글', icon: 'ㄱ', action: 'hangul' },
+    { name: '숫자', icon: '123', action: 'number' }
+  ];
+
+  for (var i = 0; i < items.length; i++) {
+    (function(item) {
+      var btn = document.createElement('button');
+      btn.style.cssText = 'font-family:"DungGeunMo",monospace;font-size:1.2rem;color:#1a1830;background:#f8d848;border:none;border-radius:12px;padding:16px 32px;min-width:200px;cursor:pointer;box-shadow:0 4px 0 #c4a830;';
+      btn.textContent = item.icon + ' ' + item.name;
+      btn.onclick = function() {
+        if (overlay.parentNode) document.body.removeChild(overlay);
+        if (item.action === 'hangul') {
+          if (typeof Learning !== 'undefined') {
+            if (typeof PetRenderer !== 'undefined' && PetRenderer.walkOffScreen) {
+              PetRenderer.walkOffScreen('right', function() {
+                pixelWipeTransition(function() {
+                  showScreen('learning');
+                  Learning.startLearning(refreshState());
+                });
+              });
+            } else {
+              pixelWipeTransition(function() {
+                showScreen('learning');
+                Learning.startLearning(refreshState());
+              });
+            }
+          }
+        } else if (item.action === 'number') {
+          window.location.href = 'numbers.html';
+        }
+      };
+      overlay.appendChild(btn);
+    })(items[i]);
+  }
+
+  var closeBtn = document.createElement('button');
+  closeBtn.style.cssText = 'font-family:"DungGeunMo",monospace;font-size:0.9rem;color:rgba(255,255,255,0.5);background:none;border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:10px 24px;margin-top:0.5rem;cursor:pointer;';
+  closeBtn.textContent = '돌아가기';
+  closeBtn.onclick = function() {
+    if (overlay.parentNode) document.body.removeChild(overlay);
+  };
+  overlay.appendChild(closeBtn);
+
+  document.body.appendChild(overlay);
+  speakText('뭐 배울까?', 0.8);
 }
 
 // 놀이 게임 선택 메뉴
