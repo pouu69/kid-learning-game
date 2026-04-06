@@ -147,11 +147,9 @@ var BallBounceGame = {
         }
       });
 
-      // Show tutorial first (or start game directly if already shown)
-      if (!_tutorialShown) {
-        self._showTutorial();
-      } else {
-        // Start physics loop immediately
+      // 매번 튜토리얼 표시 (5세는 매번 가이드 필요)
+      self._showTutorial();
+      if (false) {
         self._tickInterval = setInterval(function() {
           self._tick();
         }, 16);

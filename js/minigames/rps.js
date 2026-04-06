@@ -24,12 +24,8 @@ var RPSGame = {
 
     this._createOverlay();
 
-    if (!_rpsTutorialShown) {
-      _rpsTutorialShown = true;
-      this._showTutorial();
-    } else {
-      speakText('가위바위보!', 0.9);
-    }
+    // 매번 튜토리얼 표시 (5세는 매번 가이드 필요)
+    this._showTutorial();
   },
 
   _showTutorial: function() {
