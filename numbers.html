@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>밥 주기 - 숫자 학습</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  touch-action: manipulation;
+  -webkit-user-select: none; user-select: none;
+  font-family: -apple-system, 'Noto Sans KR', sans-serif;
+}
+
+body {
+  background: #1a1830;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* --- Top Bar --- */
+.top-bar {
+  width: 100%;
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  z-index: 10;
+}
+.btn-back {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: #fff;
+  font-size: 18px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-back:active { background: rgba(255,255,255,0.2); }
+.stars-display {
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.stars-display .star-icon { color: #f8d848; }
+.stars-display .star-count { font-weight: 700; }
+
+/* --- Pet Area --- */
+.pet-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 10px;
+  position: relative;
+}
+
+.pet-face {
+  width: 120px; height: 120px;
+  background: #f8d848;
+  border-radius: 50%;
+  position: relative;
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+}
+.pet-face.bounce {
+  animation: petBounce 0.5s ease;
+}
+@keyframes petBounce {
+  0%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-20px); }
+  50% { transform: translateY(-10px); }
+  70% { transform: translateY(-16px); }
+}
+
+.pet-eye {
+  width: 20px; height: 24px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 35px;
+}
+.pet-eye::after {
+  content: '';
+  width: 10px; height: 12px;
+  background: #1a1830;
+  border-radius: 50%;
+  position: absolute;
+  bottom: 2px;
+  left: 5px;
+}
+.pet-eye.left { left: 28px; }
+.pet-eye.right { left: 72px; }
+
+.pet-eye.happy {
+  height: 6px;
+  top: 45px;
+  border-radius: 6px 6px 0 0;
+  background: #1a1830;
+}
+.pet-eye.happy::after { display: none; }
+
+.pet-mouth {
+  width: 30px; height: 15px;
+  border-bottom: 4px solid #1a1830;
+  border-radius: 0 0 50% 50%;
+  position: absolute;
+  bottom: 28px;
+  left: 45px;
+  transition: all 0.15s ease;
+  background: transparent;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+.pet-mouth.open {
+  width: 36px; height: 28px;
+  background: #c04848;
+  border: 3px solid #1a1830;
+  border-radius: 50%;
+  bottom: 22px;
+  left: 42px;
+}
+.pet-mouth.smile {
+  width: 40px;
+  height: 20px;
+  border-bottom: 4px solid #1a1830;
+  border-radius: 0 0 50% 50%;
+  bottom: 24px;
+  left: 40px;
+  background: transparent;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+
+.pet-cheek {
+  width: 18px; height: 14px;
+  background: rgba(255, 130, 130, 0.5);
+  border-radius: 50%;
+  position: absolute;
+  top: 60px;
+  transition: transform 0.3s ease;
+}
+.pet-cheek.left { left: 8px; }
+.pet-cheek.right { right: 8px; }
+.pet-cheek.puffed {
+  transform: scale(1.6);
+  background: rgba(255, 100, 100, 0.7);
+}
+
+/* --- Speech Bubble --- */
+.speech-bubble {
+  background: #fff;
+  color: #1a1830;
+  border-radius: 20px;
+  padding: 14px 22px;
+  margin-top: 12px;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  position: relative;
+  min-width: 60px;
+  text-align: center;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.speech-bubble.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+.speech-bubble::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-bottom: 12px solid #fff;
+}
+
+/* --- Tap Counter (dots) --- */
+.tap-counter {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  min-height: 24px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.tap-dot {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.tap-dot.filled {
+  background: #f8d848;
+  transform: scale(1.2);
+}
+
+/* --- Food Area --- */
+.food-area {
+  flex: 1;
+  width: 100%;
+  position: relative;
+  margin-top: 16px;
+  overflow: hidden;
+}
+
+.food-item {
+  position: absolute;
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+              opacity 0.3s ease,
+              left 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+              top 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  z-index: 5;
+}
+.food-item:active {
+  transform: scale(0.9);
+}
+.food-item.flying {
+  opacity: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.food-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  opacity: 0.25;
+}
+
+/* --- Tutorial Finger --- */
+.tutorial-finger {
+  position: absolute;
+  font-size: 44px;
+  z-index: 30;
+  pointer-events: none;
+  animation: fingerPulse 1s ease-in-out infinite;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+}
+@keyframes fingerPulse {
+  0%, 100% { transform: scale(1) translateY(0); }
+  50% { transform: scale(1.15) translateY(-6px); }
+}
+
+/* --- Stars Animation --- */
+.flying-star {
+  position: fixed;
+  font-size: 28px;
+  pointer-events: none;
+  z-index: 100;
+  animation: starFly 0.8s ease-out forwards;
+}
+@keyframes starFly {
+  0% { opacity: 1; transform: scale(0.5) translateY(0); }
+  60% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.2) translateY(-120px); }
+}
+
+/* --- Celebration Screen --- */
+.celebration {
+  position: fixed;
+  inset: 0;
+  background: #1a1830;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+.celebration.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.celebration-title {
+  font-size: 48px;
+  font-weight: 800;
+  color: #f8d848;
+  animation: celebBounce 0.6s ease infinite alternate;
+}
+@keyframes celebBounce {
+  from { transform: scale(1); }
+  to { transform: scale(1.08); }
+}
+.celebration-stars {
+  font-size: 32px;
+  margin-top: 24px;
+  color: #fff;
+}
+.celebration-sub {
+  font-size: 20px;
+  margin-top: 16px;
+  color: rgba(255,255,255,0.6);
+}
+.btn-restart {
+  margin-top: 40px;
+  padding: 14px 36px;
+  font-size: 22px;
+  font-weight: 700;
+  background: #f8d848;
+  color: #1a1830;
+  border: none;
+  border-radius: 30px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-restart:active { transform: scale(0.95); }
+
+/* --- Confetti --- */
+.confetti {
+  position: fixed;
+  width: 10px; height: 10px;
+  z-index: 210;
+  pointer-events: none;
+  animation: confettiFall 2.5s ease-out forwards;
+}
+@keyframes confettiFall {
+  0% { opacity: 1; transform: translateY(0) rotate(0deg); }
+  100% { opacity: 0; transform: translateY(100vh) rotate(720deg); }
+}
+
+/* --- Round Banner --- */
+.round-banner {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  font-size: 36px;
+  font-weight: 800;
+  color: #f8d848;
+  z-index: 50;
+  pointer-events: none;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.4);
+  transition: transform 0.3s cubic-bezier(0.2, 1.2, 0.4, 1), opacity 0.3s ease;
+  opacity: 0;
+}
+.round-banner.visible {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <button class="btn-back" onclick="window.history.back()">&#8592; 돌아가기</button>
+  <div class="stars-display">
+    <span class="star-icon">&#9733;</span>
+    <span class="star-count" id="totalStars">0</span>
+  </div>
+</div>
+
+<div class="pet-area">
+  <div class="pet-face" id="petFace">
+    <div class="pet-eye left" id="eyeL"></div>
+    <div class="pet-eye right" id="eyeR"></div>
+    <div class="pet-mouth" id="petMouth"></div>
+    <div class="pet-cheek left" id="cheekL"></div>
+    <div class="pet-cheek right" id="cheekR"></div>
+  </div>
+  <div class="speech-bubble" id="speechBubble"></div>
+  <div class="tap-counter" id="tapCounter"></div>
+</div>
+
+<div class="food-area" id="foodArea"></div>
+
+<div class="round-banner" id="roundBanner"></div>
+
+<div class="celebration" id="celebration">
+  <div class="celebration-title">잘했어!</div>
+  <div class="celebration-stars" id="celebStars"></div>
+  <div class="celebration-sub">숫자 박사가 됐어!</div>
+  <button class="btn-restart" onclick="restartGame()">다시 하기</button>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  var FOODS = ['\uD83C\uDF4E','\uD83C\uDF4A','\uD83C\uDF47','\uD83C\uDF53','\uD83E\uDED0','\uD83C\uDF4C','\uD83C\uDF51','\uD83E\uDD5D'];
+  var FOOD_COLORS = ['#e84040','#f0a030','#8040c0','#e04060','#4060d0','#e8d040','#f08060','#60b040'];
+  var NUMBER_WORDS = ['','하나','둘','셋','넷','다섯','여섯','일곱','여덟','아홉','열'];
+  var NUMBER_ANNOUNCE = ['','한 개!','두 개!','세 개!','네 개!','다섯 개!','여섯 개!','일곱 개!','여덟 개!'];
+
+  var ROUNDS = [
+    {target:1, foodCount:8},
+    {target:2, foodCount:8},
+    {target:3, foodCount:8},
+    {target:3, foodCount:10},
+    {target:4, foodCount:10},
+    {target:5, foodCount:10},
+    {target:5, foodCount:12},
+    {target:6, foodCount:12},
+    {target:7, foodCount:12},
+    {target:8, foodCount:12}
+  ];
+
+  var state = {
+    round: 0,
+    target: 1,
+    fed: 0,
+    totalStars: 0,
+    foodItems: [],
+    busy: false,
+    tutorialShown: false,
+    tutorialEl: null
+  };
+
+  var petFace = document.getElementById('petFace');
+  var petMouth = document.getElementById('petMouth');
+  var eyeL = document.getElementById('eyeL');
+  var eyeR = document.getElementById('eyeR');
+  var cheekL = document.getElementById('cheekL');
+  var cheekR = document.getElementById('cheekR');
+  var speechBubble = document.getElementById('speechBubble');
+  var tapCounter = document.getElementById('tapCounter');
+  var foodArea = document.getElementById('foodArea');
+  var totalStarsEl = document.getElementById('totalStars');
+  var roundBanner = document.getElementById('roundBanner');
+  var celebration = document.getElementById('celebration');
+  var celebStars = document.getElementById('celebStars');
+
+  function speak(text) {
+    if (typeof speechSynthesis === 'undefined') return;
+    speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(text);
+    u.lang = 'ko-KR';
+    u.rate = 0.85;
+    u.pitch = 1.1;
+    speechSynthesis.speak(u);
+  }
+
+  function makeDots(n) {
+    var s = '';
+    for (var i = 0; i < n; i++) {
+      s += '\u25CF';
+    }
+    return s;
+  }
+
+  function renderTapCounter(fed, target) {
+    var html = '';
+    for (var i = 0; i < target; i++) {
+      html += '<div class="tap-dot' + (i < fed ? ' filled' : '') + '"></div>';
+    }
+    tapCounter.innerHTML = html;
+  }
+
+  function shuffleArray(arr) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr;
+  }
+
+  function getPetMouthRect() {
+    var rect = petMouth.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  }
+
+  function setNeutralFace() {
+    eyeL.className = 'pet-eye left';
+    eyeR.className = 'pet-eye right';
+    petMouth.className = 'pet-mouth';
+    cheekL.classList.remove('puffed');
+    cheekR.classList.remove('puffed');
+    petFace.classList.remove('bounce');
+  }
+
+  function setHappyFace() {
+    eyeL.className = 'pet-eye left happy';
+    eyeR.className = 'pet-eye right happy';
+    petMouth.className = 'pet-mouth smile';
+    petFace.classList.add('bounce');
+  }
+
+  function setPuffedFace() {
+    cheekL.classList.add('puffed');
+    cheekR.classList.add('puffed');
+    petMouth.className = 'pet-mouth';
+  }
+
+  function openMouth() {
+    petMouth.classList.add('open');
+  }
+  function closeMouth() {
+    petMouth.classList.remove('open');
+  }
+
+  function spawnStars(x, y, count) {
+    for (var i = 0; i < count; i++) {
+      (function(idx) {
+        setTimeout(function() {
+          var star = document.createElement('div');
+          star.className = 'flying-star';
+          star.textContent = '\u2733';
+          star.style.left = (x + (Math.random() - 0.5) * 60) + 'px';
+          star.style.top = y + 'px';
+          star.style.color = ['#f8d848','#ff6b6b','#6bff6b','#6bb5ff','#ff6bff'][idx % 5];
+          document.body.appendChild(star);
+          setTimeout(function() { star.remove(); }, 900);
+        }, idx * 100);
+      })(i);
+    }
+  }
+
+  function spawnConfetti() {
+    for (var i = 0; i < 30; i++) {
+      (function(idx) {
+        setTimeout(function() {
+          var c = document.createElement('div');
+          c.className = 'confetti';
+          c.style.left = (Math.random() * 100) + 'vw';
+          c.style.top = '-20px';
+          c.style.width = (6 + Math.random() * 8) + 'px';
+          c.style.height = (6 + Math.random() * 8) + 'px';
+          c.style.background = ['#f8d848','#ff6b6b','#6bff6b','#6bb5ff','#ff6bff','#fff'][Math.floor(Math.random()*6)];
+          c.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+          c.style.animationDuration = (1.5 + Math.random() * 1.5) + 's';
+          document.body.appendChild(c);
+          setTimeout(function() { c.remove(); }, 3000);
+        }, idx * 60);
+      })(i);
+    }
+  }
+
+  function showBanner(text, duration, cb) {
+    roundBanner.textContent = text;
+    roundBanner.classList.add('visible');
+    setTimeout(function() {
+      roundBanner.classList.remove('visible');
+      if (cb) setTimeout(cb, 300);
+    }, duration);
+  }
+
+  function placeFoodItems(count) {
+    foodArea.innerHTML = '';
+    state.foodItems = [];
+    var areaRect = foodArea.getBoundingClientRect();
+    var w = areaRect.width;
+    var h = areaRect.height;
+    var margin = 36;
+    var placed = [];
+    var emojis = shuffleArray(FOODS.slice());
+
+    for (var i = 0; i < count; i++) {
+      var attempts = 0;
+      var x, y;
+      do {
+        x = margin + Math.random() * (w - margin * 2 - 52);
+        y = margin + Math.random() * (h - margin * 2 - 52);
+        attempts++;
+        var ok = true;
+        for (var j = 0; j < placed.length; j++) {
+          var dx = x - placed[j].x;
+          var dy = y - placed[j].y;
+          if (Math.sqrt(dx*dx + dy*dy) < 58) { ok = false; break; }
+        }
+        if (ok || attempts > 80) break;
+      } while (true);
+
+      placed.push({x:x, y:y});
+
+      var el = document.createElement('div');
+      el.className = 'food-item';
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+
+      var emoji = emojis[i % emojis.length];
+      var colorIdx = FOODS.indexOf(emoji);
+      var bg = document.createElement('div');
+      bg.className = 'food-bg';
+      bg.style.background = FOOD_COLORS[colorIdx >= 0 ? colorIdx : 0];
+      el.appendChild(bg);
+
+      var span = document.createElement('span');
+      span.textContent = emoji;
+      span.style.position = 'relative';
+      span.style.zIndex = '1';
+      el.appendChild(span);
+
+      el.dataset.index = i;
+      el.addEventListener('click', onFoodTap);
+      foodArea.appendChild(el);
+      state.foodItems.push(el);
+    }
+  }
+
+  function removeTutorial() {
+    if (state.tutorialEl) {
+      state.tutorialEl.remove();
+      state.tutorialEl = null;
+    }
+  }
+
+  function showTutorial() {
+    if (state.foodItems.length === 0) return;
+    var first = state.foodItems[0];
+    var areaRect = foodArea.getBoundingClientRect();
+    var fx = parseFloat(first.style.left);
+    var fy = parseFloat(first.style.top);
+
+    var finger = document.createElement('div');
+    finger.className = 'tutorial-finger';
+    finger.textContent = '\uD83D\uDC46';
+    finger.style.left = (fx + 6) + 'px';
+    finger.style.top = (fy + 50) + 'px';
+    foodArea.appendChild(finger);
+    state.tutorialEl = finger;
+
+    speak('\uACFC\uC77C\uC744 \uB20C\uB7EC\uBD10!');
+  }
+
+  function onFoodTap(e) {
+    if (state.busy) return;
+    var el = e.currentTarget;
+    if (el.classList.contains('flying')) return;
+
+    removeTutorial();
+    state.tutorialShown = true;
+
+    state.fed++;
+    var fedNow = state.fed;
+    var target = state.target;
+
+    renderTapCounter(fedNow, target);
+
+    speak(NUMBER_WORDS[fedNow]);
+
+    openMouth();
+    var mouth = getPetMouthRect();
+    var areaRect = foodArea.getBoundingClientRect();
+    var targetX = mouth.x - areaRect.left - 26;
+    var targetY = mouth.y - areaRect.top - 26;
+
+    el.classList.add('flying');
+    el.style.left = targetX + 'px';
+    el.style.top = targetY + 'px';
+
+    state.busy = true;
+
+    setTimeout(function() {
+      closeMouth();
+      el.style.display = 'none';
+
+      if (fedNow === target) {
+        onRoundComplete(false);
+      } else if (fedNow > target) {
+        onRoundComplete(true);
+      } else {
+        state.busy = false;
+      }
+    }, 500);
+  }
+
+  function onRoundComplete(overfed) {
+    var starsEarned = overfed ? 1 : 3;
+
+    if (overfed) {
+      setPuffedFace();
+      speak('\uB108\uBB34 \uB9CE\uC544~!');
+      setTimeout(function() {
+        addStars(starsEarned);
+        setNeutralFace();
+        setTimeout(function() { nextRound(); }, 800);
+      }, 1200);
+    } else {
+      setHappyFace();
+      var mouthRect = petMouth.getBoundingClientRect();
+      spawnStars(mouthRect.left, mouthRect.top - 20, 5);
+      speak('\uB9DE\uC544! ' + NUMBER_ANNOUNCE[state.target]);
+      setTimeout(function() {
+        addStars(starsEarned);
+        setNeutralFace();
+        setTimeout(function() { nextRound(); }, 800);
+      }, 1400);
+    }
+  }
+
+  function addStars(n) {
+    state.totalStars += n;
+    totalStarsEl.textContent = state.totalStars;
+    var starRect = document.querySelector('.stars-display').getBoundingClientRect();
+    spawnStars(starRect.left + 10, starRect.top, n);
+  }
+
+  function nextRound() {
+    state.round++;
+    if (state.round >= ROUNDS.length) {
+      showCelebration();
+      return;
+    }
+    startRound();
+  }
+
+  function startRound() {
+    state.busy = true;
+    state.fed = 0;
+    var roundData = ROUNDS[state.round];
+    state.target = roundData.target;
+
+    foodArea.innerHTML = '';
+    setNeutralFace();
+
+    showBanner((state.round + 1) + '\uBC88\uC9F8', 1000, function() {
+      speechBubble.textContent = makeDots(state.target);
+      speechBubble.classList.add('visible');
+      renderTapCounter(0, state.target);
+
+      speak(NUMBER_ANNOUNCE[state.target]);
+
+      setTimeout(function() {
+        placeFoodItems(roundData.foodCount);
+
+        if (!state.tutorialShown && state.round === 0) {
+          showTutorial();
+        }
+        state.busy = false;
+      }, 600);
+    });
+  }
+
+  function showCelebration() {
+    spawnConfetti();
+    speak('\uC798\uD588\uC5B4!');
+    celebStars.innerHTML = '<span class="star-icon">\u2733</span> ' + state.totalStars + '\uAC1C';
+    celebration.classList.add('visible');
+  }
+
+  window.restartGame = function() {
+    celebration.classList.remove('visible');
+    state.round = 0;
+    state.totalStars = 0;
+    state.tutorialShown = false;
+    totalStarsEl.textContent = '0';
+    speechBubble.classList.remove('visible');
+    startRound();
+  };
+
+  // --- Init ---
+  startRound();
+})();
+</script>
+</body>
+</html>
