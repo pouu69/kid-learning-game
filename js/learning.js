@@ -5,8 +5,7 @@
 
 // Stage → Activity 매핑 (Phase 2에서 실제 Activity 파일로 교체)
 // Stage 0: SoundMatchActivity  → 현재 폴백: LetterActivity
-// Stage 1: LetterHuntActivity  → 현재 폴백: LetterActivity
-// Stage 2: MouthPuzzleActivity → 현재 폴백: LetterActivity (vowel mode)
+// Stage 1: LetterHuntActivity  → 자음+모음 인터리브 (기존 Stage 1+2 통합)
 // Stage 3: SyllableFactoryActivity → 현재 폴백: 없음 (스킵)
 // Stage 4: WordGamesActivity   → 현재 폴백: PuzzleActivity
 // Stage 5: SentenceBuilderActivity → 현재 폴백: 없음 (스킵)
@@ -30,17 +29,14 @@ var Learning = {
     var newStage;
 
     var wholeCount = (l.wholeWordsMatched || []).length;
-    var consIdx = l.consonantIndex || 0;
-    var vowIdx = l.vowelIndex || 0;
+    var intIdx = l.interleavedIndex || 0;
     var syllCount = l.syllablesCompleted || 0;
     var wordCount = (l.completedWords || []).length;
 
     if (wholeCount < 5) {
       newStage = 0;
-    } else if (consIdx < CURRICULUM.consonants.length) {
-      newStage = 1;
-    } else if (vowIdx < CURRICULUM.vowels.length) {
-      newStage = 2;
+    } else if (intIdx < CURRICULUM.interleaved.length) {
+      newStage = 1;  // 자음+모음 인터리브 (기존 Stage 1+2 통합)
     } else if (syllCount < 15) {
       newStage = 3;
     } else if (wordCount < 10) {
@@ -69,17 +65,12 @@ var Learning = {
     }
 
     if (stage === 1) {
-      var consIdx = l.consonantIndex || 0;
-      if (consIdx < CURRICULUM.consonants.length) {
-        return { type: 'consonant', data: CURRICULUM.consonants[consIdx], index: consIdx };
-      }
-      return null;
-    }
-
-    if (stage === 2) {
-      var vowIdx = l.vowelIndex || 0;
-      if (vowIdx < CURRICULUM.vowels.length) {
-        return { type: 'vowel', data: CURRICULUM.vowels[vowIdx], index: vowIdx };
+      var intIdx = l.interleavedIndex || 0;
+      if (intIdx < CURRICULUM.interleaved.length) {
+        var entry = CURRICULUM.interleaved[intIdx];
+        var pool = entry.type === 'consonant' ? CURRICULUM.consonants : CURRICULUM.vowels;
+        var data = pool[entry.index];
+        return { type: entry.type, data: data, index: intIdx };
       }
       return null;
     }
@@ -266,8 +257,7 @@ var Learning = {
 
     // DEBUG: 학습 상태 추적
     console.log('[Learning] stage=' + st.learning.stage +
-      ' consIdx=' + (st.learning.consonantIndex || 0) +
-      ' vowIdx=' + (st.learning.vowelIndex || 0) +
+      ' intIdx=' + (st.learning.interleavedIndex || 0) +
       ' newSinceReview=' + (st.learning.newSinceReview || 0) +
       ' sessionAct=' + this._sessionActivities +
       ' lastPicks=' + JSON.stringify(this._lastPicks));
@@ -328,23 +318,9 @@ var Learning = {
       return;
     }
 
-    // Stage 1: Letter hunt (consonants)
+    // Stage 1: Letter hunt (자음+모음 인터리브)
     if (stage === 1) {
       if (typeof LetterHuntActivity !== 'undefined') {
-        this._activeActivity = LetterHuntActivity;
-        LetterHuntActivity.start(st, target);
-      } else if (typeof LetterActivity !== 'undefined') {
-        LetterActivity.start(st, target);
-      }
-      return;
-    }
-
-    // Stage 2: Mouth puzzle (vowels) — uses LetterHunt in vowel mode for MVP
-    if (stage === 2) {
-      if (typeof MouthPuzzleActivity !== 'undefined') {
-        this._activeActivity = MouthPuzzleActivity;
-        MouthPuzzleActivity.start(st, target);
-      } else if (typeof LetterHuntActivity !== 'undefined') {
         this._activeActivity = LetterHuntActivity;
         LetterHuntActivity.start(st, target);
       } else if (typeof LetterActivity !== 'undefined') {
@@ -713,12 +689,12 @@ var Learning = {
       if (st.learning.knownConsonants.indexOf(letter) === -1) {
         st.learning.knownConsonants.push(letter);
       }
-      if (!target.review) { st.learning.consonantIndex++; isNew = true; }
+      if (!target.review) { st.learning.consonantIndex++; st.learning.interleavedIndex = (st.learning.interleavedIndex || 0) + 1; isNew = true; }
     } else {
       if (st.learning.knownVowels.indexOf(letter) === -1) {
         st.learning.knownVowels.push(letter);
       }
-      if (!target.review) { st.learning.vowelIndex++; isNew = true; }
+      if (!target.review) { st.learning.vowelIndex++; st.learning.interleavedIndex = (st.learning.interleavedIndex || 0) + 1; isNew = true; }
     }
     // Track new items learned since last review
     if (isNew) {
@@ -743,15 +719,10 @@ var Learning = {
 
     if (typeof World !== 'undefined') World.addLetterFlower(letter, true);
 
-    // Stage complete → show recap
-    if (target.type === 'consonant' && st.learning.consonantIndex >= CURRICULUM.consonants.length) {
+    // Stage complete -> show recap (인터리브 전체 완료 시)
+    if (!target.review && (st.learning.interleavedIndex || 0) >= CURRICULUM.interleaved.length) {
       saveState(st);
-      this._showStageRecap(st, 'consonant');
-      return;
-    }
-    if (target.type === 'vowel' && st.learning.vowelIndex >= CURRICULUM.vowels.length) {
-      saveState(st);
-      this._showStageRecap(st, 'vowel');
+      this._showStageRecap(st, 'interleaved');
       return;
     }
 
@@ -780,14 +751,16 @@ var Learning = {
   // Show recap grid when all letters in a stage are learned
   _showStageRecap: function(st, type) {
     var self = this;
-    var letters = type === 'consonant' ? st.learning.knownConsonants : st.learning.knownVowels;
+    var letters = type === 'interleaved'
+      ? (st.learning.knownConsonants || []).concat(st.learning.knownVowels || [])
+      : type === 'consonant' ? st.learning.knownConsonants : st.learning.knownVowels;
 
     var container = document.createElement('div');
     container.className = 'letter-activity';
 
     var title = document.createElement('div');
     title.className = 'recap-title';
-    title.textContent = type === 'consonant' ? '자음 완료!' : '모음 완료!';
+    title.textContent = type === 'interleaved' ? '글자 완료!' : type === 'consonant' ? '자음 완료!' : '모음 완료!';
     container.appendChild(title);
 
     var subtitle = document.createElement('div');
@@ -835,13 +808,8 @@ var Learning = {
       var fresh = (typeof refreshState === 'function') ? refreshState() : st;
       if (!fresh) fresh = st;
 
-      if (type === 'consonant') {
-        fresh.learning.stage = 2;
-        fresh.learning.vowelIndex = fresh.learning.vowelIndex || 0;
-      } else {
-        fresh.learning.stage = 3;
-        fresh.learning.syllablesCompleted = fresh.learning.syllablesCompleted || 0;
-      }
+      fresh.learning.stage = 3;
+      fresh.learning.syllablesCompleted = fresh.learning.syllablesCompleted || 0;
       if (typeof PetRenderer !== 'undefined' && PetRenderer.celebrate) {
         PetRenderer.celebrate();
       }
