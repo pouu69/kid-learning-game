@@ -38,8 +38,8 @@ var BallBounceGame = {
   _tutorialLayer: null,    // PIXI.Container holding tutorial-only graphics
 
   // Physics constants
-  _gravity: 0.35,
-  _bounceForce: -10,
+  _gravity: 0.22,
+  _bounceForce: -8,
   _ballRadius: 22,
 
   start: function(st, onComplete) {
@@ -457,6 +457,15 @@ var BallBounceGame = {
 
   _onTap: function(e) {
     if (this._gameOver) return;
+
+    // 공 근처를 탭해야 튀김 (반경 80px 이내)
+    var tapX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : this._ballX);
+    var tapY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : this._ballY);
+    var distX = tapX - this._ballX;
+    var canvasRect = this._app && this._app.canvas ? this._app.canvas.getBoundingClientRect() : { top: 0, left: 0 };
+    var distY = tapY - (this._ballY + canvasRect.top);
+    var dist = Math.sqrt(distX * distX + distY * distY);
+    if (dist > 80) return;  // 공에서 너무 멀면 무시
 
     // Bounce ball upward
     this._ballVY = this._bounceForce;
