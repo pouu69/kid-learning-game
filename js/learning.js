@@ -466,7 +466,12 @@ var Learning = {
       olderItems = olderItems.filter(function(it) { return lastPicks.indexOf(it.key) === -1; });
     }
 
-    if (recentItems.length === 0 && olderItems.length === 0) return;
+    // 필터 후 복습 대상 없으면 새 학습으로 폴백
+    if (recentItems.length === 0 && olderItems.length === 0) {
+      var target = this.getCurrentTarget(st);
+      if (target) this._dispatchActivity(st, target);
+      return;
+    }
 
     // Sort recent: least practiced first (reinforce new learning)
     recentItems.sort(function(a, b) {
@@ -494,9 +499,7 @@ var Learning = {
       pick = olderItems[Math.floor(Math.random() * olderRange)];
     }
 
-    // 직전 복습 목록 갱신 (최대 2개 유지)
-    this._lastPicks.push(pick.key);
-    if (this._lastPicks.length > 2) this._lastPicks.shift();
+    // _lastPicks 갱신은 onLetterComplete/onWordComplete에서 일괄 처리
 
     // practiceLog는 활동 완료 시 onLetterComplete/onWordComplete에서 업데이트
     // (시작 시 count++ 하면 미완료도 카운트되는 문제 방지)
@@ -847,6 +850,11 @@ var Learning = {
       st.learning.newSinceReview = (st.learning.newSinceReview || 0) + 1;
     }
     st.learning.wordIndex++;
+
+    // 방금 완료한 단어를 _lastPicks에 추가 (복습 시 연속 반복 방지)
+    if (!this._lastPicks) this._lastPicks = [];
+    this._lastPicks.push(wordData.word);
+    if (this._lastPicks.length > 2) this._lastPicks.shift();
 
     // practiceLog 업데이트 (완료 시점)
     if (!st.learning.practiceLog) st.learning.practiceLog = {};
