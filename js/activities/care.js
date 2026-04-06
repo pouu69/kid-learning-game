@@ -193,15 +193,25 @@ var CareActivity = {
 
   // Show "공부하러 갈까?" prompt after feeding
   _showLearnPrompt: function(st) {
+    // 터치 관통 방지용 풀스크린 오버레이
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:199;background:transparent;';
+
     var promptEl = document.createElement('div');
     promptEl.className = 'care-learn-prompt';
     promptEl.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:200;text-align:center;';
+
+    function dismiss() {
+      clearTimeout(dismissTimer);
+      if (overlay.parentNode) document.body.removeChild(overlay);
+      if (promptEl.parentNode) document.body.removeChild(promptEl);
+    }
 
     var btn = document.createElement('button');
     btn.className = 'continue-btn continue-btn--primary';
     btn.innerHTML = '<span class="continue-btn-icon">\u25B6</span><span class="continue-btn-label">\uACF5\uBD80\uD558\uB7EC \uAC00\uAE30</span>';
     btn.onclick = function() {
-      document.body.removeChild(promptEl);
+      dismiss();
       if (typeof Learning !== 'undefined') {
         var fresh = (typeof refreshState === 'function') ? refreshState() : st;
         Learning.startLearning(fresh || st);
@@ -209,19 +219,17 @@ var CareActivity = {
     };
     promptEl.appendChild(btn);
 
+    // 오버레이 탭 시 닫기
+    overlay.onclick = function() { dismiss(); };
+
     // Auto-dismiss after 5 seconds if not tapped
     var dismissTimer = setTimeout(function() {
-      if (promptEl.parentNode) {
-        promptEl.style.opacity = '0';
-        promptEl.style.transition = 'opacity 0.3s';
-        setTimeout(function() {
-          if (promptEl.parentNode) document.body.removeChild(promptEl);
-        }, 300);
-      }
+      promptEl.style.opacity = '0';
+      promptEl.style.transition = 'opacity 0.3s';
+      setTimeout(dismiss, 300);
     }, 5000);
 
-    btn.addEventListener('click', function() { clearTimeout(dismissTimer); });
-
+    document.body.appendChild(overlay);
     document.body.appendChild(promptEl);
   },
 
