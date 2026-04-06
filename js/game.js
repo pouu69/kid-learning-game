@@ -96,9 +96,9 @@ function applyOfflineDecay(st) {
     return;
   }
   var cappedElapsed = Math.min(elapsed, 3600);
-  st.hunger = Math.max(0, st.hunger - cappedElapsed * 0.3);
-  st.mood = Math.max(0, st.mood - cappedElapsed * 0.2);
-  st.sleepy = Math.min(100, st.sleepy + cappedElapsed * 0.15);
+  st.hunger = Math.max(0, st.hunger - cappedElapsed * 0.1);
+  st.mood = Math.max(0, st.mood - cappedElapsed * 0.07);
+  st.sleepy = Math.min(100, st.sleepy + cappedElapsed * 0.05);
 }
 
 function tick() {
@@ -107,9 +107,9 @@ function tick() {
 
   // 1. Stat decay (existing logic)
   if (!st.sleeping) {
-    st.hunger = Math.max(0, st.hunger - 0.3);
-    st.mood = Math.max(0, st.mood - 0.2);
-    st.sleepy = Math.min(100, st.sleepy + 0.15);
+    st.hunger = Math.max(0, st.hunger - 0.1);
+    st.mood = Math.max(0, st.mood - 0.07);
+    st.sleepy = Math.min(100, st.sleepy + 0.05);
   } else {
     st.sleepy = Math.max(0, st.sleepy - 1.5);
     if (st.sleepy <= 0) {
@@ -153,6 +153,7 @@ function _getDom() {
       feedBtn: document.querySelector('[data-action="feed"]'),
       sleepBtn: document.querySelector('[data-action="sleep"]'),
       learnBtn: document.querySelector('[data-action="learn"]'),
+      playBtn: document.querySelector('[data-action="play"]'),
       petHint: document.querySelector('.pet-hint'),
     };
   }
@@ -324,9 +325,9 @@ function updateHome(st) {
   }
 
   // Hide learn button during sleep or egg stage
-  if (d.learnBtn) {
-    d.learnBtn.style.display = (st.sleeping || st.stage === 0) ? 'none' : '';
-  }
+  var hideExtras = st.sleeping || st.stage === 0;
+  if (d.learnBtn) d.learnBtn.style.display = hideExtras ? 'none' : '';
+  if (d.playBtn) d.playBtn.style.display = hideExtras ? 'none' : '';
 
   if (typeof PetRenderer !== 'undefined' && PetRenderer.update) {
     PetRenderer.update(st);
@@ -499,7 +500,11 @@ function refreshState() {
 
 // 놀이 게임 선택 메뉴
 function showPlayMenu(st) {
+  // 중복 생성 방어
+  if (document.querySelector('[data-play-menu]')) return;
+
   var overlay = document.createElement('div');
+  overlay.setAttribute('data-play-menu', '1');
   overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:200;background:rgba(26,24,48,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.2rem;';
 
   var title = document.createElement('div');
@@ -520,11 +525,11 @@ function showPlayMenu(st) {
       btn.onclick = function() {
         if (overlay.parentNode) document.body.removeChild(overlay);
         if (g.game) {
-          g.game.start(refreshState(), function(stars) {
-            var fresh = refreshState();
-            fresh.stars = (fresh.stars || 0) + stars;
-            saveState(fresh);
-            if (typeof updateHome === 'function') updateHome(fresh);
+          g.game.start(refreshState(), function(earnedStars) {
+            var latest = refreshState();
+            latest.stars = (latest.stars || 0) + earnedStars;
+            saveState(latest);
+            if (typeof updateHome === 'function') updateHome(latest);
           });
         }
       };
