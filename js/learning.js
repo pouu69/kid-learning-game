@@ -23,6 +23,7 @@ var Learning = {
   _evoTicker: null,
   _activeActivity: null,  // current activity for cleanup on popup close
   _justPlayedMinigame: false,
+  _recallDone: false,
 
   // Sync learning stage to match actual progress (6-stage: 0~5)
   _syncStage: function(st) {
@@ -219,6 +220,7 @@ var Learning = {
     // 세션 카운터 리셋
     this._sessionActivities = 0;
     this._justPlayedMinigame = false;
+    this._recallDone = false;
 
     // Cancel pending timers to prevent stale state mutations
     if (this._rewardTimer) { clearTimeout(this._rewardTimer); this._rewardTimer = null; }
@@ -250,6 +252,112 @@ var Learning = {
     }
   },
 
+  // 세션 시작 퀵 리콜: 스페이스드 리피티션 기반 2~3문항
+  _showQuickRecall: function(st, onDone) {
+    var self = this;
+    var pl = st.learning.practiceLog || {};
+    var now = Date.now();
+    var DAY_MS = 86400000;
+
+    // 복습 기한이 지난 글자 찾기
+    var allLetters = (st.learning.knownConsonants || []).concat(st.learning.knownVowels || []);
+    var overdue = [];
+    for (var i = 0; i < allLetters.length; i++) {
+      var key = allLetters[i];
+      var entry = pl[key] || { count: 0, lastPracticed: 0, interval: 0 };
+      var daysSince = (now - (entry.lastPracticed || 0)) / DAY_MS;
+      if (daysSince >= (entry.interval || 0)) {
+        overdue.push({ key: key, overdue: daysSince - (entry.interval || 0) });
+      }
+    }
+
+    // 기한 지난 게 없거나 배운 글자가 3개 미만이면 스킵
+    if (overdue.length < 2 || allLetters.length < 3) {
+      onDone();
+      return;
+    }
+
+    // 가장 오래된 순 2~3개 선택
+    overdue.sort(function(a, b) { return b.overdue - a.overdue; });
+    var picks = overdue.slice(0, Math.min(3, overdue.length));
+    var currentIdx = 0;
+
+    function showNext() {
+      if (currentIdx >= picks.length) {
+        onDone();
+        return;
+      }
+      var pick = picks[currentIdx];
+      currentIdx++;
+
+      // hunt 형태의 빠른 인식 (buildChoices 활용)
+      var isConsonant = (st.learning.knownConsonants || []).indexOf(pick.key) !== -1;
+      var pool = isConsonant ? CURRICULUM.consonants : CURRICULUM.vowels;
+      var letterPool = [];
+      for (var p = 0; p < pool.length; p++) letterPool.push(pool[p].letter);
+      var choices = buildChoices(pick.key, letterPool, 2);
+
+      // letterData 찾기
+      var letterData = null;
+      for (var li = 0; li < pool.length; li++) {
+        if (pool[li].letter === pick.key) { letterData = pool[li]; break; }
+      }
+
+      var container = document.createElement('div');
+      container.className = 'quick-recall';
+
+      var label = document.createElement('div');
+      label.className = 'phase-label';
+      label.textContent = '기억나?';
+      container.appendChild(label);
+
+      var soundBtn = createSoundButton(function() {
+        if (letterData) speakText(letterData.sound.split('.')[0], 0.7);
+      });
+      container.appendChild(soundBtn);
+
+      var choiceContainer = document.createElement('div');
+      choiceContainer.className = 'letter-hunt-choices';
+      choiceContainer.onclick = function(e) {
+        var btn = e.target.closest('.letter-hunt-choice');
+        if (!btn || btn.classList.contains('choice-locked')) return;
+        var selected = btn.getAttribute('data-letter');
+        var buttons = choiceContainer.querySelectorAll('.letter-hunt-choice');
+
+        handleChoiceResult(null, buttons, 'data-letter', selected, pick.key,
+          function() {
+            // 정답: practiceLog 업데이트
+            var logEntry = pl[pick.key] || { count: 0, lastPracticed: 0, interval: 0 };
+            logEntry.count++;
+            logEntry.lastPracticed = Date.now();
+            var intervals = [0, 1, 3, 7, 14];
+            logEntry.interval = intervals[Math.min(logEntry.count, intervals.length - 1)];
+            pl[pick.key] = logEntry;
+            saveState(st);
+            setTimeout(showNext, 600);
+          },
+          function() {
+            if (letterData) speakText(letterData.sound.split('.')[0], 0.7);
+          }
+        );
+      };
+
+      for (var ci = 0; ci < choices.length; ci++) {
+        var btn = document.createElement('button');
+        btn.className = 'letter-hunt-choice';
+        btn.setAttribute('data-letter', choices[ci]);
+        btn.textContent = choices[ci];
+        choiceContainer.appendChild(btn);
+      }
+      container.appendChild(choiceContainer);
+
+      self.openPopup(container);
+      if (letterData) setTimeout(function() { speakText(letterData.sound.split('.')[0], 0.7); }, 300);
+    }
+
+    showNext();
+  },
+
   // Main entry: start a learning session
   startLearning: function(st) {
     this._syncStage(st);
@@ -271,6 +379,21 @@ var Learning = {
     if (!st.learning.practiceLog) st.learning.practiceLog = {};
     if (typeof st.learning.newSinceReview !== 'number') st.learning.newSinceReview = 0;
 
+    // 세션 첫 시작 + 배운 글자 3개 이상이면 퀵 리콜
+    var allKnown = (st.learning.knownConsonants || []).concat(st.learning.knownVowels || []);
+    if (this._sessionActivities === 0 && !this._recallDone && allKnown.length >= 3) {
+      this._recallDone = true;
+      var self = this;
+      this._showQuickRecall(st, function() {
+        self._doStartLearning(st);
+      });
+      return;
+    }
+
+    this._doStartLearning(st);
+  },
+
+  _doStartLearning: function(st) {
     var target = this.getCurrentTarget(st);
     var reviewableCount = this._countReviewableItems(st);
 
