@@ -472,7 +472,7 @@ var Learning = {
     recentItems.sort(function(a, b) {
       var countD = a.count - b.count;
       if (countD !== 0) return countD;
-      return a.timeSince - b.timeSince; // 더 최근에 배운 것 우선
+      return b.timeSince - a.timeSince; // 더 오래된 것 우선 (잊힐 가능성 높은 것부터)
     });
 
     // Sort older: most overdue first (spaced repetition)
@@ -710,6 +710,11 @@ var Learning = {
     if (isNew) {
       st.learning.newSinceReview = (st.learning.newSinceReview || 0) + 1;
     }
+
+    // 방금 배운/복습한 글자를 _lastPicks에 추가 (복습 시 연속 반복 방지)
+    if (!this._lastPicks) this._lastPicks = [];
+    this._lastPicks.push(letter);
+    if (this._lastPicks.length > 2) this._lastPicks.shift();
 
     // 복습 완료 시 practiceLog 업데이트 (완료 시점에서만 count 증가)
     if (!st.learning.practiceLog) st.learning.practiceLog = {};
