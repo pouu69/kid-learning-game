@@ -245,10 +245,10 @@ function updateHome(st) {
       if (totalLearned >= totalItems && evoProg) evoProg.classList.add('maxed');
     } else if (st.stage === 0) {
       nextName = '→ ' + (EVOLUTION[1] ? EVOLUTION[1].name : '') + ' (알을 깨봐!)';
-    } else if (st.stage < 2) {
-      nextName = '→ ' + (EVOLUTION[2] ? EVOLUTION[2].name : '') + ' (' + cons + '/' + EVO_THRESHOLDS.consonants + ')';
     } else if (st.stage < 3) {
-      nextName = '→ ' + (EVOLUTION[3] ? EVOLUTION[3].name : '') + ' (' + vow + '/' + EVO_THRESHOLDS.vowels + ')';
+      var intIdx = st.learning.interleavedIndex || 0;
+      var intTotal = CURRICULUM.interleaved ? CURRICULUM.interleaved.length : 15;
+      nextName = '→ ' + (EVOLUTION[3] ? EVOLUTION[3].name : '') + ' (' + intIdx + '/' + intTotal + ')';
     } else if (st.stage < 4) {
       nextName = '→ ' + (EVOLUTION[4] ? EVOLUTION[4].name : '') + ' (' + words + '/' + EVO_THRESHOLDS.words4 + ')';
     } else {

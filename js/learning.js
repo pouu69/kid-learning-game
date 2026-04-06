@@ -1047,12 +1047,13 @@ var Learning = {
     var vowCount = (st.learning.knownVowels || []).length;
     var wordCount = (st.learning.completedWords || []).length;
 
-    var th = typeof EVO_THRESHOLDS !== 'undefined' ? EVO_THRESHOLDS : { consonants: 9, vowels: 6, words4: 10, words5: 15 };
+    var th = typeof EVO_THRESHOLDS !== 'undefined' ? EVO_THRESHOLDS : { words4: 10, words5: 15 };
+    var intIdx = st.learning.interleavedIndex || 0;
+    var intTotal = (typeof CURRICULUM !== 'undefined' && CURRICULUM.interleaved) ? CURRICULUM.interleaved.length : 15;
     var newStage = st.stage;
     if (wordCount >= th.words5) newStage = 5;
     else if (wordCount >= th.words4) newStage = 4;
-    else if (vowCount >= th.vowels) newStage = 3;
-    else if (consCount >= th.consonants) newStage = 2;
+    else if (intIdx >= intTotal && st.stage >= 1) newStage = 3;
     else if (st.stage >= 1) newStage = st.stage;
 
     if (newStage > st.stage) {
