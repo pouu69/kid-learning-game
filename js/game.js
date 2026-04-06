@@ -327,7 +327,6 @@ function updateHome(st) {
   // Hide learn button during sleep or egg stage
   var hideExtras = st.sleeping || st.stage === 0;
   if (d.learnBtn) d.learnBtn.style.display = hideExtras ? 'none' : '';
-  if (d.playBtn) d.playBtn.style.display = hideExtras ? 'none' : '';
 
   if (typeof PetRenderer !== 'undefined' && PetRenderer.update) {
     PetRenderer.update(st);
@@ -376,13 +375,8 @@ function handleAction(action) {
     return;
   }
 
-  if (action === 'play') {
-    showPlayMenu(st);
-    return;
-  }
-
-  if (action === 'learn') {
-    showLearnMenu();
+  if (action === 'play' || action === 'learn') {
+    showActivityMenu(st);
     return;
   }
 
@@ -484,32 +478,45 @@ function refreshState() {
   return st;
 }
 
-// 학습 선택 메뉴: 한글 / 숫자
-function showLearnMenu() {
-  if (document.querySelector('[data-learn-menu]')) return;
+// 통합 활동 선택 메뉴: 학습 + 놀이
+function showActivityMenu(st) {
+  if (document.querySelector('[data-activity-menu]')) return;
 
   var overlay = document.createElement('div');
-  overlay.setAttribute('data-learn-menu', '1');
-  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:200;background:rgba(26,24,48,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.2rem;';
+  overlay.setAttribute('data-activity-menu', '1');
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:200;background:rgba(26,24,48,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;box-sizing:border-box;';
 
   var title = document.createElement('div');
-  title.style.cssText = 'font-family:"DungGeunMo",monospace;font-size:1.4rem;color:#f8d848;';
-  title.textContent = '뭐 배울까?';
+  title.style.cssText = 'font-family:"DungGeunMo",monospace;font-size:1.4rem;color:#f8d848;margin-bottom:8px;';
+  title.textContent = '뭐 할까?';
   overlay.appendChild(title);
 
-  var items = [
-    { name: '한글', icon: 'ㄱ', action: 'hangul' },
-    { name: '숫자', icon: '123', action: 'number' }
+  var btnStyle = 'font-family:"DungGeunMo",monospace;font-size:1.1rem;color:#1a1830;border:none;border-radius:12px;padding:14px 24px;min-width:200px;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,0.3);';
+
+  var activities = [
+    { name: 'ㄱ 한글', bg: '#f8d848', shadow: '#c4a830', action: 'hangul' },
+    { name: '123 숫자', bg: '#68d888', shadow: '#48a858', action: 'number' },
+    { name: '\u270A 가위바위보', bg: '#f0a0a0', shadow: '#c07070', action: 'rps' },
+    { name: '\u26BD 공 튀기기', bg: '#88c8f8', shadow: '#5898c8', action: 'ball' }
   ];
 
-  for (var i = 0; i < items.length; i++) {
-    (function(item) {
+  function startGame(gameObj) {
+    gameObj.start(refreshState(), function(earnedStars) {
+      var latest = refreshState();
+      latest.stars = (latest.stars || 0) + earnedStars;
+      saveState(latest);
+      if (typeof updateHome === 'function') updateHome(latest);
+    });
+  }
+
+  for (var i = 0; i < activities.length; i++) {
+    (function(a) {
       var btn = document.createElement('button');
-      btn.style.cssText = 'font-family:"DungGeunMo",monospace;font-size:1.2rem;color:#1a1830;background:#f8d848;border:none;border-radius:12px;padding:16px 32px;min-width:200px;cursor:pointer;box-shadow:0 4px 0 #c4a830;';
-      btn.textContent = item.icon + ' ' + item.name;
+      btn.style.cssText = btnStyle + 'background:' + a.bg + ';box-shadow:0 4px 0 ' + a.shadow + ';';
+      btn.textContent = a.name;
       btn.onclick = function() {
         if (overlay.parentNode) document.body.removeChild(overlay);
-        if (item.action === 'hangul') {
+        if (a.action === 'hangul') {
           if (typeof Learning !== 'undefined') {
             if (typeof PetRenderer !== 'undefined' && PetRenderer.walkOffScreen) {
               PetRenderer.walkOffScreen('right', function() {
@@ -525,16 +532,20 @@ function showLearnMenu() {
               });
             }
           }
-        } else if (item.action === 'number') {
+        } else if (a.action === 'number') {
           window.location.href = 'numbers.html';
+        } else if (a.action === 'rps' && typeof RPSGame !== 'undefined') {
+          startGame(RPSGame);
+        } else if (a.action === 'ball' && typeof BallBounceGame !== 'undefined') {
+          startGame(BallBounceGame);
         }
       };
       overlay.appendChild(btn);
-    })(items[i]);
+    })(activities[i]);
   }
 
   var closeBtn = document.createElement('button');
-  closeBtn.style.cssText = 'font-family:"DungGeunMo",monospace;font-size:0.9rem;color:rgba(255,255,255,0.5);background:none;border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:10px 24px;margin-top:0.5rem;cursor:pointer;';
+  closeBtn.style.cssText = 'font-family:"DungGeunMo",monospace;font-size:0.9rem;color:rgba(255,255,255,0.5);background:none;border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:10px 24px;margin-top:8px;cursor:pointer;';
   closeBtn.textContent = '돌아가기';
   closeBtn.onclick = function() {
     if (overlay.parentNode) document.body.removeChild(overlay);
@@ -542,59 +553,7 @@ function showLearnMenu() {
   overlay.appendChild(closeBtn);
 
   document.body.appendChild(overlay);
-  speakText('뭐 배울까?', 0.8);
-}
-
-// 놀이 게임 선택 메뉴
-function showPlayMenu(st) {
-  // 중복 생성 방어
-  if (document.querySelector('[data-play-menu]')) return;
-
-  var overlay = document.createElement('div');
-  overlay.setAttribute('data-play-menu', '1');
-  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:200;background:rgba(26,24,48,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.2rem;';
-
-  var title = document.createElement('div');
-  title.style.cssText = 'font-family:"DungGeunMo",monospace;font-size:1.4rem;color:#f8d848;';
-  title.textContent = '뭐 하고 놀까?';
-  overlay.appendChild(title);
-
-  var games = [
-    { name: '가위바위보', icon: '\u270A', game: typeof RPSGame !== 'undefined' ? RPSGame : null },
-    { name: '공 튀기기', icon: '\u26BD', game: typeof BallBounceGame !== 'undefined' ? BallBounceGame : null }
-  ];
-
-  for (var i = 0; i < games.length; i++) {
-    (function(g) {
-      var btn = document.createElement('button');
-      btn.style.cssText = 'font-family:"DungGeunMo",monospace;font-size:1.2rem;color:#1a1830;background:#f8d848;border:none;border-radius:12px;padding:16px 32px;min-width:200px;cursor:pointer;box-shadow:0 4px 0 #c4a830;active:transform:translateY(2px);';
-      btn.textContent = g.icon + ' ' + g.name;
-      btn.onclick = function() {
-        if (overlay.parentNode) document.body.removeChild(overlay);
-        if (g.game) {
-          g.game.start(refreshState(), function(earnedStars) {
-            var latest = refreshState();
-            latest.stars = (latest.stars || 0) + earnedStars;
-            saveState(latest);
-            if (typeof updateHome === 'function') updateHome(latest);
-          });
-        }
-      };
-      overlay.appendChild(btn);
-    })(games[i]);
-  }
-
-  // 닫기 버튼
-  var closeBtn = document.createElement('button');
-  closeBtn.style.cssText = 'font-family:"DungGeunMo",monospace;font-size:0.9rem;color:rgba(255,255,255,0.5);background:none;border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:10px 24px;margin-top:0.5rem;cursor:pointer;';
-  closeBtn.textContent = '돌아가기';
-  closeBtn.onclick = function() {
-    if (overlay.parentNode) document.body.removeChild(overlay);
-  };
-  overlay.appendChild(closeBtn);
-
-  document.body.appendChild(overlay);
-  speakText('뭐 하고 놀까?', 0.8);
+  speakText('뭐 할까?', 0.8);
 }
 
 function setName(name) {
