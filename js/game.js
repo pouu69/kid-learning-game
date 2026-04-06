@@ -243,6 +243,8 @@ function updateHome(st) {
     if (st.stage >= 5) {
       nextName = totalLearned >= totalItems ? '완료' : pct + '%';
       if (totalLearned >= totalItems && evoProg) evoProg.classList.add('maxed');
+    } else if (st.stage === 0) {
+      nextName = '→ ' + (EVOLUTION[1] ? EVOLUTION[1].name : '') + ' (알을 깨봐!)';
     } else if (st.stage < 2) {
       nextName = '→ ' + (EVOLUTION[2] ? EVOLUTION[2].name : '') + ' (' + cons + '/' + EVO_THRESHOLDS.consonants + ')';
     } else if (st.stage < 3) {
@@ -349,6 +351,8 @@ function handleAction(action) {
         st.stage = 1;
         st.learning.stage = 1;
         st.learning.consonantIndex = 0;
+        // Auto-complete wholeWords so _syncStage won't reset to stage 0
+        st.learning.wholeWordsMatched = CURRICULUM.wholeWords.map(function(w) { return w.word; });
         if (typeof PetRenderer !== 'undefined') {
           PetRenderer.buildPet(1);
           PetRenderer.celebrate();
@@ -378,13 +382,13 @@ function handleAction(action) {
         PetRenderer.walkOffScreen('right', function() {
           pixelWipeTransition(function() {
             showScreen('learning');
-            Learning.startLearning(st);
+            Learning.startLearning(refreshState());
           });
         });
       } else {
         pixelWipeTransition(function() {
           showScreen('learning');
-          Learning.startLearning(st);
+          Learning.startLearning(refreshState());
         });
       }
     }
@@ -479,6 +483,13 @@ function pixelWipeTransition(callback) {
 }
 
 function getState() {
+  return st;
+}
+
+// Sync module st from localStorage (call after external state changes)
+function refreshState() {
+  var fresh = loadState();
+  if (fresh) st = fresh;
   return st;
 }
 

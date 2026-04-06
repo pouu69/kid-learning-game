@@ -16,6 +16,9 @@ var Learning = {
   overlayEl: null,
   _sessionCount: 0,
   _NEW_BEFORE_REVIEW: 2,  // 새 항목 2개 배운 후 복습 삽입
+  _lastPicks: [],          // 직전 복습 항목 (최대 2개, 연속 반복 방지)
+  _sessionActivities: 0,   // 현재 세션 활동 횟수
+  _SESSION_LIMIT: 4,       // 세션당 최대 활동 수
   _rewardTimer: null,
   _recapTimer: null,
   _evoTicker: null,
@@ -221,6 +224,9 @@ var Learning = {
   },
 
   closePopup: function() {
+    // 세션 카운터 리셋
+    this._sessionActivities = 0;
+
     // Cancel pending timers to prevent stale state mutations
     if (this._rewardTimer) { clearTimeout(this._rewardTimer); this._rewardTimer = null; }
     if (this._recapTimer) { clearTimeout(this._recapTimer); this._recapTimer = null; }
@@ -238,7 +244,7 @@ var Learning = {
     if (this.overlayEl) {
       this.overlayEl.classList.remove('active');
     }
-    var currentSt = typeof getState === 'function' ? getState() : null;
+    var currentSt = typeof refreshState === 'function' ? refreshState() : (typeof getState === 'function' ? getState() : null);
     if (currentSt && typeof updateHome === 'function') {
       updateHome(currentSt);
     }
@@ -255,6 +261,8 @@ var Learning = {
   startLearning: function(st) {
     this._syncStage(st);
     this._sessionCount++;
+    // 새 세션 시작 시 활동 카운터 리셋 (연장 시에는 리셋하지 않음)
+    if (this._sessionActivities === 0) this._lastPicks = [];
 
     // Initialize practiceLog and newSinceReview counter if missing
     if (!st.learning.practiceLog) st.learning.practiceLog = {};
@@ -451,6 +459,13 @@ var Learning = {
       }
     }
 
+    // 직전 복습 항목 제외 (연속 반복 방지)
+    var lastPicks = this._lastPicks || [];
+    if (lastPicks.length > 0) {
+      recentItems = recentItems.filter(function(it) { return lastPicks.indexOf(it.key) === -1; });
+      olderItems = olderItems.filter(function(it) { return lastPicks.indexOf(it.key) === -1; });
+    }
+
     if (recentItems.length === 0 && olderItems.length === 0) return;
 
     // Sort recent: least practiced first (reinforce new learning)
@@ -479,16 +494,12 @@ var Learning = {
       pick = olderItems[Math.floor(Math.random() * olderRange)];
     }
 
-    // Update practice log
-    var logEntry = pl[pick.key] || { count: 0, lastPracticed: 0, interval: 0 };
-    logEntry.count = (logEntry.count || 0) + 1;
-    logEntry.lastPracticed = now;
-    // Expand interval: 0 → 1 → 3 → 7 → 14 days
-    var intervals = [0, 1, 3, 7, 14];
-    var nextIdx = Math.min(logEntry.count, intervals.length - 1);
-    logEntry.interval = intervals[nextIdx];
-    pl[pick.key] = logEntry;
-    saveState(st);
+    // 직전 복습 목록 갱신 (최대 2개 유지)
+    this._lastPicks.push(pick.key);
+    if (this._lastPicks.length > 2) this._lastPicks.shift();
+
+    // practiceLog는 활동 완료 시 onLetterComplete/onWordComplete에서 업데이트
+    // (시작 시 count++ 하면 미완료도 카운트되는 문제 방지)
 
     if (pick.type === 'word') {
       var wordData = null;
@@ -516,7 +527,7 @@ var Learning = {
         }
       }
       if (letterData) {
-        var target = { type: isConsonant ? 'consonant' : 'vowel', data: letterData, index: 0, review: true };
+        var target = { type: isConsonant ? 'consonant' : 'vowel', data: letterData, index: 0, review: true, reviewLight: true };
         if (typeof LetterHuntActivity !== 'undefined') {
           this._activeActivity = LetterHuntActivity;
           LetterHuntActivity.start(st, target);
@@ -527,9 +538,10 @@ var Learning = {
     }
   },
 
-  // Reward sequence → continue prompt (infinite session)
+  // Reward sequence → continue prompt (session-limited)
   _showReward: function(st, displayText, praise, soundType, speechText, particleType, hungerBonus, moodBonus) {
     var self = this;
+    this._sessionActivities++;
     var prevStage = st.stage;
     this._checkEvolution(st);
     var didEvolve = st.stage > prevStage;
@@ -573,9 +585,8 @@ var Learning = {
         if (PetRenderer.emitParticles) PetRenderer.emitParticles(particleType, 5);
         if (PetRenderer.showPixiBubble) PetRenderer.showPixiBubble('잘했어!', 120);
       }
-      // Re-read state to avoid stale closure mutations
-      var fresh = (typeof loadState === 'function') ? loadState() : st;
-      if (!fresh) fresh = st;
+      // Sync module st from localStorage to get latest learning progress
+      var fresh = (typeof refreshState === 'function') ? refreshState() : st;
       fresh.hunger = Math.min(100, fresh.hunger + hungerBonus);
       fresh.mood = Math.min(100, fresh.mood + moodBonus);
       fresh.daily.activitiesDone++;
@@ -585,7 +596,7 @@ var Learning = {
     }, 1500);
   },
 
-  // Infinite session: "더 놀래?" prompt
+  // Session-limited: "더 놀래?" or session-end prompt
   _showContinuePrompt: function(st) {
     var self = this;
     if (!this.popupEl) {
@@ -600,49 +611,84 @@ var Learning = {
     closeBtn.className = 'popup-close-btn';
     closeBtn.textContent = '\u2715';
     closeBtn.setAttribute('aria-label', '닫기');
-    closeBtn.onclick = function() { self.closePopup(); };
+    closeBtn.onclick = function() { self._sessionActivities = 0; self.closePopup(); };
     this.popupEl.appendChild(closeBtn);
 
     var container = document.createElement('div');
     container.className = 'continue-container';
 
+    var reachedLimit = this._sessionActivities >= this._SESSION_LIMIT;
+
     var petFace = document.createElement('div');
     petFace.className = 'continue-face';
-    petFace.textContent = '^_^';
+    petFace.textContent = reachedLimit ? '^o^' : '^_^';
     container.appendChild(petFace);
 
     var msg = document.createElement('div');
     msg.className = 'continue-msg';
-    msg.textContent = '더 놀래?';
+    msg.textContent = reachedLimit ? '오늘 많이 배웠어!' : '더 놀래?';
     container.appendChild(msg);
+
+    if (reachedLimit) {
+      var subMsg = document.createElement('div');
+      subMsg.className = 'continue-sub-msg';
+      subMsg.textContent = '잠시 쉬고 다시 오자~';
+      container.appendChild(subMsg);
+    }
 
     var btnContainer = document.createElement('div');
     btnContainer.className = 'continue-buttons';
 
-    var btnContinue = document.createElement('button');
-    btnContinue.className = 'continue-btn continue-btn--primary';
-    btnContinue.innerHTML = '<span class="continue-btn-icon">\u25B6</span><span class="continue-btn-label">\uB354 \uBC30\uC6B0\uAE30</span>';
-    btnContinue.onclick = function() {
-      // Always re-read latest state to avoid stale closure
-      var latest = (typeof loadState === 'function') ? loadState() : st;
-      self.startLearning(latest || st);
-    };
+    if (reachedLimit) {
+      // 세션 종료: 쉬기(기본) + 조금 더(연장)
+      var btnRest = document.createElement('button');
+      btnRest.className = 'continue-btn continue-btn--primary';
+      btnRest.innerHTML = '<span class="continue-btn-icon">\u2302</span><span class="continue-btn-label">\uC26C\uAE30</span>';
+      btnRest.onclick = function() {
+        self._sessionActivities = 0;
+        self.closePopup();
+        if (typeof updateHome === 'function') updateHome(st);
+      };
+      btnContainer.appendChild(btnRest);
 
-    var btnRest = document.createElement('button');
-    btnRest.className = 'continue-btn continue-btn--secondary';
-    btnRest.innerHTML = '<span class="continue-btn-icon">\u2302</span><span class="continue-btn-label">\uC26C\uAE30</span>';
-    btnRest.onclick = function() {
-      self.closePopup();
-      if (typeof updateHome === 'function') updateHome(st);
-    };
+      var btnMore = document.createElement('button');
+      btnMore.className = 'continue-btn continue-btn--secondary';
+      btnMore.innerHTML = '<span class="continue-btn-icon">\u25B6</span><span class="continue-btn-label">\uC870\uAE08 \uB354</span>';
+      btnMore.onclick = function() {
+        // 연장: 카운터를 절반으로 리셋 (2회 더 가능)
+        self._sessionActivities = Math.floor(self._SESSION_LIMIT / 2);
+        var latest = (typeof refreshState === 'function') ? refreshState() : st;
+        self.startLearning(latest);
+      };
+      btnContainer.appendChild(btnMore);
+    } else {
+      // 일반: 더 배우기(기본) + 쉬기
+      var btnContinue = document.createElement('button');
+      btnContinue.className = 'continue-btn continue-btn--primary';
+      btnContinue.innerHTML = '<span class="continue-btn-icon">\u25B6</span><span class="continue-btn-label">\uB354 \uBC30\uC6B0\uAE30</span>';
+      btnContinue.onclick = function() {
+        var latest = (typeof refreshState === 'function') ? refreshState() : st;
+        self.startLearning(latest);
+      };
+      btnContainer.appendChild(btnContinue);
 
-    btnContainer.appendChild(btnContinue);
-    btnContainer.appendChild(btnRest);
+      var btnRest2 = document.createElement('button');
+      btnRest2.className = 'continue-btn continue-btn--secondary';
+      btnRest2.innerHTML = '<span class="continue-btn-icon">\u2302</span><span class="continue-btn-label">\uC26C\uAE30</span>';
+      btnRest2.onclick = function() {
+        self._sessionActivities = 0;
+        self.closePopup();
+        if (typeof updateHome === 'function') updateHome(st);
+      };
+      btnContainer.appendChild(btnRest2);
+    }
+
     container.appendChild(btnContainer);
-
     this.popupEl.appendChild(container);
 
-    if (typeof speakText === 'function') speakText('더 놀래?');
+    if (typeof speakText === 'function') {
+      speakText(reachedLimit ? '오늘 많이 배웠어!' : '더 놀래?');
+    }
   },
 
   // Called when a letter is learned
@@ -665,6 +711,17 @@ var Learning = {
       st.learning.newSinceReview = (st.learning.newSinceReview || 0) + 1;
     }
 
+    // 복습 완료 시 practiceLog 업데이트 (완료 시점에서만 count 증가)
+    if (!st.learning.practiceLog) st.learning.practiceLog = {};
+    var pl = st.learning.practiceLog;
+    var logEntry = pl[letter] || { count: 0, lastPracticed: 0, interval: 0 };
+    logEntry.count = (logEntry.count || 0) + 1;
+    logEntry.lastPracticed = Date.now();
+    var intervals = [0, 1, 3, 7, 14];
+    var nextIdx = Math.min(logEntry.count, intervals.length - 1);
+    logEntry.interval = intervals[nextIdx];
+    pl[letter] = logEntry;
+
     if (typeof World !== 'undefined') World.addLetterFlower(letter, true);
 
     // Stage complete → show recap
@@ -679,9 +736,26 @@ var Learning = {
       return;
     }
 
+    // 마이크로 마일스톤: 중간 성취감 제공
+    var milestone = this._checkMicroMilestone(st, target.type);
     var praises = ['잘했어!', '멋져!', '최고야!', '대단해!'];
-    var praise = praises[Math.floor(Math.random() * praises.length)];
-    this._showReward(st, letter, praise, 'correct', target.data.sound, 'star', 15, 10);
+    var praise = milestone ? milestone : praises[Math.floor(Math.random() * praises.length)];
+    var sound = milestone ? 'evolve' : 'correct';
+    this._showReward(st, letter, praise, sound, target.data.sound, 'star', 15, 10);
+  },
+
+  // 자음 3/6, 모음 2/4 도달 시 마일스톤 메시지 반환
+  _checkMicroMilestone: function(st, type) {
+    if (type === 'consonant') {
+      var consCount = (st.learning.knownConsonants || []).length;
+      if (consCount === 3) return '벌써 3개! 펫이 소리를 내기 시작했어!';
+      if (consCount === 6) return '6개 달성! 거의 다 왔어!';
+    } else {
+      var vowCount = (st.learning.knownVowels || []).length;
+      if (vowCount === 2) return '모음 2개! 소리가 더 다양해졌어!';
+      if (vowCount === 4) return '모음 4개! 거의 다 배웠어!';
+    }
+    return null;
   },
 
   // Show recap grid when all letters in a stage are learned
@@ -739,7 +813,7 @@ var Learning = {
     this._recapTimer = setTimeout(function() {
       self._recapTimer = null;
       // Re-read fresh state
-      var fresh = (typeof loadState === 'function') ? loadState() : st;
+      var fresh = (typeof refreshState === 'function') ? refreshState() : st;
       if (!fresh) fresh = st;
 
       if (type === 'consonant') {
@@ -768,6 +842,16 @@ var Learning = {
       st.learning.newSinceReview = (st.learning.newSinceReview || 0) + 1;
     }
     st.learning.wordIndex++;
+
+    // practiceLog 업데이트 (완료 시점)
+    if (!st.learning.practiceLog) st.learning.practiceLog = {};
+    var pl = st.learning.practiceLog;
+    var wLog = pl[wordData.word] || { count: 0, lastPracticed: 0, interval: 0 };
+    wLog.count = (wLog.count || 0) + 1;
+    wLog.lastPracticed = Date.now();
+    var intervals = [0, 1, 3, 7, 14];
+    wLog.interval = intervals[Math.min(wLog.count, intervals.length - 1)];
+    pl[wordData.word] = wLog;
 
     if (typeof World !== 'undefined') World.addWordFlower(wordData.word);
 

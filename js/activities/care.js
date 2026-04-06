@@ -203,7 +203,7 @@ var CareActivity = {
     btn.onclick = function() {
       document.body.removeChild(promptEl);
       if (typeof Learning !== 'undefined') {
-        var fresh = (typeof loadState === 'function') ? loadState() : st;
+        var fresh = (typeof refreshState === 'function') ? refreshState() : st;
         Learning.startLearning(fresh || st);
       }
     };

@@ -13,6 +13,12 @@ var LetterHuntActivity = {
   start: function(st, target) {
     this._cleanup();
     this._target = target;
+    // 복습 경량화: reviewLight면 hunt만 수행 (intro/trace 스킵)
+    if (target.reviewLight) {
+      this._phase = 'hunt';
+      this._showHunt(st, target);
+      return;
+    }
     this._phase = 'intro';
     this._showIntro(st, target);
   },
