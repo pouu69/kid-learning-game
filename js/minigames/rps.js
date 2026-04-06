@@ -42,76 +42,83 @@ var RPSGame = {
       'justify-content:space-between',
       'padding:24px 16px 32px',
       'box-sizing:border-box',
-      'font-family:"DungGeunMo",monospace'
+      'font-family:"DungGeunMo",monospace',
+      'transition:background 0.3s'
     ].join(';');
     document.body.appendChild(overlay);
     this._overlay = overlay;
 
-    // ── 상단: 스코어보드 ──────────────────────
+    // ── 스타일 태그 (중복 방지) ──────────────────
+    if (!document.getElementById('rps-styles')) {
+      var styleTag = document.createElement('style');
+      styleTag.id = 'rps-styles';
+      styleTag.textContent = [
+        '@keyframes rps-pop{0%{transform:scale(0.5);opacity:0}70%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}',
+        '@keyframes rps-countdown{0%{transform:scale(0.3);opacity:0}40%{transform:scale(1.3);opacity:1}80%{transform:scale(1);opacity:1}100%{transform:scale(0.8);opacity:0}}',
+        '@keyframes rps-choice-in{0%{transform:scale(0.2) translateY(-20px);opacity:0}60%{transform:scale(1.2) translateY(0);opacity:1}100%{transform:scale(1) translateY(0);opacity:1}}'
+      ].join('');
+      document.head.appendChild(styleTag);
+    }
+
+    // ── 상단: 하트 스코어보드 ──────────────────────
     var scoreboard = document.createElement('div');
     scoreboard.style.cssText = [
       'width:100%',
       'display:flex',
-      'justify-content:space-between',
-      'align-items:center',
-      'color:#f8d848',
-      'font-size:1.1rem'
+      'justify-content:space-around',
+      'align-items:center'
     ].join(';');
-    scoreboard.innerHTML = [
-      '<span id="rps-player-label">나</span>',
-      '<span id="rps-score">0 : 0</span>',
-      '<span id="rps-pet-label">펫</span>'
-    ].join('');
+
+    var playerHearts = document.createElement('div');
+    playerHearts.id = 'rps-player-hearts';
+    playerHearts.style.cssText = 'font-size:2rem;letter-spacing:4px;';
+    playerHearts.textContent = '♡♡';
+
+    var petHearts = document.createElement('div');
+    petHearts.id = 'rps-pet-hearts';
+    petHearts.style.cssText = 'font-size:2rem;letter-spacing:4px;';
+    petHearts.textContent = '♡♡';
+
+    scoreboard.appendChild(playerHearts);
+    scoreboard.appendChild(petHearts);
     overlay.appendChild(scoreboard);
 
-    // ── 중앙: 펫 이모티콘 + 결과 텍스트 ──────
+    // ── 중앙: 펫 선택 이모지 + 펫 얼굴 ──────────────
     var center = document.createElement('div');
     center.style.cssText = [
       'display:flex',
       'flex-direction:column',
       'align-items:center',
-      'gap:12px'
+      'gap:8px',
+      'flex:1',
+      'justify-content:center'
     ].join(';');
+
+    var petChoice = document.createElement('div');
+    petChoice.id = 'rps-pet-choice';
+    petChoice.style.cssText = [
+      'font-size:4rem',
+      'min-height:64px',
+      'display:flex',
+      'align-items:center',
+      'justify-content:center',
+      'opacity:0'
+    ].join(';');
+    petChoice.textContent = '';
 
     var petFace = document.createElement('div');
     petFace.id = 'rps-pet-face';
     petFace.style.cssText = [
-      'font-size:3.5rem',
-      'color:#f8d848',
-      'letter-spacing:4px',
-      'min-height:64px',
+      'font-size:5rem',
+      'min-height:80px',
       'display:flex',
       'align-items:center',
       'justify-content:center'
     ].join(';');
-    petFace.textContent = '^_^';
+    petFace.textContent = '🐣';
 
-    var resultText = document.createElement('div');
-    resultText.id = 'rps-result';
-    resultText.style.cssText = [
-      'font-size:1.6rem',
-      'color:#f8d848',
-      'min-height:40px',
-      'text-align:center',
-      'letter-spacing:2px'
-    ].join(';');
-    resultText.textContent = '골라봐!';
-
-    var choicesRow = document.createElement('div');
-    choicesRow.id = 'rps-choices-display';
-    choicesRow.style.cssText = [
-      'display:flex',
-      'gap:24px',
-      'font-size:1.2rem',
-      'color:#aaaacc',
-      'min-height:36px',
-      'align-items:center'
-    ].join(';');
-    choicesRow.textContent = '';
-
+    center.appendChild(petChoice);
     center.appendChild(petFace);
-    center.appendChild(resultText);
-    center.appendChild(choicesRow);
     overlay.appendChild(center);
 
     // ── 하단: 버튼 3개 ────────────────────────
@@ -125,35 +132,34 @@ var RPSGame = {
     ].join(';');
 
     var choices = [
-      { key: 'scissors', label: '가위', emoji: '✌' },
-      { key: 'rock',     label: '바위', emoji: '✊' },
-      { key: 'paper',    label: '보',   emoji: '🖐' }
+      { key: 'scissors', emoji: '✌️' },
+      { key: 'rock',     emoji: '✊' },
+      { key: 'paper',    emoji: '🖐️' }
     ];
 
     choices.forEach(function(choice) {
       var btn = document.createElement('button');
       btn.dataset.choice = choice.key;
       btn.style.cssText = [
-        'width:90px',
-        'height:90px',
-        'border-radius:12px',
+        'width:100px',
+        'height:100px',
+        'border-radius:16px',
         'border:3px solid #f8d848',
         'background:#2a2848',
         'color:#f8d848',
         'font-family:"DungGeunMo",monospace',
-        'font-size:1rem',
+        'font-size:4rem',
         'display:flex',
-        'flex-direction:column',
         'align-items:center',
         'justify-content:center',
-        'gap:4px',
         'cursor:pointer',
         'box-shadow:0 6px 0 #111028',
         'transition:transform 0.08s,box-shadow 0.08s',
         '-webkit-tap-highlight-color:transparent',
-        'user-select:none'
+        'user-select:none',
+        'line-height:1'
       ].join(';');
-      btn.innerHTML = '<span style="font-size:2rem;line-height:1">' + choice.emoji + '</span><span>' + choice.label + '</span>';
+      btn.innerHTML = '<span style="font-size:4rem;line-height:1;pointer-events:none">' + choice.emoji + '</span>';
 
       btn.addEventListener('pointerdown', function() {
         btn.style.transform = 'translateY(4px)';
@@ -168,6 +174,7 @@ var RPSGame = {
         btn.style.boxShadow = '0 6px 0 #111028';
       });
       btn.addEventListener('click', function() {
+        playSound('tap');
         self._onPlayerChoice(choice.key);
       });
 
@@ -186,6 +193,69 @@ var RPSGame = {
     }
   },
 
+  _updateHearts: function() {
+    var playerHeartsEl = document.getElementById('rps-player-hearts');
+    var petHeartsEl    = document.getElementById('rps-pet-hearts');
+    if (playerHeartsEl) {
+      playerHeartsEl.textContent = '♥'.repeat(this._playerScore) + '♡'.repeat(Math.max(0, this._winTarget - this._playerScore));
+    }
+    if (petHeartsEl) {
+      petHeartsEl.textContent = '♥'.repeat(this._petScore) + '♡'.repeat(Math.max(0, this._winTarget - this._petScore));
+    }
+  },
+
+  _flashBackground: function(color) {
+    var overlay = this._overlay;
+    if (!overlay) return;
+    overlay.style.background = color;
+    setTimeout(function() {
+      overlay.style.background = '#1a1830';
+    }, 300);
+  },
+
+  _showCountdown: function(callback) {
+    var self = this;
+    var overlay = this._overlay;
+    if (!overlay) { callback(); return; }
+
+    var countEl = document.createElement('div');
+    countEl.id = 'rps-countdown';
+    countEl.style.cssText = [
+      'position:absolute',
+      'top:50%',
+      'left:50%',
+      'transform:translate(-50%,-50%)',
+      'font-size:5rem',
+      'color:#f8d848',
+      'font-family:"DungGeunMo",monospace',
+      'pointer-events:none',
+      'z-index:10',
+      'text-align:center'
+    ].join(';');
+    overlay.style.position = 'fixed';
+    overlay.appendChild(countEl);
+
+    var nums = ['3', '2', '1'];
+    var idx = 0;
+
+    function showNext() {
+      if (idx >= nums.length) {
+        if (countEl.parentNode) countEl.parentNode.removeChild(countEl);
+        callback();
+        return;
+      }
+      countEl.textContent = nums[idx];
+      countEl.style.animation = 'none';
+      // force reflow
+      void countEl.offsetWidth;
+      countEl.style.animation = 'rps-countdown 0.35s ease forwards';
+      idx++;
+      setTimeout(showNext, 350);
+    }
+
+    showNext();
+  },
+
   _onPlayerChoice: function(playerKey) {
     if (this._busy) return;
     this._busy = true;
@@ -195,12 +265,31 @@ var RPSGame = {
     var petKey = choices[Math.floor(Math.random() * 3)];
 
     this._round++;
-    this._showRoundResult(playerKey, petKey);
+
+    var self = this;
+    this._showCountdown(function() {
+      self._showPetChoice(petKey, function() {
+        self._showRoundResult(playerKey, petKey);
+      });
+    });
   },
 
-  _choiceLabel: function(key) {
-    var map = { scissors: '가위', rock: '바위', paper: '보' };
-    return map[key] || key;
+  _choiceEmoji: function(key) {
+    var map = { scissors: '✌️', rock: '✊', paper: '🖐️' };
+    return map[key] || '';
+  },
+
+  _showPetChoice: function(petKey, callback) {
+    var petChoiceEl = document.getElementById('rps-pet-choice');
+    if (!petChoiceEl) { callback(); return; }
+
+    petChoiceEl.textContent = this._choiceEmoji(petKey);
+    petChoiceEl.style.opacity = '1';
+    petChoiceEl.style.animation = 'none';
+    void petChoiceEl.offsetWidth;
+    petChoiceEl.style.animation = 'rps-choice-in 0.35s ease forwards';
+
+    setTimeout(callback, 400);
   },
 
   // returns 'win' | 'lose' | 'tie'
@@ -220,29 +309,17 @@ var RPSGame = {
     var self = this;
     var outcome = this._judge(playerKey, petKey);
 
-    var petFace   = document.getElementById('rps-pet-face');
-    var resultEl  = document.getElementById('rps-result');
-    var choicesEl = document.getElementById('rps-choices-display');
-    var scoreEl   = document.getElementById('rps-score');
-
-    // 선택 표시
-    if (choicesEl) {
-      choicesEl.textContent = '나: ' + this._choiceLabel(playerKey) + '  펫: ' + this._choiceLabel(petKey);
-    }
+    var petFace    = document.getElementById('rps-pet-face');
+    var petChoiceEl = document.getElementById('rps-pet-choice');
 
     if (outcome === 'tie') {
       // 비김 → 재경기 (라운드 차감)
       this._round--;
-      if (petFace)  petFace.textContent  = 'O_O';
-      if (resultEl) {
-        resultEl.style.color = '#f8d848';
-        resultEl.textContent = '비겼다!';
-      }
+      if (petFace) petFace.textContent = '😮';
       speakText('비겼다! 다시!', 0.9);
       setTimeout(function() {
-        if (petFace)  petFace.textContent  = '^_^';
-        if (resultEl) resultEl.textContent = '골라봐!';
-        if (choicesEl) choicesEl.textContent = '';
+        if (petFace) petFace.textContent = '🐣';
+        if (petChoiceEl) { petChoiceEl.textContent = ''; petChoiceEl.style.opacity = '0'; }
         self._setButtonsEnabled(true);
         self._busy = false;
       }, 1000);
@@ -251,30 +328,20 @@ var RPSGame = {
 
     if (outcome === 'win') {
       this._playerScore++;
-      if (petFace) petFace.textContent = 'T_T';
-      if (resultEl) {
-        resultEl.style.color = '#48a868';
-        resultEl.textContent = '이겼다!';
-      }
+      if (petFace) petFace.textContent = '😢';
+      this._flashBackground('rgba(72,168,104,0.4)');
       playSound('correct');
       speakText('이겼다!', 0.9);
     } else {
       this._petScore++;
-      if (petFace) petFace.textContent = 'V_V';
-      if (resultEl) {
-        resultEl.style.color = '#f08080';
-        resultEl.textContent = '졌어~';
-      }
+      if (petFace) petFace.textContent = '😄';
+      this._flashBackground('rgba(240,128,128,0.3)');
       playSound('wrong');
       speakText('졌어~', 0.8);
     }
 
-    // 스코어 업데이트
-    if (scoreEl) {
-      scoreEl.textContent = this._playerScore + ' : ' + this._petScore;
-    }
+    this._updateHearts();
 
-    // 승부 판정
     var matchOver = (this._playerScore >= this._winTarget) || (this._petScore >= this._winTarget) || (this._round >= this._maxRounds);
 
     if (matchOver) {
@@ -283,9 +350,8 @@ var RPSGame = {
       }, 900);
     } else {
       setTimeout(function() {
-        if (petFace)  petFace.textContent  = '^_^';
-        if (resultEl) resultEl.textContent = '골라봐!';
-        if (choicesEl) choicesEl.textContent = '';
+        if (petFace) petFace.textContent = '🐣';
+        if (petChoiceEl) { petChoiceEl.textContent = ''; petChoiceEl.style.opacity = '0'; }
         self._setButtonsEnabled(true);
         self._busy = false;
       }, 900);
@@ -300,66 +366,52 @@ var RPSGame = {
     var playerWon = this._playerScore > this._petScore;
     var isDraw    = this._playerScore === this._petScore;
 
-    var bgColor    = playerWon ? '#48a868' : (isDraw ? '#f8d848' : '#f08080');
-    var titleText  = playerWon ? '승리!' : (isDraw ? '무승부!' : '패배...');
-    var petEmotion = playerWon ? 'T_T' : (isDraw ? 'O_O' : '^O^');
+    var petEmotion = playerWon ? '😢' : (isDraw ? '😮' : '😄');
     var starsCount = 2; // 사양: 항상 2별
 
     // 오버레이 내용 교체
     overlay.innerHTML = '';
     overlay.style.justifyContent = 'center';
-    overlay.style.gap = '20px';
-
-    var titleEl = document.createElement('div');
-    titleEl.style.cssText = [
-      'font-size:3rem',
-      'color:' + bgColor,
-      'font-family:"DungGeunMo",monospace',
-      'letter-spacing:4px',
-      'animation:rps-pop 0.3s ease'
-    ].join(';');
-    titleEl.textContent = titleText;
+    overlay.style.gap = '24px';
+    overlay.style.background = playerWon ? 'rgba(72,168,104,0.25)' : (isDraw ? '#1a1830' : 'rgba(240,128,128,0.2)');
 
     var faceEl = document.createElement('div');
     faceEl.style.cssText = [
-      'font-size:3.5rem',
-      'color:#f8d848',
-      'font-family:"DungGeunMo",monospace',
-      'letter-spacing:4px'
+      'font-size:6rem',
+      'animation:rps-pop 0.4s ease'
     ].join(';');
     faceEl.textContent = petEmotion;
 
-    var scoreEl = document.createElement('div');
-    scoreEl.style.cssText = [
-      'font-size:1.4rem',
-      'color:#aaaacc',
-      'font-family:"DungGeunMo",monospace'
-    ].join(';');
-    scoreEl.textContent = '나 ' + this._playerScore + ' : ' + this._petScore + ' 펫';
-
     var starsEl = document.createElement('div');
     starsEl.style.cssText = [
-      'font-size:2.4rem',
+      'font-size:3rem',
       'color:#f8d848',
-      'letter-spacing:8px'
+      'letter-spacing:8px',
+      'animation:rps-pop 0.4s ease 0.1s both'
     ].join(';');
     starsEl.textContent = '★'.repeat(starsCount) + '☆'.repeat(5 - starsCount);
 
     var closeBtn = document.createElement('button');
     closeBtn.style.cssText = [
       'margin-top:16px',
-      'padding:14px 36px',
-      'border-radius:12px',
-      'border:3px solid #f8d848',
+      'width:100px',
+      'height:100px',
+      'border-radius:50%',
+      'border:4px solid #f8d848',
       'background:#2a2848',
       'color:#f8d848',
       'font-family:"DungGeunMo",monospace',
-      'font-size:1.1rem',
+      'font-size:2.5rem',
       'cursor:pointer',
       'box-shadow:0 6px 0 #111028',
-      '-webkit-tap-highlight-color:transparent'
+      '-webkit-tap-highlight-color:transparent',
+      'display:flex',
+      'align-items:center',
+      'justify-content:center',
+      'animation:rps-pop 0.4s ease 0.2s both'
     ].join(';');
-    closeBtn.textContent = '확인';
+    closeBtn.innerHTML = '<span style="font-size:2.5rem;line-height:1;pointer-events:none">✓</span>';
+
     closeBtn.addEventListener('pointerdown', function() {
       closeBtn.style.transform = 'translateY(4px)';
       closeBtn.style.boxShadow = '0 2px 0 #111028';
@@ -374,17 +426,7 @@ var RPSGame = {
       if (cb) cb(starsCount);
     });
 
-    // 팝 애니메이션 keyframes (중복 방지)
-    if (!document.getElementById('rps-styles')) {
-      var styleTag = document.createElement('style');
-      styleTag.id = 'rps-styles';
-      styleTag.textContent = '@keyframes rps-pop{0%{transform:scale(0.5);opacity:0}70%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}';
-      document.head.appendChild(styleTag);
-    }
-
-    overlay.appendChild(titleEl);
     overlay.appendChild(faceEl);
-    overlay.appendChild(scoreEl);
     overlay.appendChild(starsEl);
     overlay.appendChild(closeBtn);
 
