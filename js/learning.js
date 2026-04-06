@@ -264,6 +264,14 @@ var Learning = {
     // 새 세션 시작 시 활동 카운터 리셋 (연장 시에는 리셋하지 않음)
     if (this._sessionActivities === 0) this._lastPicks = [];
 
+    // DEBUG: 학습 상태 추적
+    console.log('[Learning] stage=' + st.learning.stage +
+      ' consIdx=' + (st.learning.consonantIndex || 0) +
+      ' vowIdx=' + (st.learning.vowelIndex || 0) +
+      ' newSinceReview=' + (st.learning.newSinceReview || 0) +
+      ' sessionAct=' + this._sessionActivities +
+      ' lastPicks=' + JSON.stringify(this._lastPicks));
+
     // Initialize practiceLog and newSinceReview counter if missing
     if (!st.learning.practiceLog) st.learning.practiceLog = {};
     if (typeof st.learning.newSinceReview !== 'number') st.learning.newSinceReview = 0;
@@ -284,11 +292,13 @@ var Learning = {
     if (reviewableCount >= 2 && st.learning.newSinceReview >= this._NEW_BEFORE_REVIEW) {
       st.learning.newSinceReview = 0;
       saveState(st);
+      console.log('[Learning] → REVIEW (reviewable=' + reviewableCount + ')');
       this._startReview(st);
       return;
     }
 
     // Dispatch new content
+    console.log('[Learning] → NEW target=' + target.type + ':' + (target.data.letter || target.data.word || target.data.syllable || ''));
     this._dispatchActivity(st, target);
   },
 
@@ -500,6 +510,7 @@ var Learning = {
     }
 
     // _lastPicks 갱신은 onLetterComplete/onWordComplete에서 일괄 처리
+    console.log('[Review] pick=' + pick.key + ' type=' + pick.type + ' count=' + pick.count + ' excluded=' + JSON.stringify(lastPicks));
 
     // practiceLog는 활동 완료 시 onLetterComplete/onWordComplete에서 업데이트
     // (시작 시 count++ 하면 미완료도 카운트되는 문제 방지)
@@ -701,13 +712,13 @@ var Learning = {
     if (target.type === 'consonant') {
       if (st.learning.knownConsonants.indexOf(letter) === -1) {
         st.learning.knownConsonants.push(letter);
-        if (!target.review) { st.learning.consonantIndex++; isNew = true; }
       }
+      if (!target.review) { st.learning.consonantIndex++; isNew = true; }
     } else {
       if (st.learning.knownVowels.indexOf(letter) === -1) {
         st.learning.knownVowels.push(letter);
-        if (!target.review) { st.learning.vowelIndex++; isNew = true; }
       }
+      if (!target.review) { st.learning.vowelIndex++; isNew = true; }
     }
     // Track new items learned since last review
     if (isNew) {
