@@ -728,7 +728,7 @@ body {
     setNeutralFace();
 
     showBanner((state.round + 1) + '\uBC88\uC9F8', 1000, function() {
-      speechBubble.textContent = makeDots(state.target);
+      speechBubble.innerHTML = '<span style="font-size:2.2rem;font-weight:bold;display:block;line-height:1">' + state.target + '</span><span style="font-size:0.9rem;letter-spacing:2px">' + makeDots(state.target) + '</span>';
       speechBubble.classList.add('visible');
       renderTapCounter(0, state.target);
 
