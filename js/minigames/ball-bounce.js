@@ -2,6 +2,9 @@
 // 공 튀기기 미니게임: 탭해서 공을 계속 튀기기
 // Depends: PIXI (global), playSound, speakText
 
+// Module-level flag: tutorial only shown once per session
+var _tutorialShown = false;
+
 var BallBounceGame = {
   _app: null,
   _overlay: null,
@@ -28,6 +31,11 @@ var BallBounceGame = {
   _trailPositions: null,  // array of {x, y, time}
   _burstContainer: null,
   _countScaleTimer: null,
+
+  // Tutorial state
+  _inTutorial: false,
+  _tutorialTimers: null,   // array of timer IDs to cancel on cleanup
+  _tutorialLayer: null,    // PIXI.Container holding tutorial-only graphics
 
   // Physics constants
   _gravity: 0.35,
@@ -130,16 +138,301 @@ var BallBounceGame = {
       app.stage.addChild(petText);
       self._petText = petText;
 
-      // Tap anywhere to bounce
+      // Tap handler: during tutorial ends it; during game, bounces ball
       app.canvas.addEventListener('pointerdown', function(e) {
-        self._onTap(e);
+        if (self._inTutorial) {
+          self._endTutorial(e);
+        } else {
+          self._onTap(e);
+        }
       });
 
-      // Start physics loop
-      self._tickInterval = setInterval(function() {
-        self._tick();
-      }, 16);
+      // Show tutorial first (or start game directly if already shown)
+      if (!_tutorialShown) {
+        self._showTutorial();
+      } else {
+        // Start physics loop immediately
+        self._tickInterval = setInterval(function() {
+          self._tick();
+        }, 16);
+      }
     });
+  },
+
+  // ── Tutorial ──────────────────────────────────────────────────────────────
+
+  _showTutorial: function() {
+    if (!this._app) return;
+    this._inTutorial = true;
+    this._tutorialTimers = [];
+
+    var self = this;
+    var app = this._app;
+    var w = app.screen.width;
+    var h = app.screen.height;
+    var r = this._ballRadius;
+
+    // Layer for all tutorial-only elements (sits above ball)
+    var layer = new PIXI.Container();
+    app.stage.addChild(layer);
+    this._tutorialLayer = layer;
+
+    // Position ball at center
+    this._ballX = w / 2;
+    this._ballY = h * 0.45;
+    if (this._ballGfx) {
+      this._ballGfx.x = this._ballX;
+      this._ballGfx.y = this._ballY;
+    }
+
+    // ── Gentle bob animation (JS-driven, no physics) ──
+    var bobStart = Date.now();
+    var bobInterval = setInterval(function() {
+      if (!self._inTutorial || !self._ballGfx) {
+        clearInterval(bobInterval);
+        return;
+      }
+      var elapsed = (Date.now() - bobStart) / 1000;
+      self._ballGfx.y = self._ballY + Math.sin(elapsed * 3) * 8;
+    }, 16);
+    this._tutorialTimers.push(bobInterval);
+
+    // ── Finger graphic (👆 via PIXI.Text for simplicity) ──
+    var finger = new PIXI.Text({
+      text: '👆',
+      style: { fontSize: 48 }
+    });
+    finger.anchor.set(0.5, 1);
+    // Start off-screen below and to the right
+    finger.x = this._ballX + 50;
+    finger.y = this._ballY + 120;
+    finger.alpha = 0;
+    layer.addChild(finger);
+
+    // ── "톡톡!" label ──
+    var tokText = new PIXI.Text({
+      text: '톡톡!',
+      style: {
+        fontFamily: '"DungGeunMo", monospace',
+        fontSize: 28,
+        fill: 0xfff176,
+        fontWeight: 'bold',
+        dropShadow: true,
+        dropShadowColor: 0x000000,
+        dropShadowBlur: 4,
+        dropShadowDistance: 2
+      }
+    });
+    tokText.anchor.set(0.5, 0.5);
+    tokText.x = this._ballX + 55;
+    tokText.y = this._ballY - r - 30;
+    tokText.alpha = 0;
+    layer.addChild(tokText);
+
+    // ── "눌러봐!" prompt label (shown after demo, pulses) ──
+    var promptText = new PIXI.Text({
+      text: '눌러봐!',
+      style: {
+        fontFamily: '"DungGeunMo", monospace',
+        fontSize: 32,
+        fill: 0xffffff,
+        fontWeight: 'bold',
+        dropShadow: true,
+        dropShadowColor: 0x000000,
+        dropShadowBlur: 5,
+        dropShadowDistance: 2
+      }
+    });
+    promptText.anchor.set(0.5, 0.5);
+    promptText.x = w / 2;
+    promptText.y = this._ballY + r + 70;
+    promptText.alpha = 0;
+    layer.addChild(promptText);
+
+    // ── Pulsing glow ring around ball (shown after demo) ──
+    var glowRing = new PIXI.Graphics();
+    glowRing.x = this._ballX;
+    glowRing.y = this._ballY;
+    glowRing.alpha = 0;
+    layer.addChild(glowRing);
+
+    var glowInterval = null;
+
+    // Helper: draw a tap animation — finger slides to ball, taps, recoils
+    function doTapAnimation(onDone) {
+      // Fade finger in and slide toward ball center
+      var startX = self._ballX + 50;
+      var startY = self._ballY + 120;
+      var endX = self._ballX + 5;
+      var endY = self._ballGfx ? self._ballGfx.y + r + 2 : self._ballY + r + 2;
+
+      finger.x = startX;
+      finger.y = startY;
+      finger.alpha = 1;
+
+      var slideMs = 420;
+      var slideStart = Date.now();
+
+      var slideInterval = setInterval(function() {
+        var t = Math.min(1, (Date.now() - slideStart) / slideMs);
+        // ease-in-out
+        var ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+        finger.x = startX + (endX - startX) * ease;
+        finger.y = startY + (endY - startY) * ease;
+        if (t >= 1) {
+          clearInterval(slideInterval);
+          // "tap" — finger presses down
+          finger.y = endY + 10;
+
+          // Show 톡톡! text + burst
+          tokText.alpha = 1;
+          tokText.scale.set(1);
+          self._spawnBurst(self._ballX, self._ballGfx ? self._ballGfx.y : self._ballY);
+          playSound('correct');
+
+          // Ball pop
+          if (self._ballGfx) {
+            self._ballGfx.scale.set(1.3);
+          }
+
+          // Fade out 톡톡! and recoil finger after 500ms
+          var fadeTimer = setTimeout(function() {
+            // Fade 톡톡!
+            var fadeStart = Date.now();
+            var fadeInterval = setInterval(function() {
+              var ft = Math.min(1, (Date.now() - fadeStart) / 500);
+              tokText.alpha = 1 - ft;
+              if (ft >= 1) {
+                clearInterval(fadeInterval);
+                tokText.alpha = 0;
+              }
+            }, 16);
+            self._tutorialTimers.push(fadeInterval);
+
+            // Recoil finger upward
+            finger.y = endY - 20;
+            if (self._ballGfx) self._ballGfx.scale.set(1.0);
+
+            // Fade finger out after another 300ms then call onDone
+            var doneTimer = setTimeout(function() {
+              finger.alpha = 0;
+              if (onDone) onDone();
+            }, 350);
+            self._tutorialTimers.push(doneTimer);
+          }, 500);
+          self._tutorialTimers.push(fadeTimer);
+        }
+      }, 16);
+      self._tutorialTimers.push(slideInterval);
+    }
+
+    // ── Sequence ──
+    // t=0ms: speak
+    var t0 = setTimeout(function() {
+      if (!self._inTutorial) return;
+      speakText('공을 톡톡 눌러봐!');
+    }, 300);
+    this._tutorialTimers.push(t0);
+
+    // t=600ms: first tap demo
+    var t1 = setTimeout(function() {
+      if (!self._inTutorial) return;
+      doTapAnimation(function() {
+        // After first tap, pause 500ms then do second tap
+        var t2 = setTimeout(function() {
+          if (!self._inTutorial) return;
+          doTapAnimation(function() {
+            // After second tap, show pulsing prompt
+            if (!self._inTutorial) return;
+
+            // Pulsing glow ring
+            var pulseStart = Date.now();
+            glowInterval = setInterval(function() {
+              if (!self._inTutorial || !glowRing.parent) {
+                clearInterval(glowInterval);
+                return;
+              }
+              var elapsed = (Date.now() - pulseStart) / 1000;
+              var scale = 1 + Math.sin(elapsed * 4) * 0.18;
+              var alpha = 0.55 + Math.sin(elapsed * 4) * 0.35;
+              glowRing.clear();
+              glowRing.circle(0, 0, r + 10);
+              glowRing.stroke({ width: 4, color: 0xfff176, alpha: alpha });
+              glowRing.x = self._ballX;
+              glowRing.y = self._ballGfx ? self._ballGfx.y : self._ballY;
+              glowRing.scale.set(scale);
+            }, 16);
+            self._tutorialTimers.push(glowInterval);
+
+            glowRing.alpha = 1;
+
+            // Fade prompt in
+            promptText.y = self._ballY + r + 70;
+            var fadeInStart = Date.now();
+            var fadeInInterval = setInterval(function() {
+              var ft = Math.min(1, (Date.now() - fadeInStart) / 400);
+              promptText.alpha = ft;
+              if (ft >= 1) {
+                clearInterval(fadeInInterval);
+                // Pulse prompt text
+                var pulsePromptStart = Date.now();
+                var pulsePromptInterval = setInterval(function() {
+                  if (!self._inTutorial || !promptText.parent) {
+                    clearInterval(pulsePromptInterval);
+                    return;
+                  }
+                  var pe = (Date.now() - pulsePromptStart) / 1000;
+                  promptText.scale.set(1 + Math.sin(pe * 3.5) * 0.1);
+                }, 16);
+                self._tutorialTimers.push(pulsePromptInterval);
+              }
+            }, 16);
+            self._tutorialTimers.push(fadeInInterval);
+          });
+        }, 600);
+        self._tutorialTimers.push(t2);
+      });
+    }, 600);
+    this._tutorialTimers.push(t1);
+  },
+
+  _endTutorial: function(e) {
+    if (!this._inTutorial) return;
+    this._inTutorial = false;
+    _tutorialShown = true;
+
+    // Cancel all tutorial timers/intervals
+    if (this._tutorialTimers) {
+      for (var i = 0; i < this._tutorialTimers.length; i++) {
+        clearInterval(this._tutorialTimers[i]);
+        clearTimeout(this._tutorialTimers[i]);
+      }
+      this._tutorialTimers = null;
+    }
+
+    // Remove tutorial layer
+    if (this._tutorialLayer) {
+      if (this._tutorialLayer.parent) {
+        this._tutorialLayer.parent.removeChild(this._tutorialLayer);
+      }
+      this._tutorialLayer.destroy({ children: true });
+      this._tutorialLayer = null;
+    }
+
+    // Reset ball to natural position (center, just above mid)
+    if (this._ballGfx) {
+      this._ballGfx.scale.set(1.0);
+      this._ballGfx.y = this._ballY;
+    }
+
+    // Start real physics loop
+    var self = this;
+    this._tickInterval = setInterval(function() {
+      self._tick();
+    }, 16);
+
+    // Count this tap as bounce #1
+    this._onTap(e);
   },
 
   // Draw ball as circle with two simple eyes
@@ -507,6 +800,18 @@ var BallBounceGame = {
       clearTimeout(this._countScaleTimer);
       this._countScaleTimer = null;
     }
+
+    // Cancel any pending tutorial timers
+    if (this._tutorialTimers) {
+      for (var i = 0; i < this._tutorialTimers.length; i++) {
+        clearInterval(this._tutorialTimers[i]);
+        clearTimeout(this._tutorialTimers[i]);
+      }
+      this._tutorialTimers = null;
+    }
+
+    this._inTutorial = false;
+    this._tutorialLayer = null;
 
     this._ballGfx = null;
     this._countText = null;
