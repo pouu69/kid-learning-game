@@ -22,6 +22,7 @@ var Learning = {
   _recapTimer: null,
   _evoTicker: null,
   _activeActivity: null,  // current activity for cleanup on popup close
+  _justPlayedMinigame: false,
 
   // Sync learning stage to match actual progress (6-stage: 0~5)
   _syncStage: function(st) {
@@ -217,6 +218,7 @@ var Learning = {
   closePopup: function() {
     // 세션 카운터 리셋
     this._sessionActivities = 0;
+    this._justPlayedMinigame = false;
 
     // Cancel pending timers to prevent stale state mutations
     if (this._rewardTimer) { clearTimeout(this._rewardTimer); this._rewardTimer = null; }
@@ -253,7 +255,10 @@ var Learning = {
     this._syncStage(st);
     this._sessionCount++;
     // 새 세션 시작 시 활동 카운터 리셋 (연장 시에는 리셋하지 않음)
-    if (this._sessionActivities === 0) this._lastPicks = [];
+    if (this._sessionActivities === 0) {
+      this._lastPicks = [];
+      this._justPlayedMinigame = false;
+    }
 
     // DEBUG: 학습 상태 추적
     console.log('[Learning] stage=' + st.learning.stage +
@@ -586,8 +591,36 @@ var Learning = {
     }, 1500);
   },
 
-  // Session-limited: "더 놀래?" or session-end prompt
+  // Session-limited: minigame check -> continue prompt
   _showContinuePrompt: function(st) {
+    var self = this;
+
+    // 미니게임 삽입: 짝수 번째 활동 후 + 배운 글자 2개 이상 + 직전에 미니게임 안 했으면
+    var knownCount = ((st.learning.knownConsonants || []).length + (st.learning.knownVowels || []).length);
+    var shouldPlayMinigame = (
+      this._sessionActivities > 0 &&
+      this._sessionActivities % 2 === 0 &&
+      !this._justPlayedMinigame &&
+      typeof LetterRainGame !== 'undefined' &&
+      knownCount >= 2
+    );
+
+    if (shouldPlayMinigame) {
+      this._justPlayedMinigame = true;
+      LetterRainGame.start(st, function(stars) {
+        st.stars = (st.stars || 0) + stars;
+        saveState(st);
+        self._showContinuePromptUI(st);
+      });
+      return;
+    }
+
+    this._justPlayedMinigame = false;
+    this._showContinuePromptUI(st);
+  },
+
+  // Session-limited: "더 놀래?" or session-end prompt
+  _showContinuePromptUI: function(st) {
     var self = this;
     if (!this.popupEl) {
       this.closePopup();
