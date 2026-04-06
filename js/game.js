@@ -375,9 +375,13 @@ function handleAction(action) {
     return;
   }
 
-  if (action === 'play' || action === 'learn') {
+  if (action === 'play') {
+    showPlayMenu(st);
+    return;
+  }
+
+  if (action === 'learn') {
     if (typeof Learning !== 'undefined') {
-      // Pet walks off screen, then pixel wipe, then learning
       if (typeof PetRenderer !== 'undefined' && PetRenderer.walkOffScreen) {
         PetRenderer.walkOffScreen('right', function() {
           pixelWipeTransition(function() {
@@ -491,6 +495,54 @@ function refreshState() {
   var fresh = loadState();
   if (fresh) st = fresh;
   return st;
+}
+
+// 놀이 게임 선택 메뉴
+function showPlayMenu(st) {
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:200;background:rgba(26,24,48,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.2rem;';
+
+  var title = document.createElement('div');
+  title.style.cssText = 'font-family:"DungGeunMo",monospace;font-size:1.4rem;color:#f8d848;';
+  title.textContent = '뭐 하고 놀까?';
+  overlay.appendChild(title);
+
+  var games = [
+    { name: '가위바위보', icon: '\u270A', game: typeof RPSGame !== 'undefined' ? RPSGame : null },
+    { name: '공 튀기기', icon: '\u26BD', game: typeof BallBounceGame !== 'undefined' ? BallBounceGame : null }
+  ];
+
+  for (var i = 0; i < games.length; i++) {
+    (function(g) {
+      var btn = document.createElement('button');
+      btn.style.cssText = 'font-family:"DungGeunMo",monospace;font-size:1.2rem;color:#1a1830;background:#f8d848;border:none;border-radius:12px;padding:16px 32px;min-width:200px;cursor:pointer;box-shadow:0 4px 0 #c4a830;active:transform:translateY(2px);';
+      btn.textContent = g.icon + ' ' + g.name;
+      btn.onclick = function() {
+        if (overlay.parentNode) document.body.removeChild(overlay);
+        if (g.game) {
+          g.game.start(refreshState(), function(stars) {
+            var fresh = refreshState();
+            fresh.stars = (fresh.stars || 0) + stars;
+            saveState(fresh);
+            if (typeof updateHome === 'function') updateHome(fresh);
+          });
+        }
+      };
+      overlay.appendChild(btn);
+    })(games[i]);
+  }
+
+  // 닫기 버튼
+  var closeBtn = document.createElement('button');
+  closeBtn.style.cssText = 'font-family:"DungGeunMo",monospace;font-size:0.9rem;color:rgba(255,255,255,0.5);background:none;border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:10px 24px;margin-top:0.5rem;cursor:pointer;';
+  closeBtn.textContent = '돌아가기';
+  closeBtn.onclick = function() {
+    if (overlay.parentNode) document.body.removeChild(overlay);
+  };
+  overlay.appendChild(closeBtn);
+
+  document.body.appendChild(overlay);
+  speakText('뭐 하고 놀까?', 0.8);
 }
 
 function setName(name) {
