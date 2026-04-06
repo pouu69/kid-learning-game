@@ -496,7 +496,6 @@ function showActivityMenu(st) {
   var activities = [
     { name: 'ㄱ 한글', bg: '#f8d848', shadow: '#c4a830', action: 'hangul' },
     { name: '123 숫자', bg: '#68d888', shadow: '#48a858', action: 'number' },
-    { name: '\u270A 가위바위보', bg: '#f0a0a0', shadow: '#c07070', action: 'rps' },
     { name: '\u26BD 공 튀기기', bg: '#88c8f8', shadow: '#5898c8', action: 'ball' }
   ];
 
@@ -534,8 +533,6 @@ function showActivityMenu(st) {
           }
         } else if (a.action === 'number') {
           window.location.href = 'numbers.html';
-        } else if (a.action === 'rps' && typeof RPSGame !== 'undefined') {
-          startGame(RPSGame);
         } else if (a.action === 'ball' && typeof BallBounceGame !== 'undefined') {
           startGame(BallBounceGame);
         }

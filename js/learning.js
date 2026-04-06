@@ -708,27 +708,6 @@ var Learning = {
   _showContinuePrompt: function(st) {
     var self = this;
 
-    // 미니게임 삽입: 짝수 번째 활동 후 + 배운 글자 2개 이상 + 직전에 미니게임 안 했으면
-    var knownCount = ((st.learning.knownConsonants || []).length + (st.learning.knownVowels || []).length);
-    var shouldPlayMinigame = (
-      this._sessionActivities > 0 &&
-      this._sessionActivities % 2 === 0 &&
-      !this._justPlayedMinigame &&
-      typeof LetterRainGame !== 'undefined' &&
-      knownCount >= 2
-    );
-
-    if (shouldPlayMinigame) {
-      this._justPlayedMinigame = true;
-      LetterRainGame.start(st, function(stars) {
-        st.stars = (st.stars || 0) + stars;
-        saveState(st);
-        self._showContinuePromptUI(st);
-      });
-      return;
-    }
-
-    this._justPlayedMinigame = false;
     this._showContinuePromptUI(st);
   },
 
