@@ -106,7 +106,7 @@ var CURRICULUM = {
     { letter: 'ㄱ', sound: '기역. 그', order: 1, associatedWord: '가방', combinedSyllable: '가' },
     { letter: 'ㄴ', sound: '니은. 느', order: 2, associatedWord: '나비', combinedSyllable: '나' },
     { letter: 'ㄷ', sound: '디귿. 드', order: 3, associatedWord: '다리', combinedSyllable: '다' },
-    { letter: 'ㅁ', sound: '미음. 므', order: 4, associatedWord: '엄마', combinedSyllable: '마' },
+    { letter: 'ㅁ', sound: '미음. 므', order: 4, associatedWord: '모자', combinedSyllable: '마' },
     { letter: 'ㅂ', sound: '비읍. 브', order: 5, associatedWord: '바다', combinedSyllable: '바' },
     { letter: 'ㅅ', sound: '시옷. 스', order: 6, associatedWord: '사자', combinedSyllable: '사' },
     { letter: 'ㅇ', sound: '이응', order: 7, associatedWord: '아기', combinedSyllable: '아' },
@@ -315,6 +315,25 @@ var CURRICULUM = {
       petEmotion: 'excited',
       animation: 'roar'
     }
+  ],
+
+  // 자음-모음 인터리브 순서 (기존 Stage 1/2 대체)
+  interleaved: [
+    { type: 'consonant', index: 0 },  // ㄱ (가방)
+    { type: 'vowel',     index: 0 },  // ㅏ (아이스크림)
+    { type: 'consonant', index: 1 },  // ㄴ (나비)
+    { type: 'consonant', index: 2 },  // ㄷ (다리)
+    { type: 'vowel',     index: 1 },  // ㅓ (어? 상자)
+    { type: 'consonant', index: 3 },  // ㅁ (모자)
+    { type: 'vowel',     index: 2 },  // ㅗ (높은 언덕)
+    { type: 'consonant', index: 4 },  // ㅂ (바다)
+    { type: 'vowel',     index: 3 },  // ㅜ (우산)
+    { type: 'consonant', index: 5 },  // ㅅ (사자)
+    { type: 'vowel',     index: 4 },  // ㅡ (으르렁)
+    { type: 'consonant', index: 6 },  // ㅇ (아기)
+    { type: 'vowel',     index: 5 },  // ㅣ (이! 선물)
+    { type: 'consonant', index: 7 },  // ㅈ (자동차)
+    { type: 'consonant', index: 8 }   // ㄹ (라면)
   ]
 };
 
