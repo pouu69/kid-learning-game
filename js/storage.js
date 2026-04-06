@@ -3,7 +3,7 @@
 
 var STORAGE_KEY = 'tamagoji_state';
 var STORAGE_BACKUP_KEY = 'tamagoji_state_v1_backup';
-var STORAGE_VERSION = 2;
+var STORAGE_VERSION = 3;
 
 var BASIC_CONSONANTS = ['ㄱ','ㄴ','ㄷ','ㄹ','ㅁ','ㅂ','ㅅ','ㅇ','ㅈ'];
 var ASPIRATED_CONSONANTS = ['ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
@@ -35,34 +35,41 @@ function createDefaultState() {
       syllablesCompleted: 0,
       sentencesCompleted: 0,
       newSinceReview: 0,
-      practiceLog: {}
+      practiceLog: {},
+      interleavedIndex: 0,     // 인터리브 배열 현재 위치
     },
     daily: {
       date: new Date().toISOString().slice(0, 10),
       sessionsToday: 0,
       minutesToday: 0,
       activitiesDone: 0,
-      bonusUnlocked: false
+      bonusUnlocked: false,
+      learnSessionsToday: 0,   // 새 학습 세션 (최대 2)
     },
     reports: {
       totalDays: 0,
       totalMinutes: 0,
       weeklyLog: [],
       letterStats: {}
-    }
+    },
+    stars: 0,
+    items: [],
   };
 }
 
 function migrateState(st) {
-  if (!st.version || st.version < STORAGE_VERSION) {
-    return migrateV1toV2(st);
+  if (!st.version || st.version < 2) {
+    st = migrateV1toV2(st);
+  }
+  if (st.version === 2) {
+    st = migrateV2toV3(st);
   }
   return st;
 }
 
 function migrateV1toV2(st) {
   var migrated = JSON.parse(JSON.stringify(st));
-  migrated.version = STORAGE_VERSION;
+  migrated.version = 2;
 
   // Ensure learning object exists
   if (!migrated.learning) {
@@ -133,6 +140,26 @@ function migrateV1toV2(st) {
   if (!l.completedWords) l.completedWords = [];
 
   return migrated;
+}
+
+function migrateV2toV3(st) {
+  st.version = 3;
+  if (typeof st.learning.interleavedIndex === 'undefined') {
+    // 기존 진행도로 인터리브 인덱스 계산
+    var consIdx = st.learning.consonantIndex || 0;
+    var vowIdx = st.learning.vowelIndex || 0;
+    var idx = 0;
+    for (var i = 0; i < CURRICULUM.interleaved.length; i++) {
+      var item = CURRICULUM.interleaved[i];
+      if (item.type === 'consonant' && item.index < consIdx) idx = i + 1;
+      else if (item.type === 'vowel' && item.index < vowIdx) idx = i + 1;
+    }
+    st.learning.interleavedIndex = Math.min(idx, CURRICULUM.interleaved.length);
+  }
+  if (typeof st.stars === 'undefined') st.stars = 0;
+  if (!st.items) st.items = [];
+  if (typeof st.daily.learnSessionsToday === 'undefined') st.daily.learnSessionsToday = 0;
+  return st;
 }
 
 function saveState(st) {
