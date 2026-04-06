@@ -20,10 +20,38 @@ var Pet = {
     if (st.sleeping) return 'zzz';
     if (st.stage === 0) return null;
 
-    // Need-based speech takes priority
-    if (this.request === 'hungry') return '배고파...';
-    if (this.request === 'sleepy') return '졸려...';
-    if (this.request === 'bored') return '심심해~';
+    var l = st.learning;
+    var words = l.completedWords || [];
+
+    // 배운 단어 기반 요청 (우선)
+    if (this.request === 'hungry') {
+      if (words.indexOf('밥') !== -1) return '밥!';
+      if (words.indexOf('물') !== -1) return '물!';
+      return null;
+    }
+    if (this.request === 'sleepy') {
+      if (words.length >= 5) return '졸려...';
+      return null;
+    }
+    if (this.request === 'bored') {
+      if (words.length >= 5) return '심심해~';
+      return null;
+    }
+
+    // 랜덤 혼잣말 (배운 글자 연습) - 30% 확률
+    var cons = l.knownConsonants || [];
+    var vows = l.knownVowels || [];
+    if (cons.length > 0 && vows.length > 0 && Math.random() < 0.3) {
+      var c = cons[Math.floor(Math.random() * cons.length)];
+      var v = vows[Math.floor(Math.random() * vows.length)];
+      // 한글 유니코드 조합: (초성index * 588) + (중성index * 28) + 0xAC00
+      var choIdx = c.charCodeAt(0) - 0x3131;
+      var jungIdx = v.charCodeAt(0) - 0x314F;
+      var code = choIdx * 588 + jungIdx * 28 + 0xAC00;
+      if (code >= 0xAC00 && code <= 0xD7A3) {
+        return String.fromCharCode(code) + '...';
+      }
+    }
 
     return null;
   },
@@ -31,42 +59,43 @@ var Pet = {
   // Get a greeting that reflects learning progress
   getGreeting: function(st) {
     var l = st.learning;
-    var stage = l.stage || 0;
+    var intIdx = l.interleavedIndex || 0;
 
     // Stage 0: pre-verbal
-    if (stage === 0) return '...!';
+    if ((l.stage || 0) === 0) return '...!';
 
-    // Stage 1: consonant sounds
-    if (stage === 1) {
+    // 인터리브 초반 (글자 1~2개)
+    if (intIdx <= 2) {
       var knownCons = l.knownConsonants || [];
       if (knownCons.length > 0) {
-        var lastCon = knownCons[knownCons.length - 1];
-        return lastCon + '...!';
+        return knownCons[knownCons.length - 1] + '...!';
       }
       return '응?';
     }
 
-    // Stage 2: vowel sounds
-    if (stage === 2) {
-      var knownVow = l.knownVowels || [];
-      if (knownVow.length > 0) {
-        var vowSounds = ['아~', '어~', '오~', '우~', '으~', '이~'];
-        return vowSounds[Math.floor(Math.random() * Math.min(knownVow.length, vowSounds.length))];
-      }
-      return '아!';
-    }
-
-    // Stage 3: syllables
-    if (stage === 3) {
-      var syllables = ['가!', '나!', '다!', '마!', '바!', '사!'];
-      return syllables[Math.floor(Math.random() * syllables.length)];
-    }
-
-    // Stage 4-5: use learned words
+    // 단어를 아는 경우 (Stage 4+)
     var words = l.completedWords || [];
     if (words.length > 0 && Math.random() > 0.3) {
-      var word = words[Math.floor(Math.random() * words.length)];
-      return word + '~';
+      return words[Math.floor(Math.random() * words.length)] + '~';
+    }
+
+    // 인터리브 중반 — 배운 자음+모음으로 음절 만들어 인사
+    var cons = l.knownConsonants || [];
+    var vows = l.knownVowels || [];
+    if (cons.length > 0 && vows.length > 0) {
+      var syllables = [];
+      for (var ci = 0; ci < cons.length; ci++) {
+        for (var vi = 0; vi < Math.min(vows.length, 2); vi++) {
+          var choIdx = cons[ci].charCodeAt(0) - 0x3131;
+          var jungIdx = vows[vi].charCodeAt(0) - 0x314F;
+          var code = choIdx * 588 + jungIdx * 28 + 0xAC00;
+          if (code >= 0xAC00 && code <= 0xD7A3) syllables.push(String.fromCharCode(code));
+        }
+      }
+      if (syllables.length > 0) {
+        var pick = syllables[Math.floor(Math.random() * syllables.length)];
+        return pick + '!';
+      }
     }
 
     var greetings = ['반가워!', '안녕~', '헤헤~'];
