@@ -2,6 +2,8 @@
 // 가위바위보 미니게임: 3판 2선승제
 // Depends: playSound, speakText (globals)
 
+var _rpsTutorialShown = false;
+
 var RPSGame = {
   _overlay: null,
   _onComplete: null,
@@ -21,7 +23,138 @@ var RPSGame = {
     this._busy = false;
 
     this._createOverlay();
-    speakText('가위바위보!', 0.9);
+
+    if (!_rpsTutorialShown) {
+      _rpsTutorialShown = true;
+      this._showTutorial();
+    } else {
+      speakText('가위바위보!', 0.9);
+    }
+  },
+
+  _showTutorial: function() {
+    var self = this;
+    var overlay = this._overlay;
+    if (!overlay) return;
+
+    // 튜토리얼 동안 버튼 숨기기
+    var btnRow = overlay.querySelector('#rps-btn-row');
+    if (btnRow) btnRow.style.visibility = 'hidden';
+
+    // 튜토리얼 전용 키프레임 추가 (중복 방지)
+    if (!document.getElementById('rps-tutorial-styles')) {
+      var tutStyle = document.createElement('style');
+      tutStyle.id = 'rps-tutorial-styles';
+      tutStyle.textContent = [
+        '@keyframes rps-tut-finger{',
+        '  0%   { transform: translateX(-90px); opacity: 0; }',
+        '  10%  { opacity: 1; }',
+        '  33%  { transform: translateX(-90px); }',
+        '  50%  { transform: translateX(0px); }',
+        '  67%  { transform: translateX(0px); }',
+        '  83%  { transform: translateX(90px); }',
+        '  100% { transform: translateX(90px); opacity: 1; }',
+        '}',
+        '@keyframes rps-tut-tap{',
+        '  0%,60%  { opacity: 0.35; transform: scale(1); }',
+        '  70%     { opacity: 1;    transform: scale(1.25); filter: drop-shadow(0 0 12px #f8d848); }',
+        '  85%     { opacity: 1;    transform: scale(1.15); }',
+        '  100%    { opacity: 1;    transform: scale(1.15); }',
+        '}',
+        '@keyframes rps-tut-fadein{',
+        '  from { opacity: 0; }',
+        '  to   { opacity: 1; }',
+        '}',
+        '@keyframes rps-tut-fadeout{',
+        '  from { opacity: 1; }',
+        '  to   { opacity: 0; }',
+        '}'
+      ].join('');
+      document.head.appendChild(tutStyle);
+    }
+
+    // 튜토리얼 컨테이너
+    var tut = document.createElement('div');
+    tut.id = 'rps-tutorial';
+    tut.style.cssText = [
+      'position:absolute',
+      'top:0',
+      'left:0',
+      'width:100%',
+      'height:100%',
+      'display:flex',
+      'flex-direction:column',
+      'align-items:center',
+      'justify-content:center',
+      'gap:20px',
+      'z-index:10',
+      'animation:rps-tut-fadein 0.4s ease'
+    ].join(';');
+    overlay.style.position = 'fixed';
+    overlay.appendChild(tut);
+
+    // "골라봐!" 텍스트
+    var label = document.createElement('div');
+    label.style.cssText = [
+      'font-size:2rem',
+      'color:#f8d848',
+      'font-family:"DungGeunMo",monospace',
+      'text-align:center',
+      'letter-spacing:2px'
+    ].join(';');
+    label.textContent = '골라봐!';
+    tut.appendChild(label);
+
+    // 손 3개 행 (반투명)
+    var handsRow = document.createElement('div');
+    handsRow.style.cssText = [
+      'display:flex',
+      'gap:24px',
+      'justify-content:center',
+      'align-items:center',
+      'position:relative'
+    ].join(';');
+
+    var handEmojis = ['✌️', '✊', '🖐️'];
+    handEmojis.forEach(function(emoji, idx) {
+      var hand = document.createElement('div');
+      hand.style.cssText = [
+        'font-size:4rem',
+        'line-height:1',
+        'opacity:0.35',
+        'transition:opacity 0.2s,transform 0.2s,filter 0.2s',
+        // 가운데(✊)만 tap 애니메이션
+        idx === 1 ? 'animation:rps-tut-tap 2.5s ease 0.5s both' : ''
+      ].join(';');
+      hand.textContent = emoji;
+      handsRow.appendChild(hand);
+    });
+
+    tut.appendChild(handsRow);
+
+    // 가리키는 손가락 (👆) — 왼쪽→가운데 이동
+    var finger = document.createElement('div');
+    finger.style.cssText = [
+      'font-size:3rem',
+      'line-height:1',
+      'margin-top:-8px',
+      'animation:rps-tut-finger 2.5s ease 0.5s both'
+    ].join(';');
+    finger.textContent = '👆';
+    tut.appendChild(finger);
+
+    speakText('손 하나를 골라봐!', 0.9);
+
+    // 2.5초 후 튜토리얼 사라지고 게임 시작
+    setTimeout(function() {
+      // 페이드아웃
+      tut.style.animation = 'rps-tut-fadeout 0.4s ease forwards';
+      setTimeout(function() {
+        if (tut.parentNode) tut.parentNode.removeChild(tut);
+        if (btnRow) btnRow.style.visibility = 'visible';
+        speakText('가위바위보!', 0.9);
+      }, 400);
+    }, 2900);
   },
 
   _createOverlay: function() {
