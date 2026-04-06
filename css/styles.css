@@ -372,37 +372,32 @@ body {
 }
 .care-btn {
     flex: 1;
-    background: linear-gradient(180deg, #383058 0%, #282048 100%);
-    border: 3px solid var(--ui-border);
-    border-radius: 6px;
-    padding: 8px 4px 6px;
-    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    border: none;
+    border-radius: 16px;
+    padding: 8px;
+    display: flex; align-items: center; justify-content: center;
     cursor: pointer;
-    box-shadow: 0 3px 0 #181028;
     min-height: 56px;
+    min-width: 56px;
     position: relative;
-    font-family: var(--font-pixel);
-    color: var(--text-light);
-    font-size: 11px;
-    font-weight: bold;
     touch-action: manipulation;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.3);
+    transition: transform 0.1s;
 }
-.care-btn:active { box-shadow: none; transform: translateY(3px); }
-.care-btn-learn { background: linear-gradient(180deg, #6a4c9c 0%, #483868 100%); border-color: #8868c0; box-shadow: 0 3px 0 #2a1848; }
-.care-btn-learn span { color: #f8e888; }
-.care-icon { width: 26px; height: 26px; border: 2px solid; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
-.care-icon-feed { background: var(--red); border-color: #c04848; color: #fff; font-size: 16px; }
-.care-icon-sleep { background: var(--purple); border-color: #7858a0; color: #fff; font-size: 16px; }
-.care-icon-wash { background: var(--blue); border-color: #3888c0; color: #fff; font-size: 16px; }
-.care-icon-learn { background: var(--gold); border-color: #d0a830; font-family: var(--font-pixel); font-size: 14px; font-weight: bold; color: var(--text-dark); }
+.care-btn:active { box-shadow: 0 1px 0 rgba(0,0,0,0.3); transform: translateY(3px); }
+.care-btn--feed { background: linear-gradient(180deg, #f08080 0%, #c85858 100%); }
+.care-btn--sleep { background: linear-gradient(180deg, #8878b8 0%, #5848a0 100%); }
+.care-btn--wash { background: linear-gradient(180deg, #68b8e8 0%, #4888c0 100%); }
+.care-btn--learn { background: linear-gradient(180deg, #f8d848 0%, #d0a830 100%); }
+.care-btn--play { background: linear-gradient(180deg, #68d888 0%, #48a868 100%); }
+.care-icon-big { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; }
 @keyframes btnBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 .care-btn.urgent { animation: btnBounce 0.8s ease infinite; }
 
 /* === Night Mode === */
 body.night .pixel-panel { background: var(--ui-bg-n); border-color: var(--ui-border-n); }
 body.night .care-bar { background: var(--ui-bg-n); border-color: var(--ui-border-n); }
-body.night .care-btn { background: linear-gradient(180deg, #282048, #181038); border-color: #483868; box-shadow: 0 3px 0 #080018; }
-body.night .care-btn-learn { background: linear-gradient(180deg, #483868, #382858); border-color: #6848a0; }
+body.night .care-btn { opacity: 0.85; }
 body.night .stat-bar-track { background: #000010; }
 body.night .pet-name { color: #c8b8e0; }
 
@@ -845,11 +840,10 @@ button,
     }
     .care-btn {
         min-height: 64px;
-        padding: 10px 6px 8px;
-        font-size: 13px;
-        border-radius: 8px;
+        min-width: 64px;
+        border-radius: 18px;
     }
-    .care-icon { width: 32px; height: 32px; }
+    .care-icon-big { width: 42px; height: 42px; }
 
 
     /* ── Learning Screen ── */
