@@ -237,6 +237,17 @@ body {
 .food-item:active {
   transform: scale(0.9);
 }
+.food-item.wrong-shake {
+  animation: wrongShake 0.4s ease;
+  opacity: 0.5;
+}
+@keyframes wrongShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(6px); }
+}
 .food-item.flying {
   opacity: 0;
   z-index: 20;
@@ -419,6 +430,8 @@ body {
     {target:8, foodCount:12}
   ];
 
+  var FOOD_NAMES = ['사과','귤','포도','딸기','블루베리','바나나','복숭아','키위'];
+
   var state = {
     round: 0,
     target: 1,
@@ -427,7 +440,9 @@ body {
     foodItems: [],
     busy: false,
     tutorialShown: false,
-    tutorialEl: null
+    tutorialEl: null,
+    correctFood: 0,    // 이번 라운드 정답 과일 인덱스
+    wrongTaps: 0       // 오답 탭 횟수
   };
 
   var petFace = document.getElementById('petFace');
@@ -566,7 +581,10 @@ body {
     var h = areaRect.height;
     var margin = 36;
     var placed = [];
-    var emojis = shuffleArray(FOODS.slice());
+    // 배치 순서 셔플 (정답이 항상 앞에 오지 않도록)
+    var indices = [];
+    for (var idx = 0; idx < count; idx++) indices.push(idx);
+    shuffleArray(indices);
 
     for (var i = 0; i < count; i++) {
       var attempts = 0;
@@ -586,16 +604,28 @@ body {
 
       placed.push({x:x, y:y});
 
+      // 정답 과일은 target 수만큼, 나머지는 오답 과일
+      var isCorrect = i < state.target;
+      var emoji, colorIdx;
+      if (isCorrect) {
+        emoji = FOODS[state.correctFood];
+        colorIdx = state.correctFood;
+      } else {
+        // 오답: 정답이 아닌 랜덤 과일
+        var wrongIdx;
+        do { wrongIdx = Math.floor(Math.random() * FOODS.length); } while (wrongIdx === state.correctFood);
+        emoji = FOODS[wrongIdx];
+        colorIdx = wrongIdx;
+      }
+
       var el = document.createElement('div');
       el.className = 'food-item';
       el.style.left = x + 'px';
       el.style.top = y + 'px';
 
-      var emoji = emojis[i % emojis.length];
-      var colorIdx = FOODS.indexOf(emoji);
       var bg = document.createElement('div');
       bg.className = 'food-bg';
-      bg.style.background = FOOD_COLORS[colorIdx >= 0 ? colorIdx : 0];
+      bg.style.background = FOOD_COLORS[colorIdx];
       el.appendChild(bg);
 
       var span = document.createElement('span');
@@ -605,6 +635,7 @@ body {
       el.appendChild(span);
 
       el.dataset.index = i;
+      el.dataset.correct = isCorrect ? '1' : '0';
       el.addEventListener('click', onFoodTap);
       foodArea.appendChild(el);
       state.foodItems.push(el);
@@ -639,10 +670,20 @@ body {
   function onFoodTap(e) {
     if (state.busy) return;
     var el = e.currentTarget;
-    if (el.classList.contains('flying')) return;
+    if (el.classList.contains('flying') || el.classList.contains('wrong-shake')) return;
 
     removeTutorial();
     state.tutorialShown = true;
+
+    // 오답 과일 탭 → 흔들림 + 안내
+    if (el.dataset.correct !== '1') {
+      state.wrongTaps++;
+      el.classList.add('wrong-shake');
+      var correctName = FOOD_NAMES[state.correctFood];
+      speak('이건 ' + correctName + '가 아니야~');
+      setTimeout(function() { el.classList.remove('wrong-shake'); }, 500);
+      return;
+    }
 
     state.fed++;
     var fedNow = state.fed;
@@ -679,7 +720,7 @@ body {
   }
 
   function onRoundComplete(overfed) {
-    var starsEarned = overfed ? 1 : 3;
+    var starsEarned = overfed ? 1 : (state.wrongTaps === 0 ? 3 : 2);
 
     if (overfed) {
       setPuffedFace();
@@ -727,12 +768,18 @@ body {
     foodArea.innerHTML = '';
     setNeutralFace();
 
+    // 라운드마다 정답 과일 랜덤 선택
+    state.correctFood = Math.floor(Math.random() * FOODS.length);
+    state.wrongTaps = 0;
+    var correctEmoji = FOODS[state.correctFood];
+    var correctName = FOOD_NAMES[state.correctFood];
+
     showBanner((state.round + 1) + '\uBC88\uC9F8', 1000, function() {
-      speechBubble.innerHTML = '<span style="font-size:2.2rem;font-weight:bold;display:block;line-height:1">' + state.target + '</span><span style="font-size:0.9rem;letter-spacing:2px">' + makeDots(state.target) + '</span>';
+      speechBubble.innerHTML = '<span style="font-size:2.2rem;display:block;line-height:1">' + correctEmoji + ' ' + state.target + '</span><span style="font-size:0.9rem;letter-spacing:2px">' + makeDots(state.target) + '</span>';
       speechBubble.classList.add('visible');
       renderTapCounter(0, state.target);
 
-      speak(NUMBER_ANNOUNCE[state.target]);
+      speak(correctName + ' ' + NUMBER_ANNOUNCE[state.target]);
 
       setTimeout(function() {
         placeFoodItems(roundData.foodCount);
