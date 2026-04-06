@@ -199,9 +199,11 @@ var LetterRainGame = {
 
   _end: function() {
     var score = this._score;
+    var cb = this._onComplete;
+    this._onComplete = null;
     this._cleanup();
     var stars = Math.min(5, Math.floor(score / 30));
-    if (this._onComplete) this._onComplete(stars);
+    if (cb) cb(stars);
   },
 
   _cleanup: function() {
@@ -212,7 +214,7 @@ var LetterRainGame = {
       if (this._letters[i] && this._letters[i].destroy) this._letters[i].destroy();
     }
     this._letters = [];
-    if (this._container) { this._container = null; }
+    if (this._container) { this._container.destroy({ children: true }); this._container = null; }
     if (this._app) {
       this._app.destroy(true, { children: true });
       this._app = null;

@@ -73,14 +73,16 @@ function handleChoiceResult(activity, buttons, dataAttr, selectedVal, correctVal
       }
     }
     playSound('correct');
-    if (onCorrect) activity._setTimeout(onCorrect, 800);
+    var delayFn = (activity && activity._setTimeout) ? function(fn, ms) { activity._setTimeout(fn, ms); } : setTimeout;
+    if (onCorrect) delayFn(onCorrect, 800);
   } else {
     for (i = 0; i < buttons.length; i++) {
       if (buttons[i].getAttribute(dataAttr) === selectedVal) {
         buttons[i].classList.add('choice-wrong');
       }
     }
-    activity._setTimeout(function() {
+    var delayFn2 = (activity && activity._setTimeout) ? function(fn, ms) { activity._setTimeout(fn, ms); } : setTimeout;
+    delayFn2(function() {
       for (var k = 0; k < buttons.length; k++) {
         buttons[k].classList.remove('choice-locked', 'choice-wrong');
       }

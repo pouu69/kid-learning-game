@@ -1,6 +1,17 @@
 // js/pet.js
 // 펫 행동, 감정, 요청 로직 — 학습 진도 연동 대사 시스템
 
+// 한글 유니코드 조합용 룩업 테이블 (Jamo → 초성/중성 인덱스)
+var CHO_MAP = {'ㄱ':0,'ㄲ':1,'ㄴ':2,'ㄷ':3,'ㄸ':4,'ㄹ':5,'ㅁ':6,'ㅂ':7,'ㅃ':8,'ㅅ':9,'ㅆ':10,'ㅇ':11,'ㅈ':12,'ㅉ':13,'ㅊ':14,'ㅋ':15,'ㅌ':16,'ㅍ':17,'ㅎ':18};
+var JUNG_MAP = {'ㅏ':0,'ㅐ':1,'ㅑ':2,'ㅒ':3,'ㅓ':4,'ㅔ':5,'ㅕ':6,'ㅖ':7,'ㅗ':8,'ㅘ':9,'ㅙ':10,'ㅚ':11,'ㅛ':12,'ㅜ':13,'ㅝ':14,'ㅞ':15,'ㅟ':16,'ㅠ':17,'ㅡ':18,'ㅢ':19,'ㅣ':20};
+
+function composeSyllable(cho, jung) {
+  var choIdx = CHO_MAP[cho];
+  var jungIdx = JUNG_MAP[jung];
+  if (choIdx === undefined || jungIdx === undefined) return null;
+  return String.fromCharCode(choIdx * 588 + jungIdx * 28 + 0xAC00);
+}
+
 var Pet = {
   request: null,
 
@@ -44,12 +55,9 @@ var Pet = {
     if (cons.length > 0 && vows.length > 0 && Math.random() < 0.3) {
       var c = cons[Math.floor(Math.random() * cons.length)];
       var v = vows[Math.floor(Math.random() * vows.length)];
-      // 한글 유니코드 조합: (초성index * 588) + (중성index * 28) + 0xAC00
-      var choIdx = c.charCodeAt(0) - 0x3131;
-      var jungIdx = v.charCodeAt(0) - 0x314F;
-      var code = choIdx * 588 + jungIdx * 28 + 0xAC00;
-      if (code >= 0xAC00 && code <= 0xD7A3) {
-        return String.fromCharCode(code) + '...';
+      var syl = composeSyllable(c, v);
+      if (syl) {
+        return syl + '...';
       }
     }
 
@@ -86,10 +94,8 @@ var Pet = {
       var syllables = [];
       for (var ci = 0; ci < cons.length; ci++) {
         for (var vi = 0; vi < Math.min(vows.length, 2); vi++) {
-          var choIdx = cons[ci].charCodeAt(0) - 0x3131;
-          var jungIdx = vows[vi].charCodeAt(0) - 0x314F;
-          var code = choIdx * 588 + jungIdx * 28 + 0xAC00;
-          if (code >= 0xAC00 && code <= 0xD7A3) syllables.push(String.fromCharCode(code));
+          var syl = composeSyllable(cons[ci], vows[vi]);
+          if (syl) syllables.push(syl);
         }
       }
       if (syllables.length > 0) {

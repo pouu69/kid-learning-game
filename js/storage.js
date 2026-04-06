@@ -204,6 +204,7 @@ function updateDaily(st) {
     st.daily = {
       date: today,
       sessionsToday: 0,
+      learnSessionsToday: 0,
       minutesToday: 0,
       activitiesDone: 0,
       bonusUnlocked: false
