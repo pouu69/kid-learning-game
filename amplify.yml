@@ -8,7 +8,7 @@ frontend:
       commands:
         # Copy static files to dist/
         - mkdir -p dist/css
-        - cp manifest.json sw.js dist/
+        - cp manifest.json sw.js numbers.html dist/
         - cp css/*.css dist/css/
 
         # Concatenate all JS files in load order → single bundle
@@ -31,6 +31,7 @@ frontend:
             js/activities/sentence-builder.js \
             js/activities/play.js \
             js/activities/care.js \
+            js/minigames/ball-bounce.js \
             js/report.js \
             js/story/Constants.js \
             js/story/EventBus.js \
