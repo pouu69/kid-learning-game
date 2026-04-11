@@ -1,17 +1,50 @@
-self.addEventListener('install', function() {
-    self.skipWaiting();
+var CACHE_NAME = 'tamagoji-v6';
+var PRECACHE = [
+    '/',
+    '/index.html',
+    '/numbers.html',
+    '/app.min.js',
+    '/css/styles.css',
+    '/manifest.json',
+    '/icon.svg'
+];
+
+self.addEventListener('install', function(e) {
+    e.waitUntil(
+        caches.open(CACHE_NAME).then(function(cache) {
+            return cache.addAll(PRECACHE);
+        }).then(function() { return self.skipWaiting(); })
+    );
 });
 
 self.addEventListener('activate', function(e) {
     e.waitUntil(
-        caches.keys()
-            .then(function(names) {
-                return Promise.all(names.map(function(n) { return caches.delete(n); }));
-            })
-            .then(function() { return self.registration.unregister(); })
-            .then(function() { return self.clients.matchAll(); })
-            .then(function(clients) {
-                clients.forEach(function(c) { c.navigate(c.url); });
-            })
+        caches.keys().then(function(names) {
+            return Promise.all(
+                names.filter(function(n) { return n !== CACHE_NAME; })
+                    .map(function(n) { return caches.delete(n); })
+            );
+        }).then(function() { return self.clients.claim(); })
+    );
+});
+
+self.addEventListener('fetch', function(e) {
+    var req = e.request;
+    if (req.method !== 'GET') return;
+    var url = new URL(req.url);
+    if (url.origin !== self.location.origin) return;
+
+    e.respondWith(
+        fetch(req).then(function(res) {
+            if (res && res.status === 200) {
+                var copy = res.clone();
+                caches.open(CACHE_NAME).then(function(cache) { cache.put(req, copy); });
+            }
+            return res;
+        }).catch(function() {
+            return caches.match(req).then(function(cached) {
+                return cached || caches.match('/index.html');
+            });
+        })
     );
 });

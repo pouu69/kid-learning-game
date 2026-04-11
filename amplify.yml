@@ -8,7 +8,7 @@ frontend:
       commands:
         # Copy static files to dist/
         - mkdir -p dist/css
-        - cp sw.js numbers.html dist/
+        - cp sw.js numbers.html manifest.json icon.svg dist/
         - cp css/*.css dist/css/
 
         # Concatenate all JS files in load order → single bundle
@@ -60,11 +60,19 @@ frontend:
     paths:
       - node_modules/**/*
 customHeaders:
-  - pattern: '**/*'
+  - pattern: '/sw.js'
     headers:
       - key: 'Cache-Control'
         value: 'no-cache, no-store, must-revalidate'
-      - key: 'Pragma'
-        value: 'no-cache'
-      - key: 'Expires'
-        value: '0'
+  - pattern: '/index.html'
+    headers:
+      - key: 'Cache-Control'
+        value: 'no-cache, must-revalidate'
+  - pattern: '/numbers.html'
+    headers:
+      - key: 'Cache-Control'
+        value: 'no-cache, must-revalidate'
+  - pattern: '/manifest.json'
+    headers:
+      - key: 'Cache-Control'
+        value: 'no-cache, must-revalidate'
