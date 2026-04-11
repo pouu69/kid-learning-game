@@ -6,13 +6,16 @@ var PRECACHE = [
     '/app.min.js',
     '/css/styles.css',
     '/manifest.json',
-    '/icon.svg'
+    '/icon-192.png',
+    '/icon-512.png'
 ];
 
 self.addEventListener('install', function(e) {
     e.waitUntil(
         caches.open(CACHE_NAME).then(function(cache) {
-            return cache.addAll(PRECACHE);
+            return Promise.all(PRECACHE.map(function(url) {
+                return cache.add(url).catch(function() {});
+            }));
         }).then(function() { return self.skipWaiting(); })
     );
 });
@@ -43,7 +46,9 @@ self.addEventListener('fetch', function(e) {
             return res;
         }).catch(function() {
             return caches.match(req).then(function(cached) {
-                return cached || caches.match('/index.html');
+                if (cached) return cached;
+                if (req.mode === 'navigate') return caches.match('/index.html');
+                return Response.error();
             });
         })
     );

@@ -5,6 +5,12 @@
 // Module-level flag: tutorial only shown once per session
 var _tutorialShown = false;
 
+// Native Korean counting words for 1-20 (bounce count announcement)
+var BB_COUNT_WORDS = [
+  '', '하나', '둘', '셋', '넷', '다섯', '여섯', '일곱', '여덟', '아홉', '열',
+  '열하나', '열둘', '열셋', '열넷', '열다섯', '열여섯', '열일곱', '열여덟', '열아홉', '스물'
+];
+
 var BallBounceGame = {
   _app: null,
   _overlay: null,
@@ -44,6 +50,7 @@ var BallBounceGame = {
 
   start: function(st, onComplete) {
     this._cleanup();
+    this._st = st;
     this._onComplete = onComplete;
     this._bounceCount = 0;
     this._gameOver = false;
@@ -502,9 +509,13 @@ var BallBounceGame = {
       this._countText.text = String(this._bounceCount);
     }
 
-    // Milestone celebrations at 5, 10, 20
-    if (this._bounceCount === 5 || this._bounceCount === 10 || this._bounceCount === 20) {
+    // Milestone celebrations at 5, 10, 20 handle their own speech
+    var isMilestone = (this._bounceCount === 5 || this._bounceCount === 10 || this._bounceCount === 20);
+    if (isMilestone) {
       this._doMilestoneCelebration();
+    } else {
+      var word = BB_COUNT_WORDS[this._bounceCount] || String(this._bounceCount);
+      speakText(word, 1.1);
     }
 
     // Update pet face based on combo
@@ -787,14 +798,41 @@ var BallBounceGame = {
       this._app.stage.addChild(starText);
     }
 
-    // Call onComplete after short delay so user can see result
+    // "다시 할래?" popup with DOM buttons
+    var self = this;
+    var savedSt = this._st;
     var cb = this._onComplete;
     this._onComplete = null;
-    var self = this;
+
     setTimeout(function() {
-      self._cleanup();
-      if (cb) cb(stars);
-    }, 2200);
+      if (!self._overlay) return;
+      var popup = document.createElement('div');
+      popup.style.cssText = 'position:absolute;left:50%;bottom:18%;transform:translateX(-50%);display:flex;gap:16px;z-index:400;';
+
+      var btnStyle = 'font-family:"DungGeunMo",monospace;font-size:1.3rem;color:#1a1830;border:none;border-radius:14px;padding:16px 28px;min-width:140px;cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,0.35);font-weight:bold;';
+
+      var againBtn = document.createElement('button');
+      againBtn.style.cssText = btnStyle + 'background:#f8d848;';
+      againBtn.textContent = '다시 할래!';
+      againBtn.onclick = function() {
+        speakText('다시 해보자!', 0.9);
+        self._cleanup();
+        self.start(savedSt, cb);
+      };
+
+      var stopBtn = document.createElement('button');
+      stopBtn.style.cssText = btnStyle + 'background:#88c8f8;';
+      stopBtn.textContent = '그만할래';
+      stopBtn.onclick = function() {
+        self._cleanup();
+        if (cb) cb(stars);
+      };
+
+      popup.appendChild(againBtn);
+      popup.appendChild(stopBtn);
+      self._overlay.appendChild(popup);
+      self._resultPopup = popup;
+    }, 1200);
   },
 
   _cleanup: function() {
@@ -838,5 +876,6 @@ var BallBounceGame = {
       this._overlay.parentNode.removeChild(this._overlay);
       this._overlay = null;
     }
+    this._resultPopup = null;
   }
 };

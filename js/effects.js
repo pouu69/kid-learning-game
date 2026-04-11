@@ -5,6 +5,7 @@ var _pixiApp = null;
 function setPixiApp(app) { _pixiApp = app; }
 function getPixiApp() { return _pixiApp; }
 
+var _cachedKoreanVoice = null;
 function speakText(text, rate) {
   if (!('speechSynthesis' in window)) return;
   var u = new SpeechSynthesisUtterance(text);
@@ -12,14 +13,16 @@ function speakText(text, rate) {
   u.rate = rate || 0.75;
   u.pitch = 1.15;
   u.volume = 0.9;
-  // Try to select a Korean voice for better quality
-  var voices = speechSynthesis.getVoices();
-  for (var i = 0; i < voices.length; i++) {
-    if (voices[i].lang === 'ko-KR' || voices[i].lang === 'ko_KR') {
-      u.voice = voices[i];
-      break;
+  if (!_cachedKoreanVoice) {
+    var voices = speechSynthesis.getVoices();
+    for (var i = 0; i < voices.length; i++) {
+      if (voices[i].lang === 'ko-KR' || voices[i].lang === 'ko_KR') {
+        _cachedKoreanVoice = voices[i];
+        break;
+      }
     }
   }
+  if (_cachedKoreanVoice) u.voice = _cachedKoreanVoice;
   speechSynthesis.cancel();
   speechSynthesis.speak(u);
 }

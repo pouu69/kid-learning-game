@@ -531,6 +531,13 @@ function showActivityMenu(st) {
             }
           }
         } else if (a.action === 'number') {
+          if (typeof speechSynthesis !== 'undefined') {
+            try {
+              var warmup = new SpeechSynthesisUtterance(' ');
+              warmup.volume = 0;
+              speechSynthesis.speak(warmup);
+            } catch (e) {}
+          }
           window.location.href = 'numbers.html';
         } else if (a.action === 'ball' && typeof BallBounceGame !== 'undefined') {
           startGame(BallBounceGame);

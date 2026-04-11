@@ -14,7 +14,8 @@
     </style>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon.svg">
+    <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>&#128049;</text></svg>">
 </head>
 <body>
@@ -264,9 +265,7 @@
     <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', function() {
-            navigator.serviceWorker.register('sw.js').catch(function(err) {
-                console.warn('SW registration failed:', err);
-            });
+            navigator.serviceWorker.register('sw.js').catch(function() {});
         });
     }
     </script>

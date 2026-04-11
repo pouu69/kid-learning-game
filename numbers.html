@@ -379,6 +379,29 @@ body {
   transform: translate(-50%, -50%) scale(1);
   opacity: 1;
 }
+
+/* --- Big animated number --- */
+.big-number {
+  display: inline-block;
+  font-size: 3.5rem;
+  font-weight: 900;
+  color: #f8d848;
+  text-shadow: 0 3px 0 #c4a830, 0 6px 12px rgba(0,0,0,0.4);
+  animation: numberPop 0.7s cubic-bezier(0.2, 1.6, 0.4, 1) both, numberPulse 1.2s ease-in-out 0.7s 3;
+  transform-origin: center;
+  margin: 0 4px;
+}
+@keyframes numberPop {
+  0%   { transform: scale(0) rotate(-15deg); opacity: 0; }
+  55%  { transform: scale(1.55) rotate(8deg); opacity: 1; }
+  80%  { transform: scale(0.92) rotate(-4deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+@keyframes numberPulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.18); }
+}
+
 </style>
 </head>
 <body>
@@ -670,7 +693,6 @@ body {
     foodArea.appendChild(finger);
     state.tutorialEl = finger;
 
-    speak('\uACFC\uC77C\uC744 \uB20C\uB7EC\uBD10!');
   }
 
   function onFoodTap(e) {
@@ -788,7 +810,7 @@ body {
     var correctName = FOOD_NAMES[state.correctFood];
 
     showBanner((state.round + 1) + '\uBC88\uC9F8', 1000, function() {
-      speechBubble.innerHTML = '<span style="font-size:2.2rem;display:block;line-height:1">' + correctEmoji + ' ' + state.target + '</span><span style="font-size:0.9rem;letter-spacing:2px">' + makeDots(state.target) + '</span>';
+      speechBubble.innerHTML = '<span style="font-size:2.2rem;display:block;line-height:1">' + correctEmoji + '<span class="big-number">' + state.target + '</span></span><span style="font-size:0.9rem;letter-spacing:2px">' + makeDots(state.target) + '</span>';
       speechBubble.classList.add('visible');
       renderTapCounter(0, state.target);
 
