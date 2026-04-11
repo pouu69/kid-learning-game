@@ -324,9 +324,8 @@ function updateHome(st) {
     }
   }
 
-  // Hide learn button during sleep or egg stage
-  var hideExtras = st.sleeping || st.stage === 0;
-  if (d.learnBtn) d.learnBtn.style.display = hideExtras ? 'none' : '';
+  // Hide activity button only during sleep (egg can still play mini-games)
+  if (d.learnBtn) d.learnBtn.style.display = st.sleeping ? 'none' : '';
 
   if (typeof PetRenderer !== 'undefined' && PetRenderer.update) {
     PetRenderer.update(st);
