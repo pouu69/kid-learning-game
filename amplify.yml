@@ -8,7 +8,7 @@ frontend:
       commands:
         # Copy static files to dist/
         - mkdir -p dist/css
-        - cp manifest.json sw.js numbers.html dist/
+        - cp sw.js numbers.html dist/
         - cp css/*.css dist/css/
 
         # Concatenate all JS files in load order → single bundle
@@ -59,3 +59,12 @@ frontend:
   cache:
     paths:
       - node_modules/**/*
+customHeaders:
+  - pattern: '**/*'
+    headers:
+      - key: 'Cache-Control'
+        value: 'no-cache, no-store, must-revalidate'
+      - key: 'Pragma'
+        value: 'no-cache'
+      - key: 'Expires'
+        value: '0'
